@@ -57,7 +57,7 @@ package CONFIG;
     /***************************************************************
      * 機能
      ***************************************************************/
-    localparam          ENABLE_MEGAROM          = 0;            // メガロムカートリッジを有効
+    localparam          ENABLE_MEGAROM          = 1;            // メガロムカートリッジを有効
     localparam          ENABLE_FM               = 1;            // FM 音源カートリッジを有効
     localparam          ENABLE_NEXTOR           = 1;            // NEXTOR カートリッジを有効
     localparam          ENABLE_RAM              = 1;            // 拡張 RAM カートリッジを有効

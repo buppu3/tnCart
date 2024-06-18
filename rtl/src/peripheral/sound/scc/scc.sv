@@ -33,592 +33,450 @@
 
 `default_nettype none
 
-/***********************************************************************
- * SCC
- ***********************************************************************/
+/***************************************************************
+ * SCC sound
+ ***************************************************************/
 module SCC (
     input wire          RESET_n,
     input wire          CLK,
     input wire          CLK_EN,
 
-    input wire [7:0]    ADDR,
     input wire          CS_n,
-    input wire          RD_n,
+    input wire [7:0]    ADDR,
     input wire          WR_n,
+    input wire          RD_n,
+    output wire         BUSDIR_n,
     input wire [7:0]    DIN,
-    output reg [7:0]    DOUT,
-    output reg          BUSDIR_n,
+    output wire [7:0]   DOUT,
 
-    output reg [9:0]    Sound
+    output reg [10:0]   OUT
 );
-    localparam CH_COUNT = 5;
-
     /***************************************************************
-     * レジスタ
+     * 読み書きタイミング
      ***************************************************************/
-    localparam SCC_REG_DIV_L = 0;
-    localparam SCC_REG_DIV_H = 1;
-    localparam SCC_REG_VOL = 10;
-    localparam SCC_REG_ENA = 15;
-    localparam SCC_REG_MODE = 16;
-    logic [7:0] scc_reg_file[0:SCC_REG_MODE];
-
-    /***************************************************************
-     * 波形メモリ
-     ***************************************************************/
-    localparam SCC_IN_WIDTH = 8;                   // -128~127
-    localparam SCC_OUT_WIDTH = 11;                  // -600~595
-    localparam [SCC_OUT_WIDTH-1:0] SCC_OFFSET = 128;
-    logic [SCC_IN_WIDTH-1:0] wave_8bit[0:CH_COUNT-1];
-    logic [4:0] wave_addr[0:CH_COUNT-1];
-    logic wave_rotate[0:CH_COUNT-1];
-
-    SCC_WAVE_TABLE u_wave_a (
-        .CLK(CLK),
-        .RESET_n(RESET_n),
-        .BUS_ADDR(ADDR[4:0]),
-        .BUS_OE_n(RD_n || (ADDR[7:5] != 3'b000)),
-        .BUS_WE_n(WR_n || (ADDR[7:5] != 3'b000)),
-        .BUS_ENA_n(CS_n),
-        .WDATA(DIN),
-        .SOUND_ADDR(wave_addr[0]),
-        .RDATA(wave_8bit[0]),
-        .ROTATE((scc_reg_file[SCC_REG_MODE][6] != 0) && wave_rotate[0])
-    );
-
-    SCC_WAVE_TABLE u_wave_b (
-        .CLK(CLK),
-        .RESET_n(RESET_n),
-        .BUS_ADDR(ADDR[4:0]),
-        .BUS_OE_n(RD_n || (ADDR[7:5] != 3'b001)),
-        .BUS_WE_n(WR_n || (ADDR[7:5] != 3'b001)),
-        .BUS_ENA_n(CS_n),
-        .WDATA(DIN),
-        .SOUND_ADDR(wave_addr[1]),
-        .RDATA(wave_8bit[1]),
-        .ROTATE((scc_reg_file[SCC_REG_MODE][6] != 0) && wave_rotate[1])
-    );
-
-    SCC_WAVE_TABLE u_wave_c (
-        .CLK(CLK),
-        .RESET_n(RESET_n),
-        .BUS_ADDR(ADDR[4:0]),
-        .BUS_OE_n(RD_n || (ADDR[7:5] != 3'b010)),
-        .BUS_WE_n(WR_n || (ADDR[7:5] != 3'b010)),
-        .BUS_ENA_n(CS_n),
-        .WDATA(DIN),
-        .SOUND_ADDR(wave_addr[2]),
-        .RDATA(wave_8bit[2]),
-        .ROTATE((scc_reg_file[SCC_REG_MODE][6] != 0) && wave_rotate[2])
-    );
-
-    SCC_WAVE_TABLE u_wave_d (
-        .CLK(CLK),
-        .RESET_n(RESET_n),
-        .BUS_ADDR(ADDR[4:0]),
-        .BUS_OE_n(RD_n || (ADDR[7:5] != 3'b011)),
-        .BUS_WE_n(WR_n || (ADDR[7:5] != 3'b011)),
-        .BUS_ENA_n(CS_n),
-        .WDATA(DIN),
-        .SOUND_ADDR(wave_addr[3]),
-        .RDATA(wave_8bit[3]),
-        .ROTATE((scc_reg_file[SCC_REG_MODE][7:6] != 0) && wave_rotate[3])
-    );
-
-    SCC_WAVE_TABLE u_wave_e (
-        .CLK(CLK),
-        .RESET_n(RESET_n),
-        .BUS_ADDR(ADDR[4:0]),
-        .BUS_OE_n(RD_n || (ADDR[7:5] != 3'b101)),
-        .BUS_WE_n(WR_n || (ADDR[7:5] != 3'b011)),
-        .BUS_ENA_n(CS_n),
-        .WDATA(DIN),
-        .SOUND_ADDR(wave_addr[4]),
-        .RDATA(wave_8bit[4]),
-        .ROTATE((scc_reg_file[SCC_REG_MODE][7:6] != 0) && wave_rotate[3])
-    );
-
-    /***************************************************************
-     * レジスタリード
-     ***************************************************************/
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n) begin
-            DOUT <= 8'hFF;
-            BUSDIR_n <= 1;
-        end
-        else if(RD_n || CS_n) begin
-            DOUT <= 8'hFF;
-            BUSDIR_n <= 1;
-        end
-        else begin
-            BUSDIR_n <= 0;
-            case (ADDR[7:5])
-                3'b000: DOUT <= wave_8bit[0];                   // 波形メモリ chA
-                3'b001: DOUT <= wave_8bit[1];                   // 波形メモリ chB
-                3'b010: DOUT <= wave_8bit[2];                   // 波形メモリ chC
-                3'b011: DOUT <= wave_8bit[3];                   // 波形メモリ chD
-                3'b100: DOUT <= scc_reg_file[ADDR[3:0]];    // コントロールレジスタ
-                3'b101: DOUT <= wave_8bit[4];                   // 波形メモリ chE
-                3'b110: DOUT <= scc_reg_file[SCC_REG_MODE];     // モードレジスタ
-                default:DOUT <= 8'hFF;
-            endcase
-        end
-    end
-
-    /***************************************************************
-     * レジスタライト
-     ***************************************************************/
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n) begin
-            //
-            // レジスタ初期化
-            //
-            scc_reg_file[0] <= 0;
-            scc_reg_file[1] <= 0;
-            scc_reg_file[2] <= 0;
-            scc_reg_file[3] <= 0;
-            scc_reg_file[4] <= 0;
-            scc_reg_file[5] <= 0;
-            scc_reg_file[6] <= 0;
-            scc_reg_file[7] <= 0;
-            scc_reg_file[8] <= 0;
-            scc_reg_file[9] <= 0;
-            scc_reg_file[10] <= 0;
-            scc_reg_file[11] <= 0;
-            scc_reg_file[12] <= 0;
-            scc_reg_file[13] <= 0;
-            scc_reg_file[14] <= 0;
-            scc_reg_file[15] <= 0;
-            scc_reg_file[16] <= 0;
-        end
-        else if(!CS_n && !WR_n) begin
-            //
-            // レジスタライト
-            //
-            case (ADDR[7:5])
-                3'b100: scc_reg_file[ADDR[3:0]] <= DIN; // コントロールレジスタ
-                3'b110: scc_reg_file[SCC_REG_MODE] <= DIN;  // モードレジスタ
-            endcase
-        end
-    end
-
-    /***************************************************************
-     * ENA が 0->1 になった CH を検出
-     ***************************************************************/
-    logic [7:0] prev_ena_reg;
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)        prev_ena_reg <= 0;
-        else if(!CLK_EN)    prev_ena_reg <= prev_ena_reg;
-        else                prev_ena_reg <= scc_reg_file[SCC_REG_ENA];
-    end
-
-    logic det_ena[0:CH_COUNT-1];
-    generate
-        genvar ena_ch;
-        for(ena_ch = 0; ena_ch < CH_COUNT; ena_ch = ena_ch + 1) begin: ena_loop
-            always_comb begin
-                if(!RESET_n)        det_ena[ena_ch] = 0;
-                else if(!CLK_EN)    det_ena[ena_ch] = 0;
-                else                det_ena[ena_ch] = !prev_ena_reg[ena_ch] && scc_reg_file[SCC_REG_ENA][ena_ch];
-            end
-        end
-    endgenerate
-
-    /***************************************************************
-     * WR_n のエッジを検出
-     ***************************************************************/
+    wire rd_n = CS_n || RD_n;
+    wire wr_n = CS_n || WR_n;
     logic prev_wr_n;
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)        prev_wr_n <= 0;
-        else if(!CLK_EN)    prev_wr_n <= prev_wr_n;
-        else                prev_wr_n <= WR_n;
+        if(!RESET_n)                 prev_wr_n <= 1;
+        else if(!wr_n && !cs_test_n) prev_wr_n <= wr_n;
+    end
+    wire det_wr = prev_wr_n && !wr_n;
+    wire det_rd = !rd_n;
+
+    /***************************************************************
+     * アドレスデコーダ
+     ***************************************************************/
+    wire cs_reg_n = ADDR[7:5] != 3'b100;
+    wire cs_test_n = ADDR[7:5] != 3'b111;
+    wire cs_enable_n = cs_reg_n || (ADDR[3:0] != 4'b1111);
+
+    /***************************************************************
+     * TEST レジスタ
+     ***************************************************************/
+    logic [7:0] test_reg;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)                  test_reg <= 0;
+        else if(det_wr && !cs_test_n) test_reg <= DIN;
     end
 
-    logic det_wrt;
-    always_comb begin
-        if(!RESET_n)        det_wrt = 0;
-        else if(!CLK_EN)    det_wrt = 0;
-        else                det_wrt = prev_wr_n && !WR_n;
+    /***************************************************************
+     * ENABLE レジスタ
+     ***************************************************************/
+    logic [7:0] enable_reg;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)                    enable_reg <= 0;
+        else if(det_wr && !cs_enable_n) enable_reg <= DIN;
     end
 
     /***************************************************************
-     * 分周レジスタ書き換えを検出
+     * 出力更新カウンタ
      ***************************************************************/
-    logic det_wrt_div[0:CH_COUNT-1];
-    generate
-        genvar wrt_ch;
-        for(wrt_ch = 0; wrt_ch < CH_COUNT; wrt_ch = wrt_ch + 1) begin: wrt_loop
-            always_comb begin
-                if(!RESET_n)        det_wrt_div[wrt_ch] = 0;
-                else if(!CLK_EN)    det_wrt_div[wrt_ch] = 0;
-                else                det_wrt_div[wrt_ch] = det_wrt && (ADDR[7:1] == (SCC_REG_DIV_L[7:1] + wrt_ch));
-            end
-        end
-    endgenerate
+    logic [3:0] out_cnt;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)    out_cnt <= 0;
+        else if(CLK_EN) out_cnt <= out_cnt + 1'd1;
+    end
+    wire OUT_EN = out_cnt == 0;
 
     /***************************************************************
-     * 波形メモリアドレス リスタート
+     * 各チャンネルの処理
      ***************************************************************/
-    logic restart[0:CH_COUNT-1];
-    generate
-        genvar restart_ch;
-        for(restart_ch = 0; restart_ch < CH_COUNT; restart_ch = restart_ch + 1) begin: restart_loop
-            always_comb begin
-                if(!RESET_n)                                                      restart[restart_ch] = 1;
-                else if(!CLK_EN)                                                  restart[restart_ch] = 0;
-                else if(det_ena[restart_ch])                                      restart[restart_ch] = 1;  // イネーブルが 0->1
-                else if(scc_reg_file[SCC_REG_MODE][5] && det_wrt_div[restart_ch]) restart[restart_ch] = 1;  // 分周比レジスタライト
-                else                                                              restart[restart_ch] = 0;
-            end
-        end
-    endgenerate
+    logic busdir_n[0:4];
+    logic [7:0] dout[0:4];
+    logic [7:0] ch_out[0:4];
 
-    /***************************************************************
-     * 波形メモリアドレス移動
-     ***************************************************************/
-    logic [4:0] pointer[0:CH_COUNT-1];
     generate
-        genvar addr_ch;
-        for(addr_ch = 0; addr_ch < CH_COUNT; addr_ch = addr_ch + 1) begin: addr_loop
-            SCC_ADDR u_addr (
-                .CLK(CLK),
-                .RESET_n(RESET_n),
-                .CLK_EN(CLK_EN),
-                .MODE_4b(scc_reg_file[SCC_REG_MODE][0]),
-                .MODE_8b(scc_reg_file[SCC_REG_MODE][1]),
-                .MODE_ROATE(scc_reg_file[SCC_REG_MODE][6] || (addr_ch >= 4 && scc_reg_file[SCC_REG_MODE][7])),
-                .RESTART(restart[addr_ch]),
-                .DIV({scc_reg_file[SCC_REG_DIV_H + addr_ch * 2][3:0], scc_reg_file[SCC_REG_DIV_L + addr_ch * 2][7:0]}),
-                .ROTATE(wave_rotate[addr_ch]),
-                .ADDR(wave_addr[addr_ch])
+        genvar chnum;
+        for(chnum = 0; chnum < 5; chnum = chnum + 1) begin: ch
+            SCC_SIGNAL_GENERATOR u_gen (
+                .RESET_n,
+                .CLK,
+                .CLK_EN,
+                .TEST_CNTM  (test_reg[0]),
+                .TEST_CNTH  (test_reg[1]),
+                .TEST_ADDR  (test_reg[5]),
+                .TEST_MEM   (chnum == 4 ? test_reg[7] : test_reg[6]),
+                .ADDR       (ADDR[4:0]),
+                .WR_FREQ_L_n(!det_wr || cs_reg_n || (ADDR[3:0] != (chnum * 2 +  0))),
+                .WR_FREQ_H_n(!det_wr || cs_reg_n || (ADDR[3:0] != (chnum * 2 +  1))),
+                .WR_VOL_n   (!det_wr || cs_reg_n || (ADDR[3:0] != (chnum     + 10))),
+                .WR_WAVE_n  (chnum < 4 ? (!det_wr || (ADDR[7:5] != chnum)) : (!det_wr || (ADDR[7:5] != 3))),
+                .RD_WAVE_n  (chnum < 4 ? (!det_rd || (ADDR[7:5] != chnum)) : (!det_rd || (ADDR[7:5] != 5))),
+                .BUSDIR_n   (busdir_n[chnum]),
+                .DIN,
+                .DOUT       (dout[chnum]),
+                .MUTE_n     (enable_reg[chnum]),
+                .OUT_EN,
+                .OUT        (ch_out[chnum])
             );
         end
     endgenerate
 
     /***************************************************************
-     * 音量
-     * (-128~127) * (0~15) = -1920~1905
+     * 波形メモリのデータを CPU 側へ出力
      ***************************************************************/
-    logic [11:0] amp_12bit[0:CH_COUNT-1];
-    generate
-        genvar amp_ch;
-        for(amp_ch = 0; amp_ch < CH_COUNT; amp_ch = amp_ch + 1) begin: amp_loop
-            SCC_AMP u_amp (
-                .CLK(CLK),
-                .RESET_n(RESET_n),
-                .IN(wave_8bit[amp_ch]),
-                .VOL(scc_reg_file[SCC_REG_VOL + amp_ch][3:0]),
-                .OUT(amp_12bit[amp_ch])
-            );
-        end
-    endgenerate
+    assign BUSDIR_n = busdir_n[0] && busdir_n[1] && busdir_n[2] && busdir_n[3] && busdir_n[4];
+    assign DOUT = dout[0] | dout[1] | dout[2] | dout[3] | dout[4];
 
     /***************************************************************
-     * MIXER
+     * ミキサー
      ***************************************************************/
-    logic [10:0] mix_11bit;
-    SCC_MIXER #(
-        .CH_COUNT(CH_COUNT),
-        .SCC_OFFSET(SCC_OFFSET),
-        .IN_BIT_WIDTH($bits(amp_12bit[0])),
-        .OUT_BIT_WIDTH($bits(mix_11bit))
-    ) u_mixer (
-        .CLK(CLK),
-        .RESET_n(RESET_n),
-        .ENABLE(scc_reg_file[SCC_REG_ENA][CH_COUNT-1:0]),
-        .IN(amp_12bit),
-        .OUT(mix_11bit)
+    SCC_MIXER u_mixer (
+        .RESET_n,
+        .CLK,
+        .CLK_EN(CLK_EN && OUT_EN),
+        .IN(ch_out),
+        .OUT(OUT)
     );
-
-    /***************************************************************
-     * 出力レベルを合わせる -600~595 -> -512~507
-     * Sound.signal = mix * 512 / 600;
-     ***************************************************************/
-    logic [10:0] att_11bit;
-    ATT_CONST #(
-        .BIT_WIDTH($bits(mix_11bit)),
-        .MUL(512),
-        .DIV(600)
-    ) u_att (
-        .CLK(CLK),
-        .RESET_n(RESET_n),
-        .IN(mix_11bit),
-        .OUT(att_11bit)
-    );
-
-    assign Sound = att_11bit[$bits(Sound)-1:0];
-
 endmodule
 
 /***********************************************************************
- * MIXER
+ * ミキサー
  ***********************************************************************/
-module SCC_MIXER #(
-    parameter CH_COUNT = 5,
-    parameter SCC_OFFSET = 128,
-    parameter IN_BIT_WIDTH  = 12,
-    parameter OUT_BIT_WIDTH = 11
-) (
-    input wire CLK,
-    input wire RESET_n,
-    input wire [CH_COUNT-1:0] ENABLE,
-    input wire [IN_BIT_WIDTH-1:0] IN[0:CH_COUNT-1],
-    output reg [OUT_BIT_WIDTH-1:0] OUT
+module SCC_MIXER (
+    input wire          RESET_n,
+    input wire          CLK,
+    input wire          CLK_EN,
+    input wire [7:0]    IN[0:4],
+    output reg [10:0]   OUT
 );
-    /***************************************************************
-     * signed -> unsigned
-     * (-1920~1905) >> 4 + 128 = (8~247)
-     ***************************************************************/
-    logic [8-1:0] out_8bit[0:CH_COUNT-1];
-    generate
-        genvar out_ch;
-        for(out_ch = 0; out_ch < CH_COUNT; out_ch = out_ch + 1) begin: out_loop
-            always_comb begin
-                out_8bit[out_ch] = ENABLE[out_ch] ? ((IN[out_ch][11:4] + SCC_OFFSET) & 8'hFF) : SCC_OFFSET;
-            end
-        end
-    endgenerate
 
-    /***************************************************************
-     * ミキサー、unsigned -> signed
-     * (8~247) * 5 - 128 * 5 = (-600~595)
-     ***************************************************************/
-    localparam [OUT_BIT_WIDTH-8-1:0] zero = 0; 
-    localparam [OUT_BIT_WIDTH-1:0] SCC_OFFSET_ALL_CH = (SCC_OFFSET * CH_COUNT);
+    logic [10:0] in_0;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)    in_0 <= 0;
+        else if(CLK_EN) in_0 <= IN[0][7] ? {3'b111,IN[0]} : {3'b000,IN[0]};
+    end
+
+    logic [10:0] in_1;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)    in_1 <= 0;
+        else if(CLK_EN) in_1 <= IN[1][7] ? {3'b111,IN[1]} : {3'b000,IN[1]};
+    end
+
+    logic [10:0] in_2;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)    in_2 <= 0;
+        else if(CLK_EN) in_2 <= IN[2][7] ? {3'b111,IN[2]} : {3'b000,IN[2]};
+    end
+
+    logic [10:0] in_3;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)    in_3 <= 0;
+        else if(CLK_EN) in_3 <= IN[3][7] ? {3'b111,IN[3]} : {3'b000,IN[3]};
+    end
+
+    logic [10:0] in_4;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)    in_4 <= 0;
+        else if(CLK_EN) in_4 <= IN[4][7] ? {3'b111,IN[4]} : {3'b000,IN[4]};
+    end
+
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)    OUT <= 0;
-        else            OUT <= ({ zero, out_8bit[0] } +
-                                { zero, out_8bit[1] } +
-                                { zero, out_8bit[2] } +
-                                { zero, out_8bit[3] } +
-                                { zero, out_8bit[4] } ) - SCC_OFFSET_ALL_CH;
+        else if(CLK_EN) OUT <= in_0 + in_1 + in_2 + in_3 + in_4;
+    end
+
+endmodule
+
+/***********************************************************************
+ * SCC 1CH シグナルジェネレータ
+ ***********************************************************************/
+module SCC_SIGNAL_GENERATOR (
+    input wire          RESET_n,
+    input wire          CLK,
+    input wire          CLK_EN,
+
+    input wire          TEST_CNTM,      // TEST.b0
+    input wire          TEST_CNTH,      // TEST.b1
+    input wire          TEST_ADDR,      // TEST.b5
+    input wire          TEST_MEM,       // TEST.b6(ch0~3), TEST.b7(ch4)
+
+    input wire [4:0]    ADDR,
+    input wire          WR_FREQ_L_n,
+    input wire          WR_FREQ_H_n,
+    input wire          WR_VOL_n,
+    input wire          WR_WAVE_n,
+    input wire          RD_WAVE_n,
+    output wire         BUSDIR_n,
+    input wire  [7:0]   DIN,
+    output wire  [7:0]  DOUT,
+
+    input wire          MUTE_n,
+    input wire          OUT_EN,
+    output reg [7:0]    OUT
+);
+
+    logic [4:0] WAVE_ADDR;
+    SCC_COUNTER u_cnt (
+        .RESET_n,
+        .CLK,
+        .CLK_EN,
+        .TEST_CNTM,
+        .TEST_CNTH,
+        .TEST_ADDR,
+        .WR_FREQ_L_n,
+        .WR_FREQ_H_n,
+        .DIN,
+        .WAVE_ADDR
+    );
+
+    wire [7:0] WAVE_DATA;
+    SCC_WAVE_MEMORY u_mem (
+        .RESET_n,
+        .CLK,
+        .TEST_MEM,
+        .ADDR(ADDR[4:0]),
+        .RD_WAVE_n,
+        .WR_WAVE_n,
+        .DIN,
+        .BUSDIR_n,
+        .DOUT,
+        .WAVE_ADDR,
+        .WAVE_DATA
+    );
+
+    SCC_AMP u_amp (
+        .RESET_n,
+        .CLK,
+        .CLK_EN,
+        .WR_VOL_n,
+        .DIN(DIN[3:0]),
+        .WAVE_DATA,
+        .MUTE_n,
+        .OUT_EN,
+        .OUT
+    );
+endmodule
+
+/***********************************************************************
+ * SCC CH カウンター
+ ***********************************************************************/
+module SCC_COUNTER (
+    input wire          RESET_n,
+    input wire          CLK,
+    input wire          CLK_EN,
+
+    input wire          TEST_CNTM,      // TEST.b0
+    input wire          TEST_CNTH,      // TEST.b1
+    input wire          TEST_ADDR,      // TEST.b5
+
+    input wire          WR_FREQ_L_n,
+    input wire          WR_FREQ_H_n,
+    input wire [7:0]    DIN,
+
+    output reg [4:0]    WAVE_ADDR
+);
+
+    /***************************************************************
+     * 分周レジスタライト
+     ***************************************************************/
+    logic [3:0] freq_l;
+    logic [3:0] freq_m;
+    logic [3:0] freq_h;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n) begin
+            freq_l <= 0;
+            freq_m <= 0;
+            freq_h <= 0;
+        end
+        else if(!WR_FREQ_L_n) begin
+            freq_l <= DIN[3:0];
+            freq_m <= DIN[7:4];
+        end
+        else if(!WR_FREQ_H_n) begin
+            freq_h <= DIN[3:0];
+        end
+    end
+
+    /***************************************************************
+     * カウンタの動作条件
+     ***************************************************************/
+    wire dec_cnt_l = CLK_EN;
+    wire dec_cnt_m = (dec_cnt_l && (cnt_l == 0)) || TEST_CNTM;
+    wire dec_cnt_h = (dec_cnt_m && (cnt_m == 0)) || TEST_CNTH;
+    wire inc_adr   = (dec_cnt_h && (cnt_h == 0));
+    wire rst_cnt   = inc_adr;
+    wire rst_adr   = (TEST_ADDR && (!WR_FREQ_L_n || !WR_FREQ_H_n));
+
+    /***************************************************************
+     * 分周カウント
+     ***************************************************************/
+    logic [3:0] cnt_l;
+    logic [3:0] cnt_m;
+    logic [3:0] cnt_h;
+
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)       cnt_l <= 0;
+        else if(rst_cnt)   cnt_l <= freq_l;
+        else if(dec_cnt_l) cnt_l <= cnt_l - 1'd1;
+    end
+
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)       cnt_m <= 0;
+        else if(rst_cnt)   cnt_m <= freq_m;
+        else if(dec_cnt_m) cnt_m <= cnt_m - 1'd1;
+    end
+
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)       cnt_h <= 0;
+        else if(rst_cnt)   cnt_h <= freq_h;
+        else if(dec_cnt_h) cnt_h <= cnt_h - 1'd1;
+    end
+
+    /***************************************************************
+     * アドレスカウント
+     ***************************************************************/
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)       WAVE_ADDR <= 0;
+        else if(rst_adr)   WAVE_ADDR <= 0;
+        else if(inc_adr)   WAVE_ADDR <= WAVE_ADDR + 1'd1;
+    end
+
+endmodule
+
+/***********************************************************************
+ * SCC CH 波形メモリー
+ ***********************************************************************/
+module SCC_WAVE_MEMORY (
+    input wire          RESET_n,
+    input wire          CLK,
+
+    input wire          TEST_MEM,   // TEST.b6(ch0~3), TEST.b7(ch4)
+
+    input wire [4:0]    ADDR,
+    input wire          RD_WAVE_n,
+    input wire          WR_WAVE_n,
+    input wire  [7:0]   DIN,
+    output reg          BUSDIR_n,
+    output reg [7:0]    DOUT,
+
+    input wire [4:0]    WAVE_ADDR,
+    output reg  [7:0]   WAVE_DATA
+);
+    reg [7:0] buffer[0:31];
+
+    /***************************************************************
+     * メモリ R/W
+     ***************************************************************/
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n) begin
+            BUSDIR_n <= 1;
+            DOUT <= 0;
+            WAVE_DATA <= 0;
+        end
+        else if(TEST_MEM) begin
+            BUSDIR_n <= 1;
+            DOUT <= 0;
+            WAVE_DATA <= buffer[WAVE_ADDR];
+        end
+        else if(!WR_WAVE_n) begin
+            BUSDIR_n <= 1;
+            DOUT <= 0;
+            WAVE_DATA <= DIN;
+            buffer[ADDR] <= DIN;
+        end
+        else if(!RD_WAVE_n) begin
+            BUSDIR_n <= 0;
+            DOUT <= buffer[ADDR];
+            WAVE_DATA <= buffer[ADDR];
+        end
+        else begin
+            BUSDIR_n <= 1;
+            DOUT <= 0;
+            WAVE_DATA <= buffer[WAVE_ADDR];
+        end
     end
 endmodule
 
 /***********************************************************************
- * OUT = IN * VOL
+ * SCC CH アンプ
  ***********************************************************************/
 module SCC_AMP (
-    input wire          CLK,
     input wire          RESET_n,
-    input wire [7:0]    IN,
-    input wire [3:0]    VOL,
-    output reg [11:0]   OUT
-);
-    localparam MUL_BIT_WIDTH = $bits(VOL);
-    localparam OUT_BIT_WIDTH = ($bits(IN) + $bits(VOL));
+    input wire          CLK,
+    input wire          CLK_EN,
 
+    input wire          WR_VOL_n,
+    input wire [3:0]    DIN,
+
+    input wire [7:0]    WAVE_DATA,
+
+    input wire          MUTE_n,
+    input wire          OUT_EN,
+    output reg [7:0]    OUT
+);
+    logic [3:0] vol;
+    logic [3:0] cnt;
+    logic [11:0] sum;
 
     /***************************************************************
-     * 絶対値
+     * 音量レジスタライト
      ***************************************************************/
-    logic sign;
-    logic [OUT_BIT_WIDTH-1:0] abs_val;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n) begin
-            sign <= 0;
-            abs_val <= 0;
+            vol <= 0;
         end
-        else begin
-            sign <= IN[$bits(IN)-1];
-            abs_val <= IN[$bits(IN)-1] ? (~IN + 1'd1) : IN;
+        else if(!WR_VOL_n) begin
+            vol <= DIN;
         end
     end
 
     /***************************************************************
-     * ビット毎に積を求める
+     * 波形データを12bitへ拡張
      ***************************************************************/
-    localparam [OUT_BIT_WIDTH-1:0] zero = 0;
-    logic [OUT_BIT_WIDTH-1:0] val[0:MUL_BIT_WIDTH-1];
-    generate
-        genvar bit_count;
-        for(bit_count = 0; bit_count < MUL_BIT_WIDTH; bit_count = bit_count + 1) begin: bit_loop
-            always_comb begin
-                val[bit_count] = VOL[bit_count] ? (abs_val << bit_count) : zero;
-            end
-        end
-    endgenerate
+    wire [11:0] data_12bit = WAVE_DATA[7] ? {4'b1111,WAVE_DATA} : {4'b0000,WAVE_DATA};
 
     /***************************************************************
-     * 積を加算
+     * 音量の分だけ加算する
      ***************************************************************/
-    logic [OUT_BIT_WIDTH-1:0] sum[0:MUL_BIT_WIDTH-1];
-    generate
-        genvar sum_count;
-        for(sum_count = 0; sum_count < MUL_BIT_WIDTH; sum_count = sum_count + 1) begin: sum_loop
-            if(sum_count == MUL_BIT_WIDTH - 1) begin
-                always_comb begin
-                    sum[sum_count] = val[sum_count];
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n) begin
+            OUT <= 0;
+            cnt <= 0;
+            sum <= 0;
+        end
+        else if(CLK_EN) begin
+            if(OUT_EN) begin
+                OUT <= MUTE_n ? sum[11:4] : 0;
+
+                if(vol != 0) begin
+                    cnt <= vol - 1'd1;
+                    sum <= data_12bit;
+                end
+                else begin
+                    cnt <= 0;
+                    sum <= 0;
                 end
             end
             else begin
-                always_comb begin
-                    sum[sum_count] = sum[sum_count + 1] + val[sum_count];
+                if(cnt != 0) begin
+                    cnt <= cnt - 1'd1;
+                    sum <= sum + data_12bit;
                 end
             end
         end
-    endgenerate
-
-    /***************************************************************
-     * 符号を戻す
-     ***************************************************************/
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n) OUT <= 0;
-        else OUT <= sign ? ~(sum[0] - 1'd1) : sum[0];
     end
-
-endmodule
-
-/***********************************************************************
- * アドレス移動
- ***********************************************************************/
-module SCC_ADDR (
-    input wire          CLK,
-    input wire          RESET_n,
-    input wire          CLK_EN,
-    input wire          MODE_4b,
-    input wire          MODE_8b,
-    input wire          MODE_ROATE,
-    input wire          RESTART,
-    input wire [11:0]   DIV,
-    output reg          ROTATE,
-    output reg [4:0]    ADDR
-);
-    /***************************************************************
-     * DIV 変換
-     ***************************************************************/
-    logic [11:0] div_conv;
-    always_comb begin
-        case ({MODE_8b, MODE_4b})
-            2'b00:  div_conv = DIV;
-            2'b01:  div_conv = { 8'b00000000, DIV[11:8] };
-            2'b10:  div_conv = { 4'b0000, DIV[7:0] };
-            default:div_conv = { 4'b0000, DIV[7:0] };
-        endcase
-    end
-
-    /***************************************************************
-     * カウンタの更新
-     ***************************************************************/
-    logic [11:0] curr_cnt;
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                    curr_cnt <= 0;
-        else if(RESTART)                curr_cnt <= 0;
-        else if(!CLK_EN)                curr_cnt <= curr_cnt;
-        else if(curr_cnt >= div_conv)   curr_cnt <= 0;
-        else                            curr_cnt <= curr_cnt + 1'd1;
-    end
-
-    /***************************************************************
-     * ローテート
-     ***************************************************************/
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                    ROTATE <= 0;
-        else if(RESTART)                ROTATE <= 0;
-        else if(!CLK_EN)                ROTATE <= 0;
-        else if(!MODE_ROATE)            ROTATE <= 0;
-        else if(curr_cnt >= div_conv)   ROTATE <= 1;
-        else                            ROTATE <= 0;
-    end
-
-    /***************************************************************
-     * アドレスの更新
-     ***************************************************************/
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                    ADDR <= 0;
-        else if(RESTART)                ADDR <= 0;
-        else if(!CLK_EN)                ADDR <= ADDR;
-        else if(MODE_ROATE)             ADDR <= ADDR;
-        else if(curr_cnt >= div_conv)   ADDR <= ADDR + 1'd1;
-        else                            ADDR <= ADDR;
-    end
-endmodule
-
-/***********************************************************************
- * 波形メモリ
- ***********************************************************************/
-module SCC_WAVE_TABLE (
-    input wire          CLK,
-    input wire          RESET_n,
-
-    input wire [4:0]    SOUND_ADDR,
-    input wire [4:0]    BUS_ADDR,
-    input wire          BUS_OE_n,
-    input wire          BUS_WE_n,
-    input wire          BUS_ENA_n,
-
-    output reg [7:0]    RDATA,
-    input wire [7:0]    WDATA,
-
-    input wire          ROTATE
-);
-    logic [4:0] offset;
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                offset <= 0;
-        else if(ROTATE)             offset <= offset + 1'd1;
-        else                        offset <= offset;
-    end
-
-    wire [4:0] addr = (BUS_ENA_n || (BUS_OE_n && BUS_WE_n)) ? (SOUND_ADDR + offset) : (BUS_ADDR + offset);
-
-`ifndef HOGE
-
-    reg [7:0] buffer[0:31];
-
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)        RDATA <= 0;
-        else                RDATA <= buffer[addr];
-    end
-
-    always_ff @(posedge CLK) begin
-        if(!(BUS_WE_n || BUS_ENA_n)) begin
-            buffer[addr] <= WDATA;
-        end
-    end
-
-`else
-    reg [3:0] rdata_ll;
-    reg [3:0] rdata_lh;
-    reg [3:0] rdata_hl;
-    reg [3:0] rdata_hh;
-
-    wire [4:0] addr = (BUS_ENA_n || (BUS_OE_n && BUS_WE_n)) ? (SOUND_ADDR + offset) : (BUS_ADDR + offset);
-    wire [3:0] rdata_l = addr[4] ? rdata_hl : rdata_ll;
-    wire [3:0] rdata_h = addr[4] ? rdata_hh : rdata_lh;
-    assign RDATA = { rdata_h, rdata_l };
-
-    RAM16S4 u_mem_ll (
-        .WRE(!BUS_WE_n && !addr[4]),
-        .CLK(CLK),
-        .AD(addr[3:0]),
-        .DI(WDATA[3:0]),
-        .DO(rdata_ll)
-    );
-
-    RAM16S4 u_mem_lh (
-        .WRE(!BUS_WE_n && !addr[4]),
-        .CLK(CLK),
-        .AD(addr[3:0]),
-        .DI(WDATA[7:4]),
-        .DO(rdata_lh)
-    );
-
-    RAM16S4 u_mem_hl (
-        .WRE(!BUS_WE_n && addr[4]),
-        .CLK(CLK),
-        .AD(addr[3:0]),
-        .DI(WDATA[3:0]),
-        .DO(rdata_hl)
-    );
-
-    RAM16S4 u_mem_hh (
-        .WRE(!BUS_WE_n && addr[4]),
-        .CLK(CLK),
-        .AD(addr[3:0]),
-        .DI(WDATA[7:4]),
-        .DO(rdata_hh)
-    );
-`endif
 endmodule
 
 `default_nettype wire

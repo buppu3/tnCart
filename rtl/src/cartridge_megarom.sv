@@ -50,13 +50,15 @@ module CARTRIDGE_MEGAROM #(
      * メガロム設定
      ***************************************************************/
     MEGAROM_IF Megarom();
-    logic SCC_ENA_n;
-    MEGAROM_CONFIGURE u_conf (
+    logic SCC_ENA;
+    MEGAROM_CONFIGURE #(
+        .RAM_ADDR(RAM_ADDR)
+    ) u_conf (
         .RESET_n,
         .CLK,
         .Bus(ExtBus[BUS_CONFIG]),
         .Megarom,
-        .SCC_ENA_n
+        .SCC_ENA
     );
 
     /***************************************************************
@@ -84,22 +86,60 @@ module CARTRIDGE_MEGAROM #(
     assign ExtBus[BUS_SCC].INT_n = 1;
     assign ExtBus[BUS_SCC].WAIT_n = 1;
     if(CONFIG::ENABLE_SCC) begin
-        wire scc_bank_n = Megarom.BankReg[{ExtBus[BUS_SCC].ADDR[15], ExtBus[BUS_SCC].ADDR[13]}] != 8'd63;
+        logic scc_bank_n;
+        always_ff @(posedge CLK or negedge RESET_n) begin
+            if(!RESET_n)                      scc_bank_n <= 1;
+            else if(!ExtBus[BUS_SCC].RESET_n) scc_bank_n <= 1;
+            else                              scc_bank_n <= Megarom.BankReg[{ExtBus[BUS_SCC].ADDR[15], ExtBus[BUS_SCC].ADDR[13]}] != 8'd63;
+        end
+
+        logic scc_cs_n;
+        always_ff @(posedge CLK or negedge RESET_n) begin
+            if(!RESET_n)                      scc_cs_n <= 1;
+            else if(!ExtBus[BUS_SCC].RESET_n) scc_cs_n <= 1;
+            else                              scc_cs_n <= ExtBus[BUS_SCC].ADDR[15:8] != 8'h98;
+        end
+
+        logic busdir_n;
+        logic [7:0] dout;
+        wire  [10:0] sound;
         SCC u_scc (
+            .RESET_n    (RESET_n && ExtBus[BUS_SCC].RESET_n),
+`ifdef SCC_CLK_21M
             .CLK        (ExtBus[BUS_SCC].CLK_21M),
             .CLK_EN     (ExtBus[BUS_SCC].CLK_EN_21M),
-            .RESET_n    (RESET_n && ExtBus[BUS_SCC].RESET_n),
-
+`else
+            .CLK        (CLK),
+            .CLK_EN     (ExtBus[BUS_SCC].CLK_EN),
+`endif
             .ADDR       (ExtBus[BUS_SCC].ADDR[7:0]),
-            .CS_n       ((ExtBus[BUS_SCC].ADDR[15:8] != 8'h98) || ExtBus[BUS_SCC].SLTSL_n || ExtBus[BUS_SCC].MERQ_n || SCC_ENA_n || scc_bank_n),
+            .CS_n       (scc_cs_n || ExtBus[BUS_SCC].SLTSL_n || ExtBus[BUS_SCC].MERQ_n || !SCC_ENA || scc_bank_n),
             .RD_n       (ExtBus[BUS_SCC].RD_n),
             .WR_n       (ExtBus[BUS_SCC].WR_n),
             .DIN        (ExtBus[BUS_SCC].DIN),
-            .DOUT       (ExtBus[BUS_SCC].DOUT),
-            .BUSDIR_n   (ExtBus[BUS_SCC].BUSDIR_n),
-
-            .Sound      (Sound.Signal)
+            .DOUT       (dout),
+            .BUSDIR_n   (busdir_n),
+            .OUT        (sound)
         );
+
+        assign Sound.Signal = sound[10:1];
+
+`ifdef SCC_CLK_21M
+        always_ff @(posedge CLK or negedge RESET_n) begin
+            if(!RESET_n)                      ExtBus[BUS_SCC].BUSDIR_n <= 1;
+            else if(!ExtBus[BUS_SCC].RESET_n) ExtBus[BUS_SCC].BUSDIR_n <= 1;
+            else                              ExtBus[BUS_SCC].BUSDIR_n <= ExtBus[BUS_SCC].RD_n ? 1'b1 : busdir_n;
+        end
+
+        always_ff @(posedge CLK or negedge RESET_n) begin
+            if(!RESET_n)                      ExtBus[BUS_SCC].DOUT <= 8'h00;
+            else if(!ExtBus[BUS_SCC].RESET_n) ExtBus[BUS_SCC].DOUT <= 8'h00;
+            else                              ExtBus[BUS_SCC].DOUT <= ExtBus[BUS_SCC].RD_n ? 8'h00 : dout;
+        end
+`else
+        assign ExtBus[BUS_SCC].BUSDIR_n = busdir_n;
+        assign ExtBus[BUS_SCC].DOUT = dout;
+`endif
     end
     else begin
         assign ExtBus[BUS_SCC].BUSDIR_n = 1;

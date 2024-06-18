@@ -67,14 +67,14 @@
 //  001Fh   予約
 
 module MEGAROM_CONFIGURE #(
-    parameter [31:0]    MEMORY_TOP_ADDRESS = 0,
+    parameter [31:0]    RAM_ADDR = 0,
     parameter [15:0]    BASE_ADDR = 0
 ) (
     input wire          CLK,
     input wire          RESET_n,
     BUS_IF.CARTRIDGE    Bus,
     MEGAROM_IF.HOST     Megarom,
-    output reg          SCC_ENA_n
+    output reg          SCC_ENA
 );
     localparam [7:0]    KEY_0 = 8'hAB;
     localparam [7:0]    KEY_1 = 8'hCD;
@@ -108,7 +108,7 @@ module MEGAROM_CONFIGURE #(
     localparam [3:0]    BIT_FLAGS_BANK_SIZE         = 3'h1;
     localparam [3:0]    BIT_FLAGS_CS1_MASK          = 3'h2;
     localparam [3:0]    BIT_FLAGS_CS2_MASK          = 3'h3;
-    localparam [3:0]    BIT_FLAGS_SCC               = 3'h4;
+    localparam [3:0]    BIT_FLAGS_SCC               = 3'h4; // 0 = SCC SOUND 無効 / 1= 有効
     localparam [3:0]    BIT_FLAGS_ENABLE_CONTINUOUS = 3'h6; // BIT_FLAGS_ENABLE ビットはハードウェアリセットの影響を受けない
     localparam [3:0]    BIT_FLAGS_ENABLE            = 3'h7; // ROM を有効にする
 
@@ -126,7 +126,7 @@ module MEGAROM_CONFIGURE #(
     localparam [0:0]    DEFAULT_IS_16K_BANK         = 1'b1;
     localparam [0:0]    DEFAULT_CS1_MASK            = 1'b1;
     localparam [0:0]    DEFAULT_CS2_MASK            = 1'b1;
-    localparam [0:0]    DEFAULT_SCC_ENA_n           = 1'b1;
+    localparam [0:0]    DEFAULT_SCC_ENA             = 1'b0;
 
     /***************************************************************
      * コントロールレジスタ
@@ -214,7 +214,7 @@ module MEGAROM_CONFIGURE #(
             ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_BANK_SIZE        ] <= DEFAULT_IS_16K_BANK;
             ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_CS1_MASK         ] <= DEFAULT_CS1_MASK;
             ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_CS2_MASK         ] <= DEFAULT_CS2_MASK;
-            ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_SCC              ] <= DEFAULT_SCC_ENA_n;
+            ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_SCC              ] <= DEFAULT_SCC_ENA;
             ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_ENABLE_CONTINUOUS] <= 0;
             ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_ENABLE           ] <= 0;
         end
@@ -226,7 +226,7 @@ module MEGAROM_CONFIGURE #(
                 ctrl_reg[ADDR_FLAGS][BIT_FLAGS_ENABLE] <= 0;
             end
         end
-        else if(det_wr && cs_reg_wr_n) begin
+        else if(det_wr && !cs_reg_wr_n) begin
             ctrl_reg[Bus.ADDR[4:0]] <= Bus.DIN;
         end
     end
@@ -249,8 +249,8 @@ module MEGAROM_CONFIGURE #(
         Megarom.is_16k_bank     =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_BANK_SIZE    ];
         Megarom.CS1_Mask        =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_CS1_MASK     ] || !ctrl_reg[ADDR_FLAGS][BIT_FLAGS_ENABLE];
         Megarom.CS2_Mask        =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_CS2_MASK     ] || !ctrl_reg[ADDR_FLAGS][BIT_FLAGS_ENABLE];
-        SCC_ENA_n               =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_SCC          ];
-        Megarom.MemoryTopAddr   = MEMORY_TOP_ADDRESS[$bits(Megarom.MemoryTopAddr)-1:0];
+        SCC_ENA                 =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_SCC          ];
+        Megarom.MemoryTopAddr   = RAM_ADDR[$bits(Megarom.MemoryTopAddr)-1:0];
     end
 
 endmodule
