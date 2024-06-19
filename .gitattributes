@@ -1,2 +1,2 @@
 *.sv linguist-language=SystemVerilog
-rtl/impl/* linguist-vendored
+rtl/impl/** linguist-vendored
