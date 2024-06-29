@@ -214,10 +214,10 @@ module MAIN (
         );
     end
     else begin
-        assign ExpBus[BUS_RAM].DOUT = 0;
-        assign ExpBus[BUS_RAM].BUSDIR_n = 1;
-        assign ExpBus[BUS_RAM].INT_n = 1;
-        assign ExpBus[BUS_RAM].WAIT_n = 1;
+        assign ExpBus[BUS_PSG].DOUT = 0;
+        assign ExpBus[BUS_PSG].BUSDIR_n = 1;
+        assign ExpBus[BUS_PSG].INT_n = 1;
+        assign ExpBus[BUS_PSG].WAIT_n = 1;
         assign Sound[SOUND_PSG].Signal = 0;
     end
 
