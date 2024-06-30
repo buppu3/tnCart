@@ -188,7 +188,6 @@ module CARTRIDGE_FM #(
      ***************************************************************/
     wire unsigned [9:0]           ro;
     wire unsigned [$bits(ro)-1:0] mo;
-`ifndef HOGE
     wire cs_io_n = ((ExtBus[0].ADDR[7:1] != IO_BASE_ADDR[7:1]) || ExtBus[0].IORQ_n) || !iosw_reg[0];                // 7Ch~7Dh
     wire cs_mem_opll_n = (ExtBus[0].ADDR[15:1] != MIO_BASE_ADDR[15:1]) || ExtBus[0].MERQ_n || ExtBus[0].SLTSL_n;    // 7FF4h~7FF5h
     opll u_vm2413 (
@@ -202,17 +201,12 @@ module CARTRIDGE_FM #(
         .mo         (mo),
         .ro         (ro)
     );
-`else
-    assign mo = 0;
-    assign ro = 0;
-`endif
 
     /***************************************************************
      * LPF
      ***************************************************************/
     logic [9:0] lpf_mo;
     logic [9:0] lpf_ro;
-`ifndef HOGE
     LPF_OPLL #(
         .GAIN_M     (1),
         .GAIN_D     (16)
@@ -233,16 +227,11 @@ module CARTRIDGE_FM #(
         .IN         (ro - 10'd512),
         .OUT        (lpf_ro)
     );
-`else
-    assign lpf_mo = 0;
-    assign lpf_ro = 0;
-`endif
 
     /***************************************************************
      * mixer
      ***************************************************************/
     logic [$bits(Sound.Signal)-1:0] out0;
-`ifndef HOGE
     LIMITER_FF #(
         .IN_WIDTH($bits(lpf_mo) + 1),
         .OUT_WIDTH($bits(Sound.Signal))
@@ -252,9 +241,6 @@ module CARTRIDGE_FM #(
         .IN({lpf_mo[9], lpf_mo } + {lpf_ro[9], lpf_ro }),
         .OUT(out0)
     );
-`else
-    assign out0 = 0;
-`endif
 
     logic [$bits(Sound.Signal)-1:0] out_ff;
     always_ff @(posedge CLK or negedge RESET_n) begin

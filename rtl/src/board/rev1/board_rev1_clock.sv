@@ -118,7 +118,7 @@ module BOARD_REV1_CLOCK (
     /***************************************************************
      * 108MHz
      ***************************************************************/
-`ifndef HOGE
+`ifndef BASE_CLOCK_UP
     localparam FREQ=108_000;
     rPLL u_pll_base (
         .CLKOUT(CLK_MEM),
