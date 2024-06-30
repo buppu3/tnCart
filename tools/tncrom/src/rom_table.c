@@ -132,14 +132,48 @@ const ROM_ATTR_t ROM_ATTR_KONAMI = {
 };
 
 /***********************************************
+ * KONAMI 8KB without SCC sound
+ ***********************************************/
+const ROM_ATTR_t ROM_ATTR_KONAMI_wo_SCC = {
+    (uint8_t)(FLAG_WRITE_PROTECT),                  // FLAGS
+    (uint8_t)0x3F,                                  // BANK VALUE MASK
+    (uint16_t)0xE000,                               // BANK REGISTER ADDRESS MASK
+    {
+        { (uint16_t)0xFFFF, 0, 0 },                 // BANK #0 REGISTER ADDRESS, INITIAL VALUE, RESERVED
+        { (uint16_t)0x6000, 1, 0 },                 // BANK #1 REGISTER ADDRESS, INITIAL VALUE, RESERVED
+        { (uint16_t)0x8000, 2, 0 },                 // BANK #2 REGISTER ADDRESS, INITIAL VALUE, RESERVED
+        { (uint16_t)0xA000, 3, 0 }                  // BANK #3 REGISTER ADDRESS, INITIAL VALUE, RESERVED
+    },
+    "KONAMI 8KB without SCC sound"                  // NAME
+};
+
+/***********************************************
+ * R-TYPE
+ ***********************************************/
+const ROM_ATTR_t ROM_ATTR_RTYPE = {
+    (uint8_t)(FLAG_WRITE_PROTECT | FLAG_BANK_SIZE), // FLAGS
+    (uint8_t)0xFF,                                  // BANK VALUE MASK
+    (uint16_t)0xF800,                               // BANK REGISTER ADDRESS MASK
+    {
+        { (uint16_t)0x6000, 15, 0 },                // BANK #0 REGISTER ADDRESS, INITIAL VALUE, RESERVED
+        { (uint16_t)0x7000,  0, 0 },                // BANK #1 REGISTER ADDRESS, INITIAL VALUE, RESERVED
+        { (uint16_t)0xFFFF,  0, 0 },                // BANK #2 REGISTER ADDRESS, INITIAL VALUE, RESERVED
+        { (uint16_t)0xFFFF,  0, 0 }                 // BANK #3 REGISTER ADDRESS, INITIAL VALUE, RESERVED
+    },
+    "ASCII 16KB(R-TYPE)"
+};
+
+/***********************************************
  * TABLE
  ***********************************************/
 const KEYWORD_PARAM_t    rom_attr_table[] = {
-    {   "32K",      (void*)&ROM_ATTR_NORMAL32   },
-    {   "16K",      (void*)&ROM_ATTR_NORMAL16_P1},
-    {   "16K2",     (void*)&ROM_ATTR_NORMAL16_P2},
-    {   "ASCII16",  (void*)&ROM_ATTR_ASCII16    },
-    {   "ASCII8",   (void*)&ROM_ATTR_ASCII8     },
-    {   "KONAMI",   (void*)&ROM_ATTR_KONAMI     },
-    {   NULL,       NULL                        }
+    {   "32K",           (void*)&ROM_ATTR_NORMAL32     },
+    {   "16K",           (void*)&ROM_ATTR_NORMAL16_P1  },
+    {   "16K2",          (void*)&ROM_ATTR_NORMAL16_P2  },
+    {   "ASCII16",       (void*)&ROM_ATTR_ASCII16      },
+    {   "ASCII8",        (void*)&ROM_ATTR_ASCII8       },
+    {   "KONAMI",        (void*)&ROM_ATTR_KONAMI       },
+    {   "KONAMI_WO_SCC", (void*)&ROM_ATTR_KONAMI_wo_SCC},
+    {   "R-TYPE",        (void*)&ROM_ATTR_RTYPE        },
+    {   NULL,            NULL                          }
 };
