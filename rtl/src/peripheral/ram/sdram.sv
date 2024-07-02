@@ -218,6 +218,7 @@ module SDRAM #(
     reg                             cmd_is_refresh;
     reg [$bits(Ram.ADDR)-1:0]       save_addr;
     reg [$bits(Ram.DIN)-1:0]        save_din;
+    reg [$bits(Ram.DIN_SIZE)-1:0]   save_din_size;
     reg [9:0]                       save_col;
     reg [SDRAM_ROW_WIDTH-1:0]       save_row;
     reg [SDRAM_BA_WIDTH-1:0]        save_bank;
@@ -285,11 +286,20 @@ module SDRAM #(
                         else begin
                             if(SDRAM_DQ_WIDTH == 32)
                             begin
-                                case (Ram.ADDR[1:0])
-                                    2'd0:   SDRAM_DQM <= 4'b1110;
-                                    2'd1:   SDRAM_DQM <= 4'b1101;
-                                    2'd2:   SDRAM_DQM <= 4'b1011;
-                                    2'd3:   SDRAM_DQM <= 4'b0111;
+                                case (Ram.DIN_SIZE)
+                                    default:
+                                        case (Ram.ADDR[1:0])
+                                            2'd0:   SDRAM_DQM <= 4'b1110;
+                                            2'd1:   SDRAM_DQM <= 4'b1101;
+                                            2'd2:   SDRAM_DQM <= 4'b1011;
+                                            2'd3:   SDRAM_DQM <= 4'b0111;
+                                        endcase
+                                    RAM::DIN_SIZE_16:
+                                        case (Ram.ADDR[0:0])
+                                            2'd0:   SDRAM_DQM <= 4'b1100;
+                                            2'd1:   SDRAM_DQM <= 4'b0011;
+                                        endcase
+                                    RAM::DIN_SIZE_32:SDRAM_DQM <= 4'b0000;
                                 endcase
                             end else begin
                                 case (Ram.ADDR[0])
@@ -301,6 +311,7 @@ module SDRAM #(
 
                         save_addr <= Ram.ADDR;
                         save_din <= Ram.DIN;
+                        save_din_size <= Ram.DIN_SIZE;
                         save_bank <= sdram_bank;
                         save_row <= sdram_row;
                         save_col <= sdram_col;
@@ -351,7 +362,11 @@ module SDRAM #(
                         // WRITE データを設定
                         if(SDRAM_DQ_WIDTH == 32)
                         begin
-                            sdram_DQ_OUT <= { save_din, save_din, save_din, save_din};
+                            case (save_din_size)
+                                default:          sdram_DQ_OUT <= { save_din[ 7:0], save_din[ 7:0], save_din[ 7:0], save_din[ 7:0]};
+                                RAM::DIN_SIZE_16: sdram_DQ_OUT <= { save_din[15:0], save_din[15:0]};
+                                RAM::DIN_SIZE_32: sdram_DQ_OUT <=   save_din[31:0];
+                            endcase
                         end else begin
                             sdram_DQ_OUT <= { save_din, save_din};
                         end
@@ -394,10 +409,10 @@ module SDRAM #(
                         if(SDRAM_DQ_WIDTH == 32)
                         begin
                             case (save_addr[1:0])
-                                2'd0:   Ram.DOUT <= SDRAM_DQ[15:0];
-                                2'd1:   Ram.DOUT <= { SDRAM_DQ[7:0], SDRAM_DQ[15:8] };
-                                2'd2:   Ram.DOUT <= SDRAM_DQ[31:16];
-                                2'd3:   Ram.DOUT <= { SDRAM_DQ[23:16], SDRAM_DQ[31:24] };
+                                2'd0:   Ram.DOUT <=               SDRAM_DQ[31: 0];
+                                2'd1:   Ram.DOUT <= { 8'h00,      SDRAM_DQ[31: 8] };
+                                2'd2:   Ram.DOUT <= { 16'h0000,   SDRAM_DQ[31:16] };
+                                2'd3:   Ram.DOUT <= { 24'h000000, SDRAM_DQ[31:24] };
                             endcase
                         end else begin
                             case (save_addr[0])

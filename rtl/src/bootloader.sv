@@ -312,6 +312,7 @@ module XFER_MEMORY #(
             Ram.OE_n <= 1;
             Ram.ADDR <= 0;
             Ram.DIN <= 0;
+            Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
 
             Flash.Enable_n <= 1;
             Flash.REQ_n <= 1;
@@ -361,6 +362,7 @@ module XFER_MEMORY #(
                     begin
                         Ram.WE_n <= 0;
                         Ram.DIN <= rw_data;
+                        Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
                         Ram.ADDR <= rw_addr;
                         sub_state <= SUB_STATE_WAIT_WRITE_ACK;
                     end
@@ -372,6 +374,7 @@ module XFER_MEMORY #(
                             sub_state <= SUB_STATE_WAIT_WRITE_BUSY;
                             Ram.WE_n <= 1;
                             Ram.DIN <= 0;
+                            Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
                             Ram.ADDR <= 0;
                         end
                     end
@@ -451,6 +454,7 @@ module XFER_MEMORY #(
                     Ram.OE_n <= 1;
                     Ram.WE_n <= 1;
                     Ram.DIN <= 0;
+                    Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
                     Ram.ADDR <= 0;
 
                     if(Xfer_Start)

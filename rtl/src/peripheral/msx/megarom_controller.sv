@@ -266,6 +266,7 @@ module MEGAROM_CONTROLLER #(
                 Ram.ADDR <= 0;
                 Ram.WE_n <= 1;
                 Ram.DIN <= 0;
+                Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
                 Ram.OE_n <= 1;
                 Bus.BUSDIR_n <= 1;
                 Bus.DOUT <= 0;
@@ -275,6 +276,7 @@ module MEGAROM_CONTROLLER #(
                 Ram.ADDR <= 0;
                 Ram.WE_n <= 1;
                 Ram.DIN <= 0;
+                Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
                 Ram.OE_n <= 1;
                 Bus.BUSDIR_n <= 1;
                 Bus.DOUT <= 0;
@@ -287,6 +289,7 @@ module MEGAROM_CONTROLLER #(
                 // memory write
                 Ram.WE_n <= wr_mem_n;
                 Ram.DIN <= wr_mem_n ? 0 : Bus.DIN;
+                Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
 
                 // memory read
                 Ram.OE_n <= rd_mem_n;
@@ -303,6 +306,7 @@ module MEGAROM_CONTROLLER #(
         assign Ram.ADDR = (rd_mem_n && wr_mem_n) ? 0 : addr[$bits(Ram.ADDR)-1:0];
 
         // memory write
+        assign Ram.DIN_SIZE = RAM::DIN_SIZE_8;
         assign Ram.DIN  = wr_mem_n ? 0 : Bus.DIN;
         assign Ram.WE_n = wr_mem_n;
 

@@ -34,6 +34,15 @@
 `default_nettype none
 
 /***********************************************************************
+ * メモリパッケージ
+ ***********************************************************************/
+package RAM;
+    localparam [1:0]    DIN_SIZE_8  = 2'b00;
+    localparam [1:0]    DIN_SIZE_16 = 2'b01;
+    localparam [1:0]    DIN_SIZE_32 = 2'b10;
+endpackage
+
+/***********************************************************************
  * メモリインターフェース
  ***********************************************************************/
 interface RAM_IF #(parameter ADDR_BIT_WIDTH=24);
@@ -41,19 +50,20 @@ interface RAM_IF #(parameter ADDR_BIT_WIDTH=24);
     logic                       OE_n;           // リード信号
     logic                       WE_n;           // ライト信号
     logic                       RFSH_n;         // リフレッシュ信号
-    logic [7:0]                 DIN;            // ライトデータ
-    logic [15:0]                DOUT;           // リードデータ
+    logic [31:0]                DIN;            // ライトデータ
+    logic [31:0]                DOUT;           // リードデータ
     logic                       ACK_n;          // 応答
+    logic [1:0]                 DIN_SIZE;       // ライトデータサイズ
 
     // ホスト側ポート
     modport HOST (
-                    output ADDR, OE_n, WE_n, RFSH_n, DIN,
+                    output ADDR, OE_n, WE_n, RFSH_n, DIN, DIN_SIZE,
                     input  DOUT, ACK_n
                 );
 
     // メモリ側ポート
     modport DEVICE (
-                    input  ADDR, OE_n, WE_n, RFSH_n, DIN,
+                    input  ADDR, OE_n, WE_n, RFSH_n, DIN, DIN_SIZE,
                     output DOUT, ACK_n
                 );
 endinterface
@@ -71,14 +81,16 @@ module EXPANSION_RAM #(
     RAM_IF.HOST             Primary,
     RAM_IF.DEVICE           Secondary[0:COUNT-1]
 );
+
     /***************************************************************
      * Secondary へ接続
      ***************************************************************/
-    wire [$bits(Primary.ADDR)-1:0] tmp_addr  [0:COUNT-1];
-    wire [7:0] tmp_din   [0:COUNT-1];
-    wire       tmp_oe_n  [0:COUNT-1];
-    wire       tmp_we_n  [0:COUNT-1];
-    wire       tmp_rfsh_n[0:COUNT-1];
+    wire [$bits(Primary.ADDR)-1:0]      tmp_addr    [0:COUNT-1];
+    wire [$bits(Primary.DIN)-1:0]       tmp_din     [0:COUNT-1];
+    wire [$bits(Primary.DIN_SIZE)-1:0]  tmp_din_size[0:COUNT-1];
+    wire       tmp_oe_n     [0:COUNT-1];
+    wire       tmp_we_n     [0:COUNT-1];
+    wire       tmp_rfsh_n   [0:COUNT-1];
     generate
         genvar num;
         for(num = 0; num < COUNT; num = num + 1) begin: sec
@@ -99,11 +111,12 @@ module EXPANSION_RAM #(
                 assign Secondary[num].ACK_n   = Primary.ACK_n;
             end
 
-            assign tmp_addr  [num] = Secondary[num].ADDR   | ((num < COUNT-1) ? tmp_addr  [num + 1] : 0);
-            assign tmp_din   [num] = Secondary[num].DIN    | ((num < COUNT-1) ? tmp_din   [num + 1] : 0);
-            assign tmp_oe_n  [num] = Secondary[num].OE_n   & ((num < COUNT-1) ? tmp_oe_n  [num + 1] : 1);
-            assign tmp_we_n  [num] = Secondary[num].WE_n   & ((num < COUNT-1) ? tmp_we_n  [num + 1] : 1);
-            assign tmp_rfsh_n[num] = Secondary[num].RFSH_n & ((num < COUNT-1) ? tmp_rfsh_n[num + 1] : 1);
+            assign tmp_addr    [num] = Secondary[num].ADDR     | ((num < COUNT-1) ? tmp_addr    [num + 1] : 0);
+            assign tmp_din     [num] = Secondary[num].DIN      | ((num < COUNT-1) ? tmp_din     [num + 1] : 0);
+            assign tmp_din_size[num] = Secondary[num].DIN_SIZE | ((num < COUNT-1) ? tmp_din_size[num + 1] : 0);
+            assign tmp_oe_n    [num] = Secondary[num].OE_n     & ((num < COUNT-1) ? tmp_oe_n    [num + 1] : 1);
+            assign tmp_we_n    [num] = Secondary[num].WE_n     & ((num < COUNT-1) ? tmp_we_n    [num + 1] : 1);
+            assign tmp_rfsh_n  [num] = Secondary[num].RFSH_n   & ((num < COUNT-1) ? tmp_rfsh_n  [num + 1] : 1);
         end
     endgenerate
 
@@ -112,25 +125,28 @@ module EXPANSION_RAM #(
             if(!RESET_n) begin
                 Primary.ADDR   <= 0;
                 Primary.DIN    <= 0;
+                Primary.DIN_SIZE<= Primary.DIN_SIZE_8;
                 Primary.OE_n   <= 1;
                 Primary.WE_n   <= 1;
                 Primary.RFSH_n <= 1;
             end
             else begin
-                Primary.ADDR   <= tmp_addr[0];
-                Primary.DIN    <= tmp_din[0];
-                Primary.OE_n   <= tmp_oe_n[0];
-                Primary.WE_n   <= tmp_we_n[0];
-                Primary.RFSH_n <= tmp_rfsh_n[0];
+                Primary.ADDR     <= tmp_addr[0];
+                Primary.DIN      <= tmp_din[0];
+                Primary.DIN_SIZE <= tmp_din_size[0];
+                Primary.OE_n     <= tmp_oe_n[0];
+                Primary.WE_n     <= tmp_we_n[0];
+                Primary.RFSH_n   <= tmp_rfsh_n[0];
             end
         end
     end
     else begin
-        assign Primary.ADDR   = tmp_addr[0];
-        assign Primary.DIN    = tmp_din[0];
-        assign Primary.OE_n   = tmp_oe_n[0];
-        assign Primary.WE_n   = tmp_we_n[0];
-        assign Primary.RFSH_n = tmp_rfsh_n[0];
+        assign Primary.ADDR     = tmp_addr[0];
+        assign Primary.DIN      = tmp_din[0];
+        assign Primary.DIN_SIZE = tmp_din_size[0];
+        assign Primary.OE_n     = tmp_oe_n[0];
+        assign Primary.WE_n     = tmp_we_n[0];
+        assign Primary.RFSH_n   = tmp_rfsh_n[0];
     end
 
 endmodule

@@ -115,6 +115,7 @@ module CARTRIDGE_RAM #(
 
             Ram.ADDR <= 0;
             Ram.DIN <= 0;
+            Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
             Ram.OE_n <= 1;
             Ram.WE_n <= 1;
             Ram.RFSH_n <= 1;
@@ -125,6 +126,7 @@ module CARTRIDGE_RAM #(
 
             Ram.ADDR <= 0;
             Ram.DIN <= 0;
+            Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
             Ram.OE_n <= 1;
             Ram.WE_n <= 1;
             Ram.RFSH_n <= Bus.RFSH_n;
@@ -136,6 +138,7 @@ module CARTRIDGE_RAM #(
             Ram.ADDR <= (mem_wr_n & mem_rd_n) ? 0 : (RAM_ADDR + {2'b00, bank[addr[15:14]], addr[13:0]});
 //            Ram.ADDR <= (mem_wr_n & mem_rd_n) ? 0 : (RAM_ADDR + {8'h00, addr[15:0]});
             Ram.DIN <= mem_wr_n ? 0 : Bus.DIN;
+            Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
             Ram.OE_n <= mem_rd_n;
             Ram.WE_n <= mem_wr_n;
             Ram.RFSH_n <= Bus.RFSH_n;
