@@ -271,6 +271,33 @@ module TNCART_BOARD_REV1_TOP (
     );
 
     /***************************************************************
+     * UMA
+     ***************************************************************/
+    UMA_IF Uma();
+    assign Uma.ADDR[0] = 0;
+    assign Uma.ADDR[1] = 24'h780000;
+
+    RAM_IF UmaRam[0:Uma.COUNT-1]();
+    UMA #(
+        .COUNT(Uma.COUNT),
+        .DIV(30)                // 108MHz/3.58MHz = 30
+    ) u_uma (
+        .RESET_n,
+        .CLK,
+        .CLK_EN(Bus.CLK_EN),
+        .Primary(Ram),
+        .Secondary(UmaRam),
+        .Uma
+    );
+
+    assign UmaRam[1].ADDR = 0;
+    assign UmaRam[1].OE_n = 1;
+    assign UmaRam[1].WE_n = 1;
+    assign UmaRam[1].RFSH_n = 1;
+    assign UmaRam[1].DIN = 0;
+    assign UmaRam[1].DIN_SIZE = 0;
+    
+    /***************************************************************
      * TF
      ***************************************************************/
     SPI_IF TF();
@@ -360,7 +387,7 @@ module TNCART_BOARD_REV1_TOP (
         .RESET_n,
         .CLK,
         .Bus,
-        .Ram,
+        .Ram(UmaRam[0]),
         .TF,
         .LedNextor,
         .Flash,
