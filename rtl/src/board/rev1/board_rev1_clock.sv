@@ -42,6 +42,7 @@ module BOARD_REV1_CLOCK (
 
     output wire     CLK_BASE,
     output wire     CLK_21M,
+    output wire     CLK_14M,
     output wire     CLK_BASE_READY,
 
     output wire     CLK_MEM,
@@ -214,6 +215,40 @@ module BOARD_REV1_CLOCK (
     );
     defparam u_div_21m.DIV_MODE = "5";
     defparam u_div_21m.GSREN = "false";
+
+    /***************************************************************
+     * 14MHz
+     ***************************************************************/
+    logic [3:0] cnt_14m;
+    always_ff @(posedge CLK_BASE or negedge RESET_n) begin
+        if(!RESET_n)              cnt_14m <= 0;
+        else if(cnt_14m == 4'd14) cnt_14m <= 0;
+        else                      cnt_14m <= cnt_14m + 1'd1;
+    end
+
+    assign CLK_14M = clk_14m;
+    logic clk_14m;
+    always_ff @(posedge CLK_BASE or negedge RESET_n) begin
+        if(!RESET_n)           clk_14m <= 0;
+        else case (cnt_14m)
+            4'h0:   clk_14m <= 1;
+            4'h1:   clk_14m <= 1;
+            4'h2:   clk_14m <= 1;
+            4'h3:   clk_14m <= 1;
+            4'h4:   clk_14m <= 0;
+            4'h5:   clk_14m <= 0;
+            4'h6:   clk_14m <= 0;
+            4'h7:   clk_14m <= 0;
+            4'h8:   clk_14m <= 1;
+            4'h9:   clk_14m <= 1;
+            4'ha:   clk_14m <= 1;
+            4'hb:   clk_14m <= 0;
+            4'hc:   clk_14m <= 0;
+            4'hd:   clk_14m <= 0;
+            4'he:   clk_14m <= 0;
+            default:clk_14m <= 0;
+        endcase
+    end
 endmodule
 
 `default_nettype wire

@@ -75,10 +75,10 @@ module TNCART_BOARD_REV1_TOP (
     output  wire            LED,
 
     // TMDS
-//    output wire             tmds_clk_p,
-//    output wire             tmds_clk_n,
-//    output wire    [2:0]    tmds_data_p,
-//    output wire    [2:0]    tmds_data_n,
+    output wire             tmds_clk_p,
+    output wire             tmds_clk_n,
+    output wire    [2:0]    tmds_data_p,
+    output wire    [2:0]    tmds_data_n,
 
     // SPI FLASH
     output  wire            mspi_cs,
@@ -111,6 +111,7 @@ module TNCART_BOARD_REV1_TOP (
     logic CLK_TMDS_P;
     logic CLK_TMDS_READY;
     logic CLK_21M;
+    logic CLK_14M;
     BOARD_REV1_CLOCK u_clk (
         .RESET_n        (1'b1),
         .CLK_27M,
@@ -122,7 +123,8 @@ module TNCART_BOARD_REV1_TOP (
         .CLK_TMDS_S,
         .CLK_TMDS_P,
         .CLK_TMDS_READY,
-        .CLK_21M
+        .CLK_21M,
+        .CLK_14M
     );
 
     /***************************************************************
@@ -296,7 +298,7 @@ module TNCART_BOARD_REV1_TOP (
     assign UmaRam[1].RFSH_n = 1;
     assign UmaRam[1].DIN = 0;
     assign UmaRam[1].DIN_SIZE = 0;
-    
+
     /***************************************************************
      * TF
      ***************************************************************/
@@ -378,6 +380,40 @@ module TNCART_BOARD_REV1_TOP (
         .RESET_n,
         .IN             (SoundExternal),
         .OUT            (SOUND_EXT)
+    );
+
+    /***************************************************************
+     * VIDEO
+     ***************************************************************/
+    VIDEO_IF Video();
+    VIDEO_DUMMY u_video (
+        .RESET_n,
+        .CLK,
+        .CLK_27M,
+        .CLK_21M,
+        .CLK_14M,
+        .RESOLUTION(VIDEO::RESOLUTION_B3),
+        .OUT(Video)
+    );
+
+    VIDEO_IF VideoTmds();
+    VIDEO_UPSCAN u_upscan (
+        .RESET_n,
+        .DCLK(CLK_TMDS_P),
+        .IN(Video),
+        .OUT(VideoTmds)
+    );
+
+    BOARD_REV1_TMDS_OUT u_tmds (
+        .RESET_n,
+        .IN(VideoTmds),
+        .TMDS_READY(CLK_TMDS_READY),
+        .CLK_S(CLK_TMDS_S),
+        .CLK_P(CLK_TMDS_P),
+        .TMDS_CLKP(tmds_clk_p),
+        .TMDS_CLKN(tmds_clk_n),
+        .TMDS_DATAP(tmds_data_p),
+        .TMDS_DATAN(tmds_data_n)
     );
 
     /***************************************************************

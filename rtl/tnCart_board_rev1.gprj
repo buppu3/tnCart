@@ -7,6 +7,8 @@
     <FileList>
         <File path="src/board/rev1/board_rev1_bus.sv" type="file.verilog" enable="1"/>
         <File path="src/board/rev1/board_rev1_clock.sv" type="file.verilog" enable="1"/>
+        <File path="src/board/rev1/board_rev1_tmds.sv" type="file.verilog" enable="1"/>
+        <File path="src/board/rev1/dvi_tx/dvi_tx.v" type="file.verilog" enable="1"/>
         <File path="src/bootloader.sv" type="file.verilog" enable="1"/>
         <File path="src/cartridge_fm.sv" type="file.verilog" enable="1"/>
         <File path="src/cartridge_megarom.sv" type="file.verilog" enable="1"/>
@@ -38,6 +40,9 @@
         <File path="src/peripheral/sound/sound.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/spi.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/uart.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/video.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/video_dummy.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/video_upscan.sv" type="file.verilog" enable="1"/>
         <File path="src/tnCart_board_rev1_top.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/sound/vm2413/attacktable.vhd" type="file.vhdl" enable="1"/>
         <File path="src/peripheral/sound/vm2413/controller.vhd" type="file.vhdl" enable="1"/>

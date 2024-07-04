@@ -17,14 +17,14 @@ IO_LOC "TF_SCLK" 83;
 IO_PORT "TF_SCLK" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8 BANK_VCCIO=3.3;
 
 // TangNano20k TMDS
-//IO_LOC "tmds_clk_p" 33,34;
-//IO_PORT "tmds_clk_p" PULL_MODE=NONE DRIVE=8;
-//IO_LOC "tmds_data_p[0]" 35,36;
-//IO_PORT "tmds_data_p[0]" PULL_MODE=NONE DRIVE=8;
-//IO_LOC "tmds_data_p[1]" 37,38;
-//IO_PORT "tmds_data_p[1]" PULL_MODE=NONE DRIVE=8;
-//IO_LOC "tmds_data_p[2]" 39,40;
-//IO_PORT "tmds_data_p[2]" PULL_MODE=NONE DRIVE=8;
+IO_LOC "tmds_clk_p" 33,34;
+IO_PORT "tmds_clk_p" PULL_MODE=NONE DRIVE=3.5;
+IO_LOC "tmds_data_p[0]" 35,36;
+IO_PORT "tmds_data_p[0]" PULL_MODE=NONE DRIVE=3.5;
+IO_LOC "tmds_data_p[1]" 37,38;
+IO_PORT "tmds_data_p[1]" PULL_MODE=NONE DRIVE=3.5;
+IO_LOC "tmds_data_p[2]" 39,40;
+IO_PORT "tmds_data_p[2]" PULL_MODE=NONE DRIVE=3.5;
 
 // TangNano20k FLASH
 IO_LOC "mspi_sclk" 59;
