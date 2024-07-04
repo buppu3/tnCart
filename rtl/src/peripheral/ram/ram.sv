@@ -155,4 +155,24 @@ module EXPANSION_RAM #(
 
 endmodule
 
+/***************************************************************
+ * Primary と Secondary をバイパス
+ ***************************************************************/
+module BYPASS_RAM (
+    RAM_IF.HOST             Primary,
+    RAM_IF.DEVICE           Secondary
+);
+
+    assign Primary.ADDR     = Secondary.ADDR;
+    assign Primary.OE_n     = Secondary.OE_n;
+    assign Primary.WE_n     = Secondary.WE_n;
+    assign Primary.RFSH_n   = Secondary.RFSH_n;
+    assign Primary.DIN      = Secondary.DIN;
+    assign Primary.DIN_SIZE = Secondary.DIN_SIZE;
+    assign Secondary.DOUT   = Primary.DOUT;
+    assign Secondary.ACK_n  = Primary.ACK_n;
+    assign Secondary.TIMING = Primary.TIMING;
+
+endmodule
+
 `default_nettype wire

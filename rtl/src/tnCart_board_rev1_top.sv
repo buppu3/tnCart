@@ -280,17 +280,26 @@ module TNCART_BOARD_REV1_TOP (
     assign Uma.ADDR[1] = 24'h780000;
 
     RAM_IF UmaRam[0:Uma.COUNT-1]();
-    UMA #(
-        .COUNT(Uma.COUNT),
-        .DIV(30)                // 108MHz/3.58MHz = 30
-    ) u_uma (
-        .RESET_n,
-        .CLK,
-        .CLK_EN(Bus.CLK_EN),
-        .Primary(Ram),
-        .Secondary(UmaRam),
-        .Uma
-    );
+
+    if(CONFIG::ENABLE_UMA) begin
+        UMA #(
+            .COUNT(Uma.COUNT),
+            .DIV(30)                // 108MHz/3.58MHz = 30
+        ) u_uma (
+            .RESET_n,
+            .CLK,
+            .CLK_EN(Bus.CLK_EN),
+            .Primary(Ram),
+            .Secondary(UmaRam),
+            .Uma
+        );
+    end
+    else begin
+        BYPASS_RAM u_bypass_uma (
+            .Primary(Ram),
+            .Secondary(UmaRam[0])
+        );
+    end
 
     assign UmaRam[1].ADDR = 0;
     assign UmaRam[1].OE_n = 1;

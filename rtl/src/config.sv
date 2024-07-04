@@ -63,6 +63,7 @@ package CONFIG;
     localparam          ENABLE_RAM              = 1;            // 拡張 RAM カートリッジを有効
     localparam          ENABLE_PSG              = 1;            // PSG を有効
     localparam          ENABLE_SCC              = 1;            // SCC を有効
+    localparam          ENABLE_UMA              = 0;            // UMA を有効
 
 endpackage
 
