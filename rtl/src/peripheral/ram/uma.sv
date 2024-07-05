@@ -127,32 +127,38 @@ module UMA #(
     /***************************************************************
      * 切り替えの 1クロック後に RAM へデータ送信
      ***************************************************************/
-    reg   req_delay[0:COUNT-1];     // TIMING 1クロック遅延
-    reg   done_delay;               // done 1クロック遅延
-    reg   processing[0:COUNT-1];    // 処理中フラグ
-    reg   done_ch[0:COUNT-1];       // 処理完了フラグ
-    reg   prev_oe_n[0:COUNT-1];     // 1クロック前の OE_n
-    reg   prev_we_n[0:COUNT-1];     // 1クロック前の WE_n
-    reg   prev_rfsh_n[0:COUNT-1];   // 1クロック前の RFSH_n
-    reg   save_oe[0:COUNT-1];
-    reg   save_we[0:COUNT-1];
-    reg   save_rfsh[0:COUNT-1];
-    wire  det_oe[0:COUNT-1];        // OE_n の H->L 検出
-    wire  det_we[0:COUNT-1];        // WE_n の H->L 検出
-    wire  det_rfsh[0:COUNT-1];      // RFSH_n の H->L 検出
-    wire  det_any[0:COUNT-1];       // OE_n, WE_n, RFSH_n の H->L 検出
-    wire  req_oe[0:COUNT-1];
-    wire  req_we[0:COUNT-1];
-    wire  req_rfsh[0:COUNT-1];
-    wire  req_any[0:COUNT-1];
+    reg                                exec_timing[0:COUNT-1];   // TIMING 1クロック遅延
+    reg                                done_delay;               // done 1クロック遅延
+    reg                                processing[0:COUNT-1];    // 処理中フラグ
+    reg                                done_ch[0:COUNT-1];       // 処理完了フラグ
+    reg                                prev_oe_n[0:COUNT-1];     // 1クロック前の OE_n
+    reg                                prev_we_n[0:COUNT-1];     // 1クロック前の WE_n
+    reg                                prev_rfsh_n[0:COUNT-1];   // 1クロック前の RFSH_n
+    reg                                save_oe[0:COUNT-1];       // OE 要求の保持
+    reg                                save_we[0:COUNT-1];       // WE 要求の保持
+    reg                                save_rfsh[0:COUNT-1];     // RFSH 要求の保持
+    reg [$bits(Primary.ADDR)-1:0]      save_addr[0:COUNT-1];     // OE_n, WE_n エッジ検出時の ADDR を保持
+    reg [$bits(Primary.DIN)-1:0]       save_din[0:COUNT-1];      // WE_n エッジ検出時の DIN を保持
+    reg [$bits(Primary.DIN_SIZE)-1:0]  save_din_size[0:COUNT-1]; // WE_n エッジ検出時の DIN_SIZE を保持
+    wire                               det_oe[0:COUNT-1];        // OE_n の H->L 検出
+    wire                               det_we[0:COUNT-1];        // WE_n の H->L 検出
+    wire                               det_rfsh[0:COUNT-1];      // RFSH_n の H->L 検出
+    wire                               det_any[0:COUNT-1];       // OE_n, WE_n, RFSH_n の H->L 検出
+    wire                               req_oe[0:COUNT-1];
+    wire                               req_we[0:COUNT-1];
+    wire                               req_rfsh[0:COUNT-1];
+    wire                               req_any[0:COUNT-1];
+    wire [$bits(Primary.ADDR)-1:0]     req_addr[0:COUNT-1];      // Primary へ渡す ADDR 値
+    wire [$bits(Primary.DIN)-1:0]      req_din[0:COUNT-1];       // Primary へ渡す DIN 値
+    wire [$bits(Primary.DIN_SIZE)-1:0] req_din_size[0:COUNT-1];  // Primary へ渡す DIN_SIZE 値
 
     generate
         genvar process_ch;
         for(process_ch = 0; process_ch < COUNT; process_ch = process_ch + 1) begin: process
-            // REQ 遅延
+            // RAM 転送タイミング
             always_ff @(posedge CLK or negedge RESET_n) begin
-                if(!RESET_n) req_delay[process_ch] <= 0;
-                else         req_delay[process_ch] <= Secondary[process_ch].TIMING;
+                if(!RESET_n) exec_timing[process_ch] <= 0;
+                else         exec_timing[process_ch] <= Secondary[process_ch].TIMING;
             end
 
             // OE_n 遅延
@@ -202,9 +208,9 @@ module UMA #(
 
             // 処理中フラグ更新
             always_ff @(posedge CLK or negedge RESET_n) begin
-                if(!RESET_n)                                          processing[process_ch] <= 0;
-                else if(req_delay[process_ch] && req_any[process_ch]) processing[process_ch] <= 1;
-                else if(done_ch[process_ch])                          processing[process_ch] <= 0;
+                if(!RESET_n)                                            processing[process_ch] <= 0;
+                else if(exec_timing[process_ch] && req_any[process_ch]) processing[process_ch] <= 1;
+                else if(done_ch[process_ch])                            processing[process_ch] <= 0;
             end
 
             // DOUT 格納
@@ -215,31 +221,55 @@ module UMA #(
 
             // ACK_n 更新
             always_ff @(posedge CLK or negedge RESET_n) begin
-                if(!RESET_n)                 Secondary[process_ch].ACK_n <= 1;
-                else if(det_any[process_ch]) Secondary[process_ch].ACK_n <= 0; // OE_n, WE_n, RFSH_n エッジ検出で ACK_n = 0
-                else if(done_ch[process_ch]) Secondary[process_ch].ACK_n <= 1; // 処理完了で ACK_n = 1
+                if(!RESET_n)                                         Secondary[process_ch].ACK_n <= 1;
+                else if(det_any[process_ch])                         Secondary[process_ch].ACK_n <= 0;  // OE_n, WE_n, RFSH_n エッジ検出で ACK_n = 0
+                else if(done_ch[process_ch] && !req_any[process_ch]) Secondary[process_ch].ACK_n <= 1;  // 処理完了で残りの処理がないなら ACK_n = 1
             end
 
             // OE_n の保持
             always_ff @(posedge CLK or negedge RESET_n) begin
-                if(!RESET_n)                 save_oe[process_ch] <= 0;
-                else if(det_oe[process_ch])  save_oe[process_ch] <= 1;
-                else if(done_ch[process_ch]) save_oe[process_ch] <= 0;
+                if(!RESET_n)                                           save_oe[process_ch] <= 0;
+                else if(exec_timing[process_ch] && req_oe[process_ch]) save_oe[process_ch] <= 0;        // Primary.OE_n 更新のタイミングでクリア
+                else if(det_oe[process_ch])                            save_oe[process_ch] <= 1;        // Secondary.OE_n の立下り検出でセット
             end
 
             // WE_n の保持
             always_ff @(posedge CLK or negedge RESET_n) begin
-                if(!RESET_n)                 save_we[process_ch] <= 0;
-                else if(det_we[process_ch])  save_we[process_ch] <= 1;
-                else if(done_ch[process_ch]) save_we[process_ch] <= 0;
+                if(!RESET_n)                                           save_we[process_ch] <= 0;
+                else if(exec_timing[process_ch] && req_we[process_ch]) save_we[process_ch] <= 0;        // Primary.WE_n 更新のタイミングでクリア
+                else if(det_we[process_ch]                           ) save_we[process_ch] <= 1;        // Secondary.WE_n の立下り検出でセット
             end
 
             // RFSH_n の保持
             always_ff @(posedge CLK or negedge RESET_n) begin
-                if(!RESET_n)                  save_rfsh[process_ch] <= 0;
-                else if(det_rfsh[process_ch]) save_rfsh[process_ch] <= 1;
-                else if(done_ch[process_ch])  save_rfsh[process_ch] <= 0;
+                if(!RESET_n)                                             save_rfsh[process_ch] <= 0;
+                else if(exec_timing[process_ch] && req_rfsh[process_ch]) save_rfsh[process_ch] <= 0;    // Primary.RFSH_n 更新のタイミングでクリア
+                else if(det_rfsh[process_ch])                            save_rfsh[process_ch] <= 1;    // Secondary.RFSH_n の立下り検出でセット
             end
+
+            // ADDR の保持
+            always_ff @(posedge CLK or negedge RESET_n) begin
+                if(!RESET_n)                                      save_addr[process_ch] <= 0;
+                else if(det_oe[process_ch] || det_we[process_ch]) save_addr[process_ch] <= Secondary[process_ch].ADDR;
+            end
+
+            // DIN の保持
+            always_ff @(posedge CLK or negedge RESET_n) begin
+                if(!RESET_n)                save_din[process_ch] <= 0;
+                else if(det_we[process_ch]) save_din[process_ch] <= Secondary[process_ch].DIN;
+            end
+
+            // DIN_SIZE の保持
+            always_ff @(posedge CLK or negedge RESET_n) begin
+                if(!RESET_n)                save_din_size[process_ch] <= 0;
+                else if(det_we[process_ch]) save_din_size[process_ch] <= Secondary[process_ch].DIN_SIZE;
+            end
+
+            // Primary へ渡すパラメータ
+            assign req_addr[process_ch]     = (det_oe[process_ch] || det_we[process_ch]) ? Secondary[process_ch].ADDR     : save_addr[process_ch];
+            assign req_din[process_ch]      =  det_we[process_ch]                        ? Secondary[process_ch].DIN      : save_din[process_ch];
+            assign req_din_size[process_ch] =  det_we[process_ch]                        ? Secondary[process_ch].DIN_SIZE : save_din_size[process_ch];
+
         end
     endgenerate
 
@@ -257,18 +287,18 @@ module UMA #(
             Primary.WE_n     <= 1;
             Primary.RFSH_n   <= 1;
         end
-        else if(req_delay[0] && req_any[0]) begin
-            Primary.ADDR     <= (req_oe[0] || req_we[0]) ? ((Secondary[0].ADDR + Uma.ADDR[0]) & 24'hFFFFFF) : 0;
-            Primary.DIN      <= (req_oe[0] || req_we[0]) ? Secondary[0].DIN : 0;
-            Primary.DIN_SIZE <= (req_oe[0] || req_we[0]) ? Secondary[0].DIN_SIZE : 0;
+        else if(exec_timing[0] && req_any[0]) begin
+            Primary.ADDR     <= (req_oe[0] || req_we[0]) ? ((req_addr[0] + Uma.ADDR[0]) & 24'hFFFFFF) : 0;
+            Primary.DIN      <= (req_oe[0] || req_we[0]) ? req_din[0] : 0;
+            Primary.DIN_SIZE <= (req_oe[0] || req_we[0]) ? req_din_size[0] : 0;
             Primary.OE_n     <= !req_oe[0];
             Primary.WE_n     <= !req_we[0];
             Primary.RFSH_n   <= !req_rfsh[0];
         end
-        else if(req_delay[1] && req_any[1]) begin
-            Primary.ADDR     <= (req_oe[1] || req_we[1]) ? ((Secondary[1].ADDR + Uma.ADDR[1]) & 24'hFFFFFF) : 0;
-            Primary.DIN      <= (req_oe[1] || req_we[1]) ? Secondary[1].DIN : 0;
-            Primary.DIN_SIZE <= (req_oe[1] || req_we[1]) ? Secondary[1].DIN_SIZE : 0;
+        else if(exec_timing[1] && req_any[1]) begin
+            Primary.ADDR     <= (req_oe[1] || req_we[1]) ? ((req_addr[1] + Uma.ADDR[1]) & 24'hFFFFFF) : 0;
+            Primary.DIN      <= (req_oe[1] || req_we[1]) ? req_din[1] : 0;
+            Primary.DIN_SIZE <= (req_oe[1] || req_we[1]) ? req_din_size[1] : 0;
             Primary.OE_n     <= !req_oe[1];
             Primary.WE_n     <= !req_we[1];
             Primary.RFSH_n   <= !req_rfsh[1];
