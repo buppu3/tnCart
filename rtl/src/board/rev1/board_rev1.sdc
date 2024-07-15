@@ -16,3 +16,4 @@ create_generated_clock -name CLK_21M -source [get_nets {CLK_BASE}] -divide_by 5 
 // 10.8MHz(DCLK)
 create_generated_clock -name DCLK -source [get_nets {CLK_BASE}] -master_clock CLK_BASE -divide_by 10 -multiply_by 1 -add [get_nets {Video.DCLK}]
 set_clock_groups -asynchronous -group {DCLK} -group {CLK_TMDS_P}
+set_clock_groups -asynchronous -group {DCLK} -group {CLK_BASE}

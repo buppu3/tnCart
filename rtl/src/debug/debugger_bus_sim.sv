@@ -40,6 +40,7 @@ module DEBUGGER_BUS_SIM (
     input wire              RESET_n,
     input wire              CLK,
     input wire              CLK_21M,
+    input wire              CLK_14M,
     BUS_IF.MSX              Bus
 );
 
@@ -98,6 +99,11 @@ module DEBUGGER_BUS_SIM (
 
     assign Bus.CLK_21M = CLK_21M;
     assign Bus.CLK_EN_21M = Bus.CLK && !prev_clk_21m;
+
+    /***************************************************************
+     * CLK_14M
+     ***************************************************************/
+    assign Bus.CLK_14M = CLK_14M;
 
     /***************************************************************
      * 遷移状態

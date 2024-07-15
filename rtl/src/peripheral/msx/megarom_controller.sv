@@ -175,6 +175,7 @@ module MEGAROM_CONTROLLER #(
             end
 
             assign ExtBus[num].CLK_21M = Bus.CLK_21M;
+            assign ExtBus[num].CLK_14M = Bus.CLK_14M;
 
             assign tmp_dout    [num] = ExtBus[num].DOUT     | ((num < COUNT-1) ? tmp_dout    [num + 1] : 0);
             assign tmp_busdir_n[num] = ExtBus[num].BUSDIR_n & ((num < COUNT-1) ? tmp_busdir_n[num + 1] : 1);

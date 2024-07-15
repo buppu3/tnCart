@@ -673,6 +673,7 @@ module DEBUGGER_BUS_OP (
     assign OUT.CLK_EN      = IN.CLK_EN;
     assign OUT.CLK_21M     = IN.CLK_21M;
     assign OUT.CLK_EN_21M  = IN.CLK_EN_21M;
+    assign OUT.CLK_14M     = IN.CLK_14M;
     assign IN.DOUT         = bus_sw ? 8'hFF      : OUT.DOUT;
     assign IN.BUSDIR_n     = bus_sw ? 1'b1       : OUT.BUSDIR_n;
     assign IN.INT_n        = bus_sw ? 1'b1       : OUT.INT_n;

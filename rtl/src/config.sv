@@ -50,9 +50,10 @@ package CONFIG;
      ***************************************************************/
     localparam [23:0]   RAM_ADDR_RAM            = 24'h00_0000;
     localparam [23:0]   RAM_ADDR_MEGAROM        = 24'h40_0000;
-    localparam [23:0]   RAM_ADDR_BIOS           = 24'h7B_0000;
+    localparam [23:0]   RAM_ADDR_BIOS           = 24'h70_0000;
     localparam [23:0]   RAM_ADDR_BIOS_NEXTOR    = RAM_ADDR_BIOS;
     localparam [23:0]   RAM_ADDR_BIOS_FM        = (RAM_ADDR_BIOS_NEXTOR + FLASH_SIZE_BIOS_NEXTOR);
+    localparam [23:0]   RAM_ADDR_VRAM           = 24'h78_0000;
 
     /***************************************************************
      * 機能
@@ -63,7 +64,8 @@ package CONFIG;
     localparam          ENABLE_RAM              = 1;            // 拡張 RAM カートリッジを有効
     localparam          ENABLE_PSG              = 1;            // PSG を有効
     localparam          ENABLE_SCC              = 1;            // SCC を有効
-    localparam          ENABLE_UMA              = 1;            // UMA を有効
+    localparam          ENABLE_V9990            = 1;            // V9990 を有効
+    localparam          ENABLE_V9990_CMD        = 0;            // V9990 の VDP コマンドを有効(V9990のVDPコマンドを有効にすると回路の規模が大きくなるので、他の大きな機能と同時使用はできない)
 
 endpackage
 

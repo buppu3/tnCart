@@ -60,19 +60,20 @@ interface BUS_IF;
     logic           CLK_EN;         // 3.58MHz クロックエッジ
     logic           CLK_21M;
     logic           CLK_EN_21M;     // 3.58MHz クロックエッジ
+    logic           CLK_14M;
 
     // MSX 側ポート
     modport MSX(
                     output ADDR, DIN, RFSH_n, RD_n, WR_n, MERQ_n, IORQ_n, CS1_n, CS2_n, CS12_n, M1_n, SLTSL_n, RESET_n, CLK,
                     input  DOUT, BUSDIR_n, INT_n, WAIT_n,
-                    output CLK_EN, CLK_21M, CLK_EN_21M
+                    output CLK_EN, CLK_21M, CLK_EN_21M, CLK_14M
                 );
 
     // カートリッジ側ポート
     modport CARTRIDGE(
                     input  ADDR, DIN, RFSH_n, RD_n, WR_n, MERQ_n, IORQ_n, CS1_n, CS2_n, CS12_n, M1_n, SLTSL_n, RESET_n, CLK,
                     output DOUT, BUSDIR_n, INT_n, WAIT_n,
-                    input  CLK_EN, CLK_21M, CLK_EN_21M
+                    input  CLK_EN, CLK_21M, CLK_EN_21M, CLK_14M
                 );
 
 endinterface
@@ -184,6 +185,7 @@ module EXPANSION_BUS #(
             end
 
             assign Secondary[num].CLK_21M = Primary.CLK_21M;
+            assign Secondary[num].CLK_14M = Primary.CLK_14M;
 
             assign tmp_dout    [num] = Secondary[num].DOUT     | ((num < COUNT-1) ? tmp_dout    [num + 1] : 0);
             assign tmp_busdir_n[num] = Secondary[num].BUSDIR_n & ((num < COUNT-1) ? tmp_busdir_n[num + 1] : 1);

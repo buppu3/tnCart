@@ -49,6 +49,7 @@ endinterface
 
 module UMA #(
     parameter COUNT         = 2,
+    parameter DISABLE_SYNC  = 1,
     parameter DIV           = 30        // 3.58MHz の分周値
 ) (
     input   wire            RESET_n,
@@ -58,11 +59,34 @@ module UMA #(
     RAM_IF.DEVICE           Secondary[0:COUNT-1],
     UMA_IF.DEVICE           Uma
 );
+    localparam MRAM_EXEC_DELAY = 1;
+    localparam VRAM_EXEC_DELAY = 2;
 
     /***************************************************************
      * 3.58MHz に同期して 10.74MHz 毎にメモリ切り替え
      ***************************************************************/
-    if(DIV == 30) begin
+    if(DISABLE_SYNC) begin
+        localparam DIV10MHz = (DIV * 2 / 3);
+        logic [6:0] mem_cnt;
+        always_ff @(posedge CLK or negedge RESET_n) begin
+            if(!RESET_n)                       mem_cnt <= 0;
+            else if(mem_cnt == (DIV10MHz - 1)) mem_cnt <= 0;
+            else                               mem_cnt <= mem_cnt + 1'd1;
+        end
+
+        always_ff @(posedge CLK or negedge RESET_n) begin
+            if(!RESET_n)             Secondary[0].TIMING <= 0;
+            else if(mem_cnt == 6'd0) Secondary[0].TIMING <= 1;
+            else                     Secondary[0].TIMING <= 0;
+        end
+
+        always_ff @(posedge CLK or negedge RESET_n) begin
+            if(!RESET_n)                       Secondary[1].TIMING <= 0;
+            else if(mem_cnt == (DIV10MHz / 2)) Secondary[1].TIMING <= 1;
+            else                               Secondary[1].TIMING <= 0;
+        end
+    end
+    else if(DIV == 30) begin
         logic [6:0] mem_cnt;
 
         always_ff @(posedge CLK or negedge RESET_n) begin
@@ -127,7 +151,7 @@ module UMA #(
     /***************************************************************
      * 切り替えの 1クロック後に RAM へデータ送信
      ***************************************************************/
-    reg                                exec_timing[0:COUNT-1];   // TIMING 1クロック遅延
+    wire                               exec_timing[0:COUNT-1];   // TIMING 1~2クロック遅延
     reg                                done_delay;               // done 1クロック遅延
     reg                                processing[0:COUNT-1];    // 処理中フラグ
     reg                                done_ch[0:COUNT-1];       // 処理完了フラグ
@@ -152,13 +176,17 @@ module UMA #(
     wire [$bits(Primary.DIN)-1:0]      req_din[0:COUNT-1];       // Primary へ渡す DIN 値
     wire [$bits(Primary.DIN_SIZE)-1:0] req_din_size[0:COUNT-1];  // Primary へ渡す DIN_SIZE 値
 
+    reg [1:0]                          exec_timing_buff[0:COUNT-1];
+    assign exec_timing[0] = exec_timing_buff[0][MRAM_EXEC_DELAY-1]; // MainRam は 1CLK 遅延
+    assign exec_timing[1] = exec_timing_buff[1][VRAM_EXEC_DELAY-1]; // VideoRam は 2CLK 遅延
+
     generate
         genvar process_ch;
         for(process_ch = 0; process_ch < COUNT; process_ch = process_ch + 1) begin: process
             // RAM 転送タイミング
             always_ff @(posedge CLK or negedge RESET_n) begin
-                if(!RESET_n) exec_timing[process_ch] <= 0;
-                else         exec_timing[process_ch] <= Secondary[process_ch].TIMING;
+                if(!RESET_n) exec_timing_buff[process_ch] <= 0;
+                else         exec_timing_buff[process_ch] <= {exec_timing_buff[process_ch][$bits(exec_timing_buff[process_ch])-2:0], Secondary[process_ch].TIMING};
             end
 
             // OE_n 遅延

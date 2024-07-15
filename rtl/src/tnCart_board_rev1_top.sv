@@ -99,6 +99,10 @@ module TNCART_BOARD_REV1_TOP (
     input   wire            UART_RX,
     output  wire            UART_TX
 );
+
+    // UMA を有効
+    localparam          ENABLE_UMA              = CONFIG::ENABLE_V9990;
+
     /***************************************************************
      * CLOCK
      ***************************************************************/
@@ -164,6 +168,7 @@ module TNCART_BOARD_REV1_TOP (
                 .RESET_n,
                 .CLK,
                 .CLK_21M,
+                .CLK_14M,
                 .Bus(BusMsx)
             );
             BUS_IF BusDummy();
@@ -171,6 +176,7 @@ module TNCART_BOARD_REV1_TOP (
                 .RESET_n,
                 .CLK,
                 .CLK_21M,
+                .CLK_14M,
                 .CART_BUSDIR_n,
                 .CART_INT_n,
                 .CART_WAIT_n,
@@ -194,6 +200,7 @@ module TNCART_BOARD_REV1_TOP (
                 .RESET_n,
                 .CLK,
                 .CLK_21M,
+                .CLK_14M,
                 .CART_BUSDIR_n,
                 .CART_INT_n,
                 .CART_WAIT_n,
@@ -219,12 +226,41 @@ module TNCART_BOARD_REV1_TOP (
             .RXD
         );
     end
-    else begin
+    else if(BUS_SIM) begin
         assign RESET_n = CLK_BASE_READY && sdram_ready;
+        DEBUGGER_BUS_SIM u_bus (
+            .RESET_n,
+            .CLK,
+            .CLK_21M,
+            .CLK_14M,
+            .Bus
+        );
+        assign CART_BUSDIR_n = 1;
+        assign CART_INT_n = 1;
+        assign CART_WAIT_n = 1;
+        assign CART_MUX_CS_n[0] = 1;
+        assign CART_MUX_CS_n[1] = 1;
+        assign CART_MUX_CS_n[2] = 1;
+        assign CART_DATA_DIR = 1;
+        assign CART_DATA_SIG = 8'bZZZZ_ZZZZ;
+    end
+    else begin
+`ifndef HOGE
+        reg reset_n = 0;
+        assign RESET_n = reset_n;
+        always_ff @(posedge CLK_BASE or negedge CLK_BASE_READY or negedge sdram_ready) begin
+            if(!CLK_BASE_READY) reset_n <= 0;       // PLL 準備中ならリセット
+            else if(!sdram_ready) reset_n <= 0;     // SDRAM 準備中ならリセット
+            else reset_n <= 1; 
+        end
+`else
+        assign RESET_n = CLK_BASE_READY && sdram_ready;
+`endif
         BOARD_REV1_BUS u_bus (
             .RESET_n,
             .CLK,
             .CLK_21M,
+            .CLK_14M,
             .CART_BUSDIR_n,
             .CART_INT_n,
             .CART_WAIT_n,
@@ -238,6 +274,11 @@ module TNCART_BOARD_REV1_TOP (
             .CART_DATA_DIR,
             .Bus
         );
+
+        assign RXD.READ = 0;
+        assign RXD.CLEAR = 0;
+        assign TXD.DATA = 0;
+        assign TXD.STROBE = 0;
     end
 
     /***************************************************************
@@ -277,11 +318,11 @@ module TNCART_BOARD_REV1_TOP (
      ***************************************************************/
     UMA_IF Uma();
     assign Uma.ADDR[0] = 0;
-    assign Uma.ADDR[1] = 24'h780000;
+    assign Uma.ADDR[1] = CONFIG::RAM_ADDR_VRAM;
 
     RAM_IF UmaRam[0:Uma.COUNT-1]();
 
-    if(CONFIG::ENABLE_UMA) begin
+    if(ENABLE_UMA) begin
         UMA #(
             .COUNT(Uma.COUNT),
             .DIV(30)                // 108MHz/3.58MHz = 30
@@ -299,14 +340,10 @@ module TNCART_BOARD_REV1_TOP (
             .Primary(Ram),
             .Secondary(UmaRam[0])
         );
+        assign UmaRam[1].DOUT = 0;
+        assign UmaRam[1].ACK_n = 1;
+        assign UmaRam[1].TIMING = 0;
     end
-
-    assign UmaRam[1].ADDR = 0;
-    assign UmaRam[1].OE_n = 1;
-    assign UmaRam[1].WE_n = 1;
-    assign UmaRam[1].RFSH_n = 1;
-    assign UmaRam[1].DIN = 0;
-    assign UmaRam[1].DIN_SIZE = 0;
 
     /***************************************************************
      * TF
@@ -395,16 +432,6 @@ module TNCART_BOARD_REV1_TOP (
      * VIDEO
      ***************************************************************/
     VIDEO_IF Video();
-    VIDEO_DUMMY u_video (
-        .RESET_n,
-        .CLK,
-        .CLK_27M,
-        .CLK_21M,
-        .CLK_14M,
-        .RESOLUTION(VIDEO::RESOLUTION_B3),
-        .OUT(Video)
-    );
-
     VIDEO_IF VideoTmds();
     VIDEO_UPSCAN u_upscan (
         .RESET_n,
@@ -433,10 +460,12 @@ module TNCART_BOARD_REV1_TOP (
         .CLK,
         .Bus,
         .Ram(UmaRam[0]),
+        .VideoRam(UmaRam[1]),
         .TF,
         .LedNextor,
         .Flash,
         .LedBoot,
+        .Video,
         .SoundInternal,
         .SoundExternal
     );

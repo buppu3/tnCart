@@ -38,10 +38,12 @@ module MAIN (
     input   wire            CLK,
     BUS_IF.CARTRIDGE        Bus,                // BUS I/F
     RAM_IF.HOST             Ram,                // RAM I/F
+    RAM_IF.HOST             VideoRam,           // VRAM I/F
     SPI_IF.HOST             TF,                 // TF カード I/F
     LED_IF.HOST             LedNextor,          // Nextor 用 LED
     FLASH_IF.HOST           Flash,              // フラッシュメモリ
     LED_IF.HOST             LedBoot,            // Bootloader 用 LED
+    VIDEO_IF.OUT            Video,              // ビデオ出力
     SOUND_IF.OUT            SoundExternal,      // 外部サウンド出力
     SOUND_IF.OUT            SoundInternal       // カートリッジサウンド出力
 );
@@ -82,7 +84,8 @@ module MAIN (
     localparam BUS_NEXTOR  = 2;
     localparam BUS_RAM     = 3;
     localparam BUS_PSG     = 4;     // SLTSL_n 信号なし(I/Oのみ)
-    localparam BUS_COUNT   = 5;
+    localparam BUS_V9990   = 5;     // SLTSL_n 信号なし(I/Oのみ)
+    localparam BUS_COUNT   = 6;
     BUS_IF  ExpBus[0:BUS_COUNT-1]();
     EXPANSION_SLOT #(
         .COUNT          (BUS_COUNT),
@@ -116,6 +119,7 @@ module MAIN (
         assign ExpBus[BUS_MEGAROM].WAIT_n = 1;
         assign ExpRam[RAM_MEGAROM].ADDR = 0;
         assign ExpRam[RAM_MEGAROM].DIN = 0;
+        assign ExpRam[RAM_MEGAROM].DIN_SIZE = 0;
         assign ExpRam[RAM_MEGAROM].OE_n = 1;
         assign ExpRam[RAM_MEGAROM].WE_n = 1;
         assign ExpRam[RAM_MEGAROM].RFSH_n = 1;
@@ -143,6 +147,7 @@ module MAIN (
         assign ExpBus[BUS_FM].WAIT_n = 1;
         assign ExpRam[RAM_FM].ADDR = 0;
         assign ExpRam[RAM_FM].DIN = 0;
+        assign ExpRam[RAM_FM].DIN_SIZE = 0;
         assign ExpRam[RAM_FM].OE_n = 1;
         assign ExpRam[RAM_FM].WE_n = 1;
         assign ExpRam[RAM_FM].RFSH_n = 1;
@@ -171,10 +176,15 @@ module MAIN (
         assign ExpBus[BUS_NEXTOR].WAIT_n = 1;
         assign ExpRam[RAM_NEXTOR].ADDR = 0;
         assign ExpRam[RAM_NEXTOR].DIN = 0;
+        assign ExpRam[RAM_NEXTOR].DIN_SIZE = 0;
         assign ExpRam[RAM_NEXTOR].OE_n = 1;
         assign ExpRam[RAM_NEXTOR].WE_n = 1;
         assign ExpRam[RAM_NEXTOR].RFSH_n = 1;
         assign LedNextor.State = LedNextor.LED_STATE_OFF;
+        assign TF.MOSI = 0;
+        assign TF.LEN = 0;
+        assign TF.REQ = 0;
+        assign TF.CS_n = 1;        
     end
 
     /***************************************************************
@@ -197,6 +207,7 @@ module MAIN (
         assign ExpBus[BUS_RAM].WAIT_n = 1;
         assign ExpRam[RAM_RAM].ADDR = 0;
         assign ExpRam[RAM_RAM].DIN = 0;
+        assign ExpRam[RAM_RAM].DIN_SIZE = 0;
         assign ExpRam[RAM_RAM].OE_n = 1;
         assign ExpRam[RAM_RAM].WE_n = 1;
         assign ExpRam[RAM_RAM].RFSH_n = 1;
@@ -222,10 +233,48 @@ module MAIN (
     end
 
     /***************************************************************
+     * V9990 カートリッジ
+     ***************************************************************/
+    if(CONFIG::ENABLE_V9990) begin
+        CARTRIDGE_V9990 u_v9990 (
+            .RESET_n        (SYS_RESET_n),
+            .CLK,
+            .Bus            (ExpBus[BUS_V9990]),
+            .Ram            (VideoRam),
+            .Video          (Video)
+        );
+    end
+    else begin
+        assign ExpBus[BUS_V9990].DOUT = 0;
+        assign ExpBus[BUS_V9990].BUSDIR_n = 1;
+        assign ExpBus[BUS_V9990].INT_n = 1;
+        assign ExpBus[BUS_V9990].WAIT_n = 1;
+        assign Video.R = 0;
+        assign Video.G = 0;
+        assign Video.B = 0;
+        assign Video.HS_n = 1;
+        assign Video.VS_n = 1;
+        assign Video.RESOLUTION = VIDEO::RESOLUTION_720_480;
+        assign Video.DCLK = 0;
+        assign VideoRam.ADDR = 0;
+        assign VideoRam.OE_n = 1;
+        assign VideoRam.WE_n = 1;
+        assign VideoRam.RFSH_n = 1;
+        assign VideoRam.DIN = 0;
+        assign VideoRam.DIN_SIZE = 0;
+    end
+
+    /***************************************************************
      * ブートローダー
      ***************************************************************/
+    logic SYS_RESET_n;
     logic BOOT_n;
-    wire SYS_RESET_n = RESET_n && BOOT_n;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)     SYS_RESET_n <= 0;
+        else if(!BOOT_n) SYS_RESET_n <= 0;
+        else             SYS_RESET_n <= 1;
+    end
+    //assign SYS_RESET_n = RESET_n && BOOT_n;
     BOOTLOADER #(
         .XFER_SRC_ADDR  (CONFIG::FLASH_ADDR_BIOS),
         .XFER_DST_ADDR  (CONFIG::RAM_ADDR_BIOS),

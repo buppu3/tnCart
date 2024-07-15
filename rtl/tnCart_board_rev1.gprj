@@ -15,6 +15,7 @@
         <File path="src/cartridge_nextor.sv" type="file.verilog" enable="1"/>
         <File path="src/cartridge_psg.sv" type="file.verilog" enable="1"/>
         <File path="src/cartridge_ram.sv" type="file.verilog" enable="1"/>
+        <File path="src/cartridge_v9990.sv" type="file.verilog" enable="1"/>
         <File path="src/config.sv" type="file.verilog" enable="1"/>
         <File path="src/debug/debugger.sv" type="file.verilog" enable="1"/>
         <File path="src/debug/debugger_bus_sim.sv" type="file.verilog" enable="1"/>
@@ -40,6 +41,22 @@
         <File path="src/peripheral/sound/sound.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/spi.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/uart.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_bitmap.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_blit.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_blit_addr.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_blit_fifo.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_clock.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_color_decode.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_palette.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_pattern.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_port.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_priority.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_ram.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_selector.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_shift_buffer.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_sprite.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_timing.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/video/video.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/video/video_dummy.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/video/video_upscan.sv" type="file.verilog" enable="1"/>

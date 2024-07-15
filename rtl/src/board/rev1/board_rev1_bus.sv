@@ -40,6 +40,7 @@ module BOARD_REV1_BUS(
     input wire              RESET_n,
     input wire              CLK,
     input wire              CLK_21M,
+    input wire              CLK_14M,
 
     output  wire            CART_BUSDIR_n,
     output  wire            CART_INT_n,
@@ -249,6 +250,10 @@ module BOARD_REV1_BUS(
     // 3.58MHz CLK_EN
     assign Bus.CLK_EN_21M = curr_clk_d21m && !prev_clk_d21m;
 
+    /***************************************************************
+     * 
+     ***************************************************************/
+    assign Bus.CLK_14M = CLK_14M;   // 14.32MHz
 endmodule
 
 /***************************************************************

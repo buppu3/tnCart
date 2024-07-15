@@ -722,29 +722,57 @@ module VIDEO_UPSCAN_BUFFER #(
     input wire [10:0]   R_ADDR,
     output reg [7:0]    R_DATA
 );
-`ifdef TEST
-    logic [8-1:0] buff[0:(COUNT)-1];
+
+`define USE_DPB
+`ifdef USE_DPB
+    wire [7:0] dummy_a;
+    wire [15:0] dummy_b;
+
+    DPB u_dpb (
+        .DOA({dummy_a[7:0],R_DATA[7:0]}),
+        .CLKA(R_CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(1'b0),
+        .WREA(1'b0),
+        .BLKSELA(3'b000),
+        .ADA({R_ADDR[10:0],3'b000}),
+        .DIA({8'b00000000,8'b00000000}),
+
+        .DOB(dummy_b),
+        .CLKB(W_CLK),
+        .OCEB(1'b0),
+        .CEB(1'b1),
+        .RESETB(1'b0),
+        .WREB(W_EN),
+        .BLKSELB(3'b000),
+        .ADB({W_ADDR[10:0],3'b000}),
+        .DIB({8'b00000000,W_DATA[7:0]})
+    );
+
+    defparam u_dpb.READ_MODE0 = 1'b0;
+    defparam u_dpb.READ_MODE1 = 1'b0;
+    defparam u_dpb.WRITE_MODE0 = 2'b00;
+    defparam u_dpb.WRITE_MODE1 = 2'b00;
+    defparam u_dpb.BIT_WIDTH_0 = 8;
+    defparam u_dpb.BIT_WIDTH_1 = 8;
+    defparam u_dpb.BLK_SEL_0 = 3'b000;
+    defparam u_dpb.BLK_SEL_1 = 3'b000;
+    defparam u_dpb.RESET_MODE = "SYNC";
 `else
-    logic [6-1:0] buff[0:(COUNT)-1];
-`endif
+    logic [6-1:0] buff[0:(COUNT)-1] /* synthesis syn_ramstyle="block_ram" */;
 
     always_ff @(posedge W_CLK) begin
         if(W_EN) begin
-`ifdef TEST
-            buff[W_ADDR] <= W_DATA;
-`else
             buff[W_ADDR] <= W_DATA[7:2];
-`endif
         end
     end
 
     always_ff @(posedge R_CLK) begin
-`ifdef TEST
-        R_DATA <= buff[R_ADDR];
-`else
         R_DATA <= {buff[R_ADDR], buff[R_ADDR][5:4]};
-`endif
     end
+`endif
+
 endmodule
 
 `default_nettype wire
