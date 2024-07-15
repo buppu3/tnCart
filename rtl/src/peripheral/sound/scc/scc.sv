@@ -33,6 +33,8 @@
 
 `default_nettype none
 
+`define SCC_USE_DPB
+
 /***************************************************************
  * SCC sound
  ***************************************************************/
@@ -355,8 +357,83 @@ module SCC_COUNTER (
 
 endmodule
 
+`ifdef SCC_USE_DPB
 /***********************************************************************
- * SCC CH 波形メモリー
+ * SCC CH 波形メモリー(DPB)
+ ***********************************************************************/
+module SCC_WAVE_MEMORY (
+    input wire          RESET_n,
+    input wire          CLK,
+
+    input wire          TEST_MEM,   // TEST.b6(ch0~3), TEST.b7(ch4)
+
+    input wire [4:0]    ADDR,
+    input wire          RD_WAVE_n,
+    input wire          WR_WAVE_n,
+    input wire  [7:0]   DIN,
+    output wire         BUSDIR_n,
+    output wire [7:0]   DOUT,
+
+    input wire [4:0]    WAVE_ADDR,
+    output wire  [7:0]  WAVE_DATA
+);
+
+    wire [7:0] dpb_read_a;  // DAC 側
+    wire [7:0] dpb_read_b;  // CPU 側
+
+    /***************************************************************
+     * 波形出力
+     ***************************************************************/
+    assign WAVE_DATA = dpb_read_a;
+
+    /***************************************************************
+     * メモリリード
+     ***************************************************************/
+    assign DOUT = RD_WAVE_n ? 0 : (TEST_MEM ? dpb_read_a : dpb_read_b); // TEST_MEM == 1 の時は波形出力データを返す
+    assign BUSDIR_n = RD_WAVE_n;
+
+    /***************************************************************
+     * メモリ
+     ***************************************************************/
+    wire [7:0] dpb_douta_w;
+    wire [7:0] dpb_doutb_w;
+
+    DPB u_dpb (
+        .DOA({dpb_douta_w[7:0],dpb_read_a[7:0]}),
+        .DOB({dpb_doutb_w[7:0],dpb_read_b[7:0]}),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(!RESET_n),
+        .WREA(1'b0),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(!RESET_n),
+        .WREB(!(WR_WAVE_n | TEST_MEM)),         // TEST_MEM == 1 の時はライト禁止
+        .BLKSELA(3'b000),
+        .BLKSELB(3'b000),
+        .ADA({6'b000000,WAVE_ADDR[4:0],3'b000}),
+        .DIA({8'b00000000,8'b00000000}),
+        .ADB({6'b000000,ADDR[4:0],3'b000}),
+        .DIB({8'b00000000,DIN[7:0]})
+    );
+
+    defparam u_dpb.READ_MODE0 = 1'b0;
+    defparam u_dpb.READ_MODE1 = 1'b0;
+    defparam u_dpb.WRITE_MODE0 = 2'b00;
+    defparam u_dpb.WRITE_MODE1 = 2'b00;
+    defparam u_dpb.BIT_WIDTH_0 = 8;
+    defparam u_dpb.BIT_WIDTH_1 = 8;
+    defparam u_dpb.BLK_SEL_0 = 3'b000;
+    defparam u_dpb.BLK_SEL_1 = 3'b000;
+    defparam u_dpb.RESET_MODE = "SYNC";
+endmodule
+
+`else
+
+/***********************************************************************
+ * SCC CH 波形メモリー(register)
  ***********************************************************************/
 module SCC_WAVE_MEMORY (
     input wire          RESET_n,
@@ -374,6 +451,7 @@ module SCC_WAVE_MEMORY (
     input wire [4:0]    WAVE_ADDR,
     output reg  [7:0]   WAVE_DATA
 );
+
     reg [7:0] buffer[0:31];
 
     /***************************************************************
@@ -408,6 +486,8 @@ module SCC_WAVE_MEMORY (
         end
     end
 endmodule
+
+`endif
 
 /***********************************************************************
  * SCC CH アンプ
