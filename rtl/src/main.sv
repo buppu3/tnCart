@@ -255,7 +255,7 @@ module MAIN (
         assign Video.HS_n = 1;
         assign Video.VS_n = 1;
         assign Video.RESOLUTION = VIDEO::RESOLUTION_720_480;
-        assign Video.DCLK = 0;
+        assign Video.DCLK = ExpBus[BUS_V9990].CLK_14M;
         assign VideoRam.ADDR = 0;
         assign VideoRam.OE_n = 1;
         assign VideoRam.WE_n = 1;

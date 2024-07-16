@@ -55,29 +55,32 @@ module T9990_BLIT (
 
 
     reg src_is_cpu;
-    reg src_is_liner;
+    reg src_is_linear;
     reg src_is_xy;
     reg src_is_vdp;
     reg src_is_rom;
     reg src_is_char;
     reg dst_is_cpu;
-    reg dst_is_liner;
+    reg dst_is_linear;
     reg dst_is_xy;
 
     reg req_dst_vram;
+    reg src_enable;
     reg [5:0] decode_count;
     reg [31:0] decode_data;
 
-    reg [1:0] SRC_CLRM;
+    reg [1:0]  SRC_CLRM;
     reg [18:0] SRC_X;
     reg [18:0] SRC_NX;
     reg [11:0] SRC_Y;
     reg [11:0] SRC_NY;
-    reg [1:0] DST_CLRM;
+    reg        SRC_DIX;
+    reg [1:0]  DST_CLRM;
     reg [18:0] DST_X;
     reg [18:0] DST_NX;
     reg [11:0] DST_Y;
     reg [11:0] DST_NY;
+    reg        DST_DIX;
 
     reg [31:0] SRC_DATA;
     reg [31:0] DST_DATA;
@@ -98,6 +101,7 @@ module T9990_BLIT (
     T9990_BLIT_FIFO u_fifo (
         .RESET_n,
         .CLK,
+        .CLK_EN,
         .CLRM(REG.CLRM),
         .FREE_COUNT,
         .AVAIL_COUNT,
@@ -138,7 +142,7 @@ module T9990_BLIT (
         .CLK,
         .CPU_MODE(src_is_cpu),
         .CLRM(SRC_CLRM),
-        .DIX(REG.DIX),
+        .DIX(SRC_DIX),
         .OFFSET(SRC_X[3:0]),
         .REMAIN(SRC_NX),
         .COUNT(SRC_COUNT)
@@ -149,18 +153,24 @@ module T9990_BLIT (
         .CLK,
         .CPU_MODE(dst_is_cpu),
         .CLRM(DST_CLRM),
-        .DIX(REG.DIX),
+        .DIX(DST_DIX),
         .OFFSET(DST_X[3:0]),
         .REMAIN(DST_NX),
         .COUNT(DST_COUNT)
     );
 
     reg [31:0] BIT_MASK;
+    reg P1;
+    always_ff @(posedge CLK) begin
+        P1 <= REG.DSPM == T9990_REG::DSPM_P1;
+    end
     T9990_BLIT_BITMASK u_bitmsk (
         .CLK,
+        .P1,                                            // P1 mode flag
+        .VRAM(dst_is_xy ? DST_XY_ADDR[18] : DST_X[18]), // VRAM ADDRESS MSB
         .WM(REG.WM),
         .CLRM(DST_CLRM),
-        .DIX(REG.DIX),
+        .DIX(DST_DIX),
         .OFFSET(DST_X[3:0]),
         .COUNT(DST_COUNT),
         .BIT_MASK(BIT_MASK)
@@ -232,6 +242,9 @@ module T9990_BLIT (
             STATUS.CE <= 0;
             state <= STATE_IDLE;
             FIFO_CLEAR <= 0;
+            CMD_MEM.OE_n <= 1;
+            CMD_MEM.WE_n <= 1;
+            CMD_MEM.ADDR <= 0;
         end
 
         //
@@ -263,6 +276,8 @@ module T9990_BLIT (
 
                 STATUS.CE <= 1;
 
+                src_enable <= 1;
+
                 decode_data <= 0;
                 decode_count <= 0;
 
@@ -280,13 +295,13 @@ module T9990_BLIT (
                 end
 
                 if(REG.OP == T9990_REG::CMD_LMMC) begin
-                    src_is_liner <= 0;
+                    src_is_linear <= 0;
                     src_is_xy <= 0;
                     src_is_cpu <= 1;
                     src_is_rom <= 0;
                     src_is_vdp <= 0;
                     src_is_char <= 0;
-                    dst_is_liner <= 0;
+                    dst_is_linear <= 0;
                     dst_is_xy <= 1;
                     dst_is_cpu <= 0;
 
@@ -294,19 +309,22 @@ module T9990_BLIT (
                     SRC_Y <= REG.SY;
                     DST_X <= REG.DX;
                     DST_Y <= REG.DY;
+
+                    SRC_DIX <= REG.DIX;
+                    DST_DIX <= REG.DIX;
 
                     SRC_CLRM <= REG.CLRM;
                     DST_CLRM <= REG.CLRM;
                     state <= STATE_SETUP;
                 end
                 else if(REG.OP == T9990_REG::CMD_LMMV) begin
-                    src_is_liner <= 0;
+                    src_is_linear <= 0;
                     src_is_xy <= 0;
                     src_is_cpu <= 0;
                     src_is_rom <= 0;
                     src_is_vdp <= 1;
                     src_is_char <= 0;
-                    dst_is_liner <= 0;
+                    dst_is_linear <= 0;
                     dst_is_xy <= 1;
                     dst_is_cpu <= 0;
 
@@ -315,18 +333,21 @@ module T9990_BLIT (
                     DST_X <= REG.DX;
                     DST_Y <= REG.DY;
 
+                    SRC_DIX <= REG.DIX;
+                    DST_DIX <= REG.DIX;
+
                     SRC_CLRM <= REG.CLRM;
                     DST_CLRM <= REG.CLRM;
                     state <= STATE_SETUP;
                 end
                 else if(REG.OP == T9990_REG::CMD_LMCM) begin
-                    src_is_liner <= 0;
+                    src_is_linear <= 0;
                     src_is_xy <= 1;
                     src_is_cpu <= 0;
                     src_is_rom <= 0;
                     src_is_vdp <= 0;
                     src_is_char <= 0;
-                    dst_is_liner <= 0;
+                    dst_is_linear <= 0;
                     dst_is_xy <= 0;
                     dst_is_cpu <= 1;
 
@@ -335,18 +356,21 @@ module T9990_BLIT (
                     DST_X <= REG.DX;
                     DST_Y <= REG.DY;
 
+                    SRC_DIX <= REG.DIX;
+                    DST_DIX <= REG.DIX;
+
                     SRC_CLRM <= REG.CLRM;
                     DST_CLRM <= REG.CLRM;
                     state <= STATE_SETUP;
                 end
                 else if(REG.OP == T9990_REG::CMD_LMMM) begin
-                    src_is_liner <= 0;
+                    src_is_linear <= 0;
                     src_is_xy <= 1;
                     src_is_cpu <= 0;
                     src_is_rom <= 0;
                     src_is_vdp <= 0;
                     src_is_char <= 0;
-                    dst_is_liner <= 0;
+                    dst_is_linear <= 0;
                     dst_is_xy <= 1;
                     dst_is_cpu <= 0;
 
@@ -354,19 +378,22 @@ module T9990_BLIT (
                     SRC_Y <= REG.SY;
                     DST_X <= REG.DX;
                     DST_Y <= REG.DY;
+
+                    SRC_DIX <= REG.DIX;
+                    DST_DIX <= REG.DIX;
 
                     SRC_CLRM <= REG.CLRM;
                     DST_CLRM <= REG.CLRM;
                     state <= STATE_SETUP;
                 end
                 else if(REG.OP == T9990_REG::CMD_CMMC) begin
-                    src_is_liner <= 0;
+                    src_is_linear <= 0;
                     src_is_xy <= 0;
                     src_is_cpu <= 1;
                     src_is_rom <= 0;
                     src_is_vdp <= 0;
                     src_is_char <= 1;
-                    dst_is_liner <= 0;
+                    dst_is_linear <= 0;
                     dst_is_xy <= 1;
                     dst_is_cpu <= 0;
 
@@ -374,19 +401,22 @@ module T9990_BLIT (
                     SRC_Y <= REG.SY;
                     DST_X <= REG.DX;
                     DST_Y <= REG.DY;
+
+                    SRC_DIX <= REG.DIX;
+                    DST_DIX <= REG.DIX;
 
                     SRC_CLRM <= REG.CLRM;
                     DST_CLRM <= REG.CLRM;
                     state <= STATE_SETUP;
                 end
                 else if(REG.OP == T9990_REG::CMD_CMMK) begin
-                    src_is_liner <= 0;
+                    src_is_linear <= 0;
                     src_is_xy <= 0;
                     src_is_cpu <= 0;
                     src_is_rom <= 1;
                     src_is_char <= 1;
                     src_is_vdp <= 0;
-                    dst_is_liner <= 0;
+                    dst_is_linear <= 0;
                     dst_is_xy <= 1;
                     dst_is_cpu <= 0;
 
@@ -394,19 +424,22 @@ module T9990_BLIT (
                     SRC_Y <= REG.SY;
                     DST_X <= REG.DX;
                     DST_Y <= REG.DY;
+
+                    SRC_DIX <= REG.DIX;
+                    DST_DIX <= REG.DIX;
 
                     SRC_CLRM <= REG.CLRM;
                     DST_CLRM <= REG.CLRM;
                     state <= STATE_SETUP;
                 end
                 else if(REG.OP == T9990_REG::CMD_CMMM) begin
-                    src_is_liner <= 1;
+                    src_is_linear <= 1;
                     src_is_xy <= 0;
                     src_is_cpu <= 0;
                     src_is_rom <= 0;
                     src_is_char <= 1;
                     src_is_vdp <= 0;
-                    dst_is_liner <= 0;
+                    dst_is_linear <= 0;
                     dst_is_xy <= 1;
                     dst_is_cpu <= 0;
 
@@ -414,19 +447,22 @@ module T9990_BLIT (
                     SRC_Y <= 0;
                     DST_X <= REG.DX;
                     DST_Y <= REG.DY;
+
+                    SRC_DIX <= 0;
+                    DST_DIX <= REG.DIX;
 
                     SRC_CLRM <= T9990_REG::CLRM_8BPP;
                     DST_CLRM <= REG.CLRM;
                     state <= STATE_SETUP;
                 end
                 else if(REG.OP == T9990_REG::CMD_BMXL) begin
-                    src_is_liner <= 1;
+                    src_is_linear <= 1;
                     src_is_xy <= 0;
                     src_is_cpu <= 0;
                     src_is_rom <= 0;
                     src_is_char <= 0;
                     src_is_vdp <= 0;
-                    dst_is_liner <= 0;
+                    dst_is_linear <= 0;
                     dst_is_xy <= 1;
                     dst_is_cpu <= 0;
 
@@ -435,18 +471,21 @@ module T9990_BLIT (
                     DST_X <= REG.DX;
                     DST_Y <= REG.DY;
 
+                    SRC_DIX <= 0;
+                    DST_DIX <= REG.DIX;
+
                     SRC_CLRM <= T9990_REG::CLRM_8BPP;
                     DST_CLRM <= REG.CLRM;
                     state <= STATE_SETUP;
                 end
                 else if(REG.OP == T9990_REG::CMD_BMLX) begin
-                    src_is_liner <= 0;
+                    src_is_linear <= 0;
                     src_is_xy <= 1;
                     src_is_cpu <= 0;
                     src_is_rom <= 0;
                     src_is_char <= 0;
                     src_is_vdp <= 0;
-                    dst_is_liner <= 1;
+                    dst_is_linear <= 1;
                     dst_is_xy <= 0;
                     dst_is_cpu <= 0;
 
@@ -455,25 +494,31 @@ module T9990_BLIT (
                     DST_X <= REG.DA;
                     DST_Y <= 0;
 
+                    SRC_DIX <= REG.DIX;
+                    DST_DIX <= 0;
+
                     SRC_CLRM <= REG.CLRM;
                     DST_CLRM <= T9990_REG::CLRM_8BPP;
                     state <= STATE_SETUP;
                 end
                 else if(REG.OP == T9990_REG::CMD_BMLL) begin
-                    src_is_liner <= 1;
+                    src_is_linear <= 1;
                     src_is_xy <= 0;
                     src_is_cpu <= 0;
                     src_is_rom <= 0;
                     src_is_char <= 0;
                     src_is_vdp <= 0;
-                    dst_is_liner <= 1;
+                    dst_is_linear <= 1;
                     dst_is_xy <= 0;
                     dst_is_cpu <= 0;
 
-                    SRC_X <= REG.NA;
+                    SRC_X <= REG.SA;
                     SRC_Y <= 0;
                     DST_X <= REG.DA;
                     DST_Y <= 0;
+
+                    SRC_DIX <= 0;
+                    DST_DIX <= 0;
 
                     SRC_CLRM <= T9990_REG::CLRM_8BPP;
                     DST_CLRM <= T9990_REG::CLRM_8BPP;
@@ -535,9 +580,9 @@ module T9990_BLIT (
             end
 
             // 転送元データが必要なら読み出し開始
-            else if(FREE_COUNT >= SRC_OUT_COUNT && SRC_NY != 0) begin
+            else if(FREE_COUNT >= SRC_OUT_COUNT && src_enable) begin
                 // VRAM リニア
-                if(src_is_liner) begin
+                if(src_is_linear) begin
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= SRC_X;
                     state = STATE_SRC_READ_VRAM_WAIT_ACK;
@@ -566,7 +611,7 @@ module T9990_BLIT (
 
                 // VDP
                 else begin
-                    ENQUEUE_DATA <= REG.FC;
+                    ENQUEUE_DATA <= {REG.FC,REG.FC};
                     ENQUEUE <= 1;
                     state <= STATE_SRC_ENQUEUE_WAIT1;
                 end
@@ -595,7 +640,7 @@ module T9990_BLIT (
                     state <= STATE_SRC_READ_VRAM_CONV_8C;
                 end
                 else begin
-                    case ({REG.DIX, SRC_CLRM})
+                    case ({SRC_DIX, SRC_CLRM})
                         {1'b0, T9990_REG::CLRM_2BPP }:  state <= STATE_SRC_READ_VRAM_CONV_2N;
                         {1'b0, T9990_REG::CLRM_4BPP }:  state <= STATE_SRC_READ_VRAM_CONV_4N;
                         {1'b0, T9990_REG::CLRM_8BPP }:  state <= STATE_SRC_READ_VRAM_CONV_8N;
@@ -917,15 +962,25 @@ module T9990_BLIT (
         else if(state == STATE_SRC_ENQUEUE_DONE) begin
             ENQUEUE <= 0;
 
-            if(SRC_NX <= SRC_POS_COUNT) begin
+            if(src_is_linear) begin
+                // 隣へ移動
+                SRC_X <= SRC_X + SRC_POS_COUNT;
+                SRC_NX <= SRC_NX - SRC_POS_COUNT;
+            end
+            else if(SRC_NX <= SRC_POS_COUNT) begin
+                // SRC_NY が 1->0 で転送元入力を禁止
+                if(SRC_NY == 1'd1) src_enable <= 0;
+
+                // 次の行の準備
                 SRC_X <= REG.SX;
+                SRC_Y = REG.DIY ? (SRC_Y - 1'd1) : (SRC_Y + 1'd1);
                 SRC_NX <= REG.NX;
                 SRC_NY <= SRC_NY - 1'd1;
-                SRC_Y = REG.DIY ? (SRC_Y - 1'd1) : (SRC_Y + 1'd1);
             end
             else begin
+                // 隣へ移動
                 SRC_NX <= SRC_NX - SRC_POS_COUNT;
-                SRC_X <= REG.DIX ? (SRC_X - SRC_POS_COUNT) : (SRC_X + SRC_POS_COUNT);
+                SRC_X <= SRC_DIX ? (SRC_X - SRC_POS_COUNT) : (SRC_X + SRC_POS_COUNT);
             end
 
             state <= STATE_SRC_DEQUEUE;
@@ -936,7 +991,7 @@ module T9990_BLIT (
         //
         else if(state == STATE_SRC_DEQUEUE) begin
             // 転送先側の VRAM データが必要かどうかをチェック
-            if(!(dst_is_liner || dst_is_xy))                req_dst_vram <= 0;  // VRAM に出力しない場合は必要なし
+            if(!(dst_is_linear || dst_is_xy))                req_dst_vram <= 0;  // VRAM に出力しない場合は必要なし
             else if(BIT_MASK != 32'hFFFF_FFFF)              req_dst_vram <= 1;  // ビットマスクに抜けがある場合は必要
             else if(REG.TP)                                 req_dst_vram <= 1;  // 透明色を使う場合は必要
             else if(REG.LO != 4'b1100 && REG.LO != 4'b0011) req_dst_vram <= 1;  // ビット演算を行う場合は必要
@@ -962,7 +1017,7 @@ module T9990_BLIT (
 
             // DST 側の VRAM データが必要なら読み出し
             if(req_dst_vram) begin
-                if(dst_is_liner) begin
+                if(dst_is_linear) begin
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= DST_X;
                     state = STATE_DST_READ_VRAM_WAIT_ACK;
@@ -1004,7 +1059,7 @@ module T9990_BLIT (
         // FIFO から取り出したデータを加工
         //
         else if(state == STATE_SRC_DEQUEUE_DONE) begin
-            if(REG.DIX) begin
+            if(DST_DIX) begin
                 if(DST_CLRM == T9990_REG::CLRM_2BPP) begin
                     case (DST_X[3:0])
                         4'd0:   SRC_DATA <= {DEQUEUE_DATA2[31:30], 30'b0};
@@ -1168,7 +1223,7 @@ module T9990_BLIT (
         // データ書き込み
         //
         else if(state == STATE_DST_WRITE) begin
-            if(dst_is_liner) begin
+            if(dst_is_linear) begin
                 CMD_MEM.WE_n <= 0;
                 CMD_MEM.ADDR <= DST_X;
                 CMD_MEM.DIN <= WRT_DATA;
@@ -1243,12 +1298,28 @@ module T9990_BLIT (
         //
         else if((state == STATE_DST_WRITE_VRAM_WAIT_BUSY) || (state == STATE_DST_WRITE_CPU_WAIT_BUSY)) begin
             if(!CMD_MEM.BUSY && !P2_VDP_TO_CPU.ACK) begin
-                if(DST_NX <= DST_POS_COUNT) begin
+                if(dst_is_linear) begin
+                    // 隣に移動
+                    DST_X = DST_X + DST_POS_COUNT;
+                    DST_NX <= DST_NX - DST_POS_COUNT;
+
+                    // 終わり?
+                    if(DST_NX <= DST_POS_COUNT) begin
+                        STATUS.CE <= 0;
+                        state <= STATE_IDLE;
+                    end
+                    else begin
+                        state <= STATE_SRC_IN;
+                    end
+                end
+                else if(DST_NX <= DST_POS_COUNT) begin
+                    // 次の行の準備
                     DST_X <= REG.DX;
+                    DST_Y = REG.DIY ? (DST_Y - 1'd1) : (DST_Y + 1'd1);
                     DST_NX <= REG.NX;
                     DST_NY <= DST_NY - 1'd1;
-                    DST_Y = REG.DIY ? (DST_Y - 1'd1) : (DST_Y + 1'd1);
 
+                    // 終わり?
                     if(DST_NY == 1'd1) begin
                         STATUS.CE <= 0;
                         state <= STATE_IDLE;
@@ -1258,8 +1329,9 @@ module T9990_BLIT (
                     end
                 end
                 else begin
+                    // 隣に移動
                     DST_NX <= DST_NX - DST_POS_COUNT;
-                    DST_X = REG.DIX ? (DST_X - DST_POS_COUNT) : (DST_X + DST_POS_COUNT);
+                    DST_X = DST_DIX ? (DST_X - DST_POS_COUNT) : (DST_X + DST_POS_COUNT);
                     state <= STATE_SRC_IN;
                 end
             end
@@ -1345,12 +1417,17 @@ endmodule
 module T9990_BLIT_BITMASK (
     input wire          CLK,
     input wire [15:0]   WM,
+    input wire          P1,
+    input wire          VRAM,
     input wire [1:0]    CLRM,
     input wire          DIX,
     input wire [3:0]    OFFSET,
     input wire [4:0]    COUNT,
     output reg [31:0]   BIT_MASK
 );
+    /***************************************************************
+     * COUNT の値で mask を生成
+     ***************************************************************/
     reg [31:0] mask;
     always_ff @(posedge CLK) begin
         if(!DIX && CLRM == T9990_REG::CLRM_2BPP) begin
@@ -1371,7 +1448,7 @@ module T9990_BLIT_BITMASK (
             mask[ 3: 2] <= (COUNT > 5'd14) ? 2'b11 : 2'b00;
             mask[ 1: 0] <= (COUNT > 5'd15) ? 2'b11 : 2'b00;
         end
-        else if(!DIX && CLRM == T9990_REG::CLRM_8BPP) begin
+        else if(!DIX && CLRM == T9990_REG::CLRM_4BPP) begin
             mask[31:28] <= (COUNT >  5'd0) ? 4'b1111 : 4'b0000;
             mask[27:24] <= (COUNT >  5'd1) ? 4'b1111 : 4'b0000;
             mask[23:20] <= (COUNT >  5'd2) ? 4'b1111 : 4'b0000;
@@ -1432,6 +1509,9 @@ module T9990_BLIT_BITMASK (
         end
     end
 
+    /***************************************************************
+     * mask をビットシフト
+     ***************************************************************/
     reg [31:0] shifted_mask;
     always_ff @(posedge CLK) begin
         if(!DIX && CLRM == T9990_REG::CLRM_2BPP) begin
@@ -1481,7 +1561,7 @@ module T9990_BLIT_BITMASK (
             endcase
         end
 
-        else if(!DIX && CLRM == T9990_REG::CLRM_2BPP) begin
+        else if(DIX && CLRM == T9990_REG::CLRM_2BPP) begin
             case (OFFSET[3:0])
                 5'd15:  shifted_mask <= mask;
                 5'd14:  shifted_mask <= {mask[29:0],  2'h0};
@@ -1501,7 +1581,7 @@ module T9990_BLIT_BITMASK (
                 5'd0:   shifted_mask <= {mask[ 1:0], 30'h0};
             endcase
         end
-        else if(!DIX && CLRM == T9990_REG::CLRM_4BPP) begin
+        else if(DIX && CLRM == T9990_REG::CLRM_4BPP) begin
             case (OFFSET[2:0])
                 5'd7:   shifted_mask <= mask;
                 5'd6:   shifted_mask <= {mask[27:0],  4'h0};
@@ -1513,7 +1593,7 @@ module T9990_BLIT_BITMASK (
                 5'd0:   shifted_mask <= {mask[ 3:0], 28'h0};
             endcase
         end
-        else if(!DIX && CLRM == T9990_REG::CLRM_8BPP) begin
+        else if(DIX && CLRM == T9990_REG::CLRM_8BPP) begin
             case (OFFSET[1:0])
                 5'd3:   shifted_mask <= mask;
                 5'd2:   shifted_mask <= {mask[23:0],  8'h0};
@@ -1529,8 +1609,13 @@ module T9990_BLIT_BITMASK (
         end
     end
 
+    /***************************************************************
+     * WM レジスタでマスク
+     ***************************************************************/
     always_ff @(posedge CLK) begin
-        BIT_MASK <= shifted_mask & {WM,WM};
+        if(!P1)       BIT_MASK <= shifted_mask & {WM, WM};                                  // P1 モード以外
+        else if(VRAM) BIT_MASK <= shifted_mask & {WM[15:8], WM[15:8], WM[15:8], WM[15:8]};  // P1 モード VRAM1
+        else          BIT_MASK <= shifted_mask & {WM[ 7:0], WM[ 7:0], WM[ 7:0], WM[ 7:0]};  // P1 モード VRAM0
     end
 endmodule
 

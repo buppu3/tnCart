@@ -36,25 +36,29 @@
 module T9990_BLIT_FIFO (
     input wire          RESET_n,
     input wire          CLK,
+    input wire          CLK_EN,
 
-    input wire [1:0]    CLRM,
-    output wire [5:0]   FREE_COUNT,
-    output reg [5:0]    AVAIL_COUNT,
-    input wire          CLEAR,
+    input wire [1:0]    CLRM,           // カラーモード
+    output wire [5:0]   FREE_COUNT,     // FIFO 空き数
+    output reg [5:0]    AVAIL_COUNT,    // FIFO 格納数
 
-    input wire          ENQUEUE,
-    input wire [4:0]    ENQUEUE_COUNT,
-    input wire [31:0]   ENQUEUE_DATA,
+    input wire          CLEAR,          // FIFO クリアフラグ
 
-    input wire          DEQUEUE,
-    input wire [4:0]    DEQUEUE_COUNT,
-    output reg [31:0]   DEQUEUE_DATA2,
-    output reg [31:0]   DEQUEUE_DATA4,
-    output reg [31:0]   DEQUEUE_DATA8,
-    output reg [31:0]   DEQUEUE_DATA16
+    input wire          ENQUEUE,        // FIFO 格納フラグ
+    input wire [4:0]    ENQUEUE_COUNT,  // FIFO 格納ドット数
+    input wire [31:0]   ENQUEUE_DATA,   // 2BPP/4BPP/8BPP/16BPP データ入力
+
+    input wire          DEQUEUE,        // FIFO 取り出しフラグ
+    input wire [4:0]    DEQUEUE_COUNT,  // FIFO 取り出しドット数
+    output reg [31:0]   DEQUEUE_DATA2,  // 2BPP データ出力
+    output reg [31:0]   DEQUEUE_DATA4,  // 4BPP データ出力
+    output reg [31:0]   DEQUEUE_DATA8,  // 8BPP データ出力
+    output reg [31:0]   DEQUEUE_DATA16  // 16BPP データ出力
 );
     reg enq[0:15];
+    reg w_inc;
     always_ff @(posedge CLK) begin
+        if(CLK_EN && ENQUEUE) begin
             enq[ 0] <= (ENQUEUE_COUNT >  0);
             enq[ 1] <= (ENQUEUE_COUNT >  1);
             enq[ 2] <= (ENQUEUE_COUNT >  2);
@@ -71,6 +75,27 @@ module T9990_BLIT_FIFO (
             enq[13] <= (ENQUEUE_COUNT > 13);
             enq[14] <= (ENQUEUE_COUNT > 14);
             enq[15] <= (ENQUEUE_COUNT > 15);
+            w_inc <= 1;
+        end
+        else begin
+            enq[ 0] <= 0;
+            enq[ 1] <= 0;
+            enq[ 2] <= 0;
+            enq[ 3] <= 0;
+            enq[ 4] <= 0;
+            enq[ 5] <= 0;
+            enq[ 6] <= 0;
+            enq[ 7] <= 0;
+            enq[ 8] <= 0;
+            enq[ 9] <= 0;
+            enq[10] <= 0;
+            enq[11] <= 0;
+            enq[12] <= 0;
+            enq[13] <= 0;
+            enq[14] <= 0;
+            enq[15] <= 0;
+            w_inc <= 0;
+        end
     end
 
     /***************************************************************
@@ -114,7 +139,7 @@ module T9990_BLIT_FIFO (
             w_offset_2[14] <= 5'd14;
             w_offset_2[15] <= 5'd15;
         end
-        else if(ENQUEUE) begin
+        else if(w_inc) begin
             w_offset_2[ 0] <= (w_offset_2[ 0] + ENQUEUE_COUNT) & 5'd31;
             w_offset_2[ 1] <= (w_offset_2[ 1] + ENQUEUE_COUNT) & 5'd31;
             w_offset_2[ 2] <= (w_offset_2[ 2] + ENQUEUE_COUNT) & 5'd31;
@@ -136,6 +161,7 @@ module T9990_BLIT_FIFO (
 
     reg [1:0] buffer_2[0:31]/* synthesis syn_ramstyle="registers" */;
     always_ff @(posedge CLK) begin
+        //if(CLK_EN) begin
             if(enq[ 0]) buffer_2[w_offset_2[ 0]] <= in_pixel_2[ 0];
             if(enq[ 1]) buffer_2[w_offset_2[ 1]] <= in_pixel_2[ 1];
             if(enq[ 2]) buffer_2[w_offset_2[ 2]] <= in_pixel_2[ 2];
@@ -152,6 +178,7 @@ module T9990_BLIT_FIFO (
             if(enq[13]) buffer_2[w_offset_2[13]] <= in_pixel_2[13];
             if(enq[14]) buffer_2[w_offset_2[14]] <= in_pixel_2[14];
             if(enq[15]) buffer_2[w_offset_2[15]] <= in_pixel_2[15];
+        //end
     end
 
     /***************************************************************
@@ -179,7 +206,7 @@ module T9990_BLIT_FIFO (
             w_offset_4[6] <= 4'd6;
             w_offset_4[7] <= 4'd7;
         end
-        else if(ENQUEUE) begin
+        else if(w_inc) begin
             w_offset_4[0] <= (w_offset_4[0] + ENQUEUE_COUNT) & 4'd15;
             w_offset_4[1] <= (w_offset_4[1] + ENQUEUE_COUNT) & 4'd15;
             w_offset_4[2] <= (w_offset_4[2] + ENQUEUE_COUNT) & 4'd15;
@@ -193,6 +220,7 @@ module T9990_BLIT_FIFO (
 
     reg [3:0] buffer_4[0:15]/* synthesis syn_ramstyle="registers" */;
     always_ff @(posedge CLK) begin
+        //if(CLK_EN) begin
             if(enq[0]) buffer_4[w_offset_4[0]] <= in_pixel_4[0];
             if(enq[1]) buffer_4[w_offset_4[1]] <= in_pixel_4[1];
             if(enq[2]) buffer_4[w_offset_4[2]] <= in_pixel_4[2];
@@ -201,6 +229,7 @@ module T9990_BLIT_FIFO (
             if(enq[5]) buffer_4[w_offset_4[5]] <= in_pixel_4[5];
             if(enq[6]) buffer_4[w_offset_4[6]] <= in_pixel_4[6];
             if(enq[7]) buffer_4[w_offset_4[7]] <= in_pixel_4[7];
+        //end
     end
 
     /***************************************************************
@@ -220,7 +249,7 @@ module T9990_BLIT_FIFO (
             w_offset_8[2] <= 3'd2;
             w_offset_8[3] <= 3'd3;
         end
-        else if(ENQUEUE) begin
+        else if(w_inc) begin
             w_offset_8[0] <= (w_offset_8[0] + ENQUEUE_COUNT) & 3'd7;
             w_offset_8[1] <= (w_offset_8[1] + ENQUEUE_COUNT) & 3'd7;
             w_offset_8[2] <= (w_offset_8[2] + ENQUEUE_COUNT) & 3'd7;
@@ -230,10 +259,12 @@ module T9990_BLIT_FIFO (
 
     reg [7:0] buffer_8[0:7]/* synthesis syn_ramstyle="registers" */;
     always_ff @(posedge CLK) begin
+        //if(CLK_EN) begin
             if(enq[0]) buffer_8[w_offset_8[0]] <= in_pixel_8[0];
             if(enq[1]) buffer_8[w_offset_8[1]] <= in_pixel_8[1];
             if(enq[2]) buffer_8[w_offset_8[2]] <= in_pixel_8[2];
             if(enq[3]) buffer_8[w_offset_8[3]] <= in_pixel_8[3];
+        //end
     end
 
     /***************************************************************
@@ -249,7 +280,7 @@ module T9990_BLIT_FIFO (
             w_offset_16[0] <= 2'd0;
             w_offset_16[1] <= 2'd1;
         end
-        else if(ENQUEUE) begin
+        else if(w_inc) begin
             w_offset_16[0] <= (w_offset_16[0] + ENQUEUE_COUNT) & 2'd3;
             w_offset_16[1] <= (w_offset_16[1] + ENQUEUE_COUNT) & 2'd3;
         end
@@ -257,8 +288,10 @@ module T9990_BLIT_FIFO (
 
     reg [15:0] buffer_16[0:3]/* synthesis syn_ramstyle="registers" */;
     always_ff @(posedge CLK) begin
+        //if(CLK_EN) begin
             if(enq[0]) buffer_16[w_offset_16[0]] <= in_pixel_16[0];
             if(enq[1]) buffer_16[w_offset_16[1]] <= in_pixel_16[1];
+        //end
     end
 
     /***************************************************************
@@ -305,7 +338,7 @@ module T9990_BLIT_FIFO (
             out_offset_16[0] <= 2'd0;
             out_offset_16[1] <= 2'd1;
         end
-        else if(DEQUEUE) begin
+        else if(DEQUEUE && CLK_EN) begin
             DEQUEUE_DATA2[31:30] <= buffer_2[out_offset_2[ 0]];
             DEQUEUE_DATA2[29:28] <= buffer_2[out_offset_2[ 1]];
             DEQUEUE_DATA2[27:26] <= buffer_2[out_offset_2[ 2]];
@@ -379,13 +412,13 @@ module T9990_BLIT_FIFO (
         if(!RESET_n || CLEAR) begin
             AVAIL_COUNT <= 0;
         end
-        else if(ENQUEUE && DEQUEUE) begin
+        else if(CLK_EN && ENQUEUE && DEQUEUE) begin
             AVAIL_COUNT <= AVAIL_COUNT + ENQUEUE_COUNT - DEQUEUE_COUNT;
         end
-        else if(ENQUEUE) begin
+        else if(CLK_EN && ENQUEUE) begin
             AVAIL_COUNT <= AVAIL_COUNT + ENQUEUE_COUNT;
         end
-        else if(DEQUEUE) begin
+        else if(CLK_EN && DEQUEUE) begin
             AVAIL_COUNT <= AVAIL_COUNT - DEQUEUE_COUNT;
         end
     end

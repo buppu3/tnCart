@@ -13,7 +13,7 @@ TangNano20K を搭載した MSX 用カートリッジ
 - PSG 音源の 3.5mmフォンジャック出力
 - メガロムエミュレーション
 - SCC 音源
-- V9990 の P1(256x212dot) モード
+- V9990 の P1/BP6 モード(256x212dot)
 
 ## 今後の予定
 - PAC エミュレーション
@@ -23,3 +23,7 @@ TangNano20K を搭載した MSX 用カートリッジ
 各機能の実装に下記モジュールを使用しています。
 - PSG https://github.com/dnotq/ym2149_audio
 - OPLL https://github.com/hra1129/one-chip-msx-kai/tree/main/source/pld/src/sound/opll/vm2413
+
+## メモ
+- V9990 機能を有効にする際は、config.sv の ENABLE_V9990, ENABLE_V9990_CMD を 1 に、ENABLE_FM, ENABLE_PSG, ENABLE_SCC 等を 0 に変更してから論理合成してください。全ての機能を有効にした状態では回路の規模が大きくなるため、TangNano20K では合成できません。
+- V9990 の映像は 720x480ドット(ピクセルクロック 27MHz) の DIV 信号で出力されます。接続するモニターやビデオキャプチャー機器によっては正常に動作しない可能性があります。

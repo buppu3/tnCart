@@ -64,7 +64,7 @@ package CONFIG;
     localparam          ENABLE_RAM              = 1;            // 拡張 RAM カートリッジを有効
     localparam          ENABLE_PSG              = 1;            // PSG を有効
     localparam          ENABLE_SCC              = 1;            // SCC を有効
-    localparam          ENABLE_V9990            = 1;            // V9990 を有効
+    localparam          ENABLE_V9990            = 0;            // V9990 を有効
     localparam          ENABLE_V9990_CMD        = 0;            // V9990 の VDP コマンドを有効(V9990のVDPコマンドを有効にすると回路の規模が大きくなるので、他の大きな機能と同時使用はできない)
 
 endpackage

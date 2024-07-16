@@ -243,7 +243,6 @@ module T9990 (
     logic BG_START;
     logic [9:0] BG_X;
     logic [8:0] BG_Y;
-//    logic [8:0] Y;
 
     T9990_TIMING u_tg (
         .RESET_n(rst_flag),
@@ -474,7 +473,7 @@ module T9990 (
     logic [0:0] BP_PRI;
     logic [5:0] BP_PA;
     logic [15:0] BD_CLR;
-`ifndef DIASBLE_BD
+`ifndef DISABLE_BD
     T9990_BITMAP u_bp (
         .RESET_n(rst_flag),
         .CLK,

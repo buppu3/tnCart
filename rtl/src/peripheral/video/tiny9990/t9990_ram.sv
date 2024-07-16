@@ -234,7 +234,7 @@ module T9990_URB_RAM_VC (
             endcase
 
             CPU_MEM.BUSY <= 0;
-            CMD_MEM.BUSY <= 1;
+            CMD_MEM.BUSY <= 0;
 
             VC_MEM.OE_n <= 1;
             VC_MEM.WE_n <= 1;
