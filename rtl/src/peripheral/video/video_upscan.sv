@@ -33,6 +33,8 @@
 
 `default_nettype none
 
+`define RATIO_1_125
+
 /***********************************************************************
  * アップスキャンモジュール
  ***********************************************************************/
@@ -176,9 +178,14 @@ module VIDEO_UPSCAN #(
     always_ff @(posedge DCLK or negedge RESET_n) begin
         if(!RESET_n)   IN_EN <= 0;
         else case (in_reso)
+`ifdef RATIO_1_125
+            VIDEO::RESOLUTION_B1:   IN_EN <= (in_h_cnt >= 10'd 32) && (in_h_cnt < 10'd 32 + 10'd320);  //  32 + 32 + 256 + 32 +  0
+            VIDEO::RESOLUTION_B3:   IN_EN <= (in_h_cnt >= 10'd 64) && (in_h_cnt < 10'd 64 + 10'd640);  //  64 + 64 + 512 + 64 +  0 
+`else
             VIDEO::RESOLUTION_B1:   IN_EN <= (in_h_cnt >= 10'd 48) && (in_h_cnt < 10'd 48 + 10'd288);  //  48 + 16 + 256 + 16 +  6
-            VIDEO::RESOLUTION_B2:   IN_EN <= (in_h_cnt >= 10'd 62) && (in_h_cnt < 10'd 62 + 10'd384);  //  62 +  0 + 384 +  0 + 10
             VIDEO::RESOLUTION_B3:   IN_EN <= (in_h_cnt >= 10'd 96) && (in_h_cnt < 10'd 96 + 10'd576);  //  96 + 32 + 512 + 32 + 12
+`endif
+            VIDEO::RESOLUTION_B2:   IN_EN <= (in_h_cnt >= 10'd 62) && (in_h_cnt < 10'd 62 + 10'd384);  //  62 +  0 + 384 +  0 + 10
             VIDEO::RESOLUTION_B4:   IN_EN <= (in_h_cnt >= 10'd124) && (in_h_cnt < 10'd124 + 10'd768);  // 124 +  0 + 768 +  0 + 20
             VIDEO::RESOLUTION_B5:   IN_EN <= (in_h_cnt >= 10'd128) && (in_h_cnt < 10'd128 + 10'd640);  // 128 +  0 + 640 +  0 + 80
             VIDEO::RESOLUTION_B6:   IN_EN <= (in_h_cnt >= 10'd112) && (in_h_cnt < 10'd112 + 10'd640);  // 112 +  0 + 640 +  0 + 48
@@ -327,8 +334,13 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
         end
         else if(IN_EN) begin
             case (IN_RESOLUTION)
+`ifdef RATIO_1_125
                 VIDEO::RESOLUTION_B1: in_count <= (in_count != 10'd256) ? (in_count + 1'd1) : in_count;
                 VIDEO::RESOLUTION_B3: in_count <= (in_count != 10'd512) ? (in_count + 1'd1) : in_count;
+`else
+                VIDEO::RESOLUTION_B1: in_count <= (in_count != 10'd256) ? (in_count + 1'd1) : in_count;
+                VIDEO::RESOLUTION_B3: in_count <= (in_count != 10'd512) ? (in_count + 1'd1) : in_count;
+`endif
                 VIDEO::RESOLUTION_B2: in_count <= (in_count != 10'd384) ? (in_count + 1'd1) : in_count;
                 VIDEO::RESOLUTION_B4: in_count <= (in_count != 10'd768) ? (in_count + 1'd1) : in_count;
                 VIDEO::RESOLUTION_B5: in_count <= (in_count != 10'd640) ? (in_count + 1'd1) : in_count;
@@ -349,6 +361,18 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
         end
         else if(IN_EN) begin
             case (IN_RESOLUTION)
+`ifdef RATIO_1_125
+                VIDEO::RESOLUTION_B1: begin
+                    W_ADDR <= (in_count != 10'd320) ? (W_ADDR + 1'd1) : W_ADDR;
+                    W_DATA <= IN;
+                    W_EN <= (in_count != 10'd320);
+                end
+                VIDEO::RESOLUTION_B3: begin
+                    W_ADDR <= (in_count != 10'd640) ? (W_ADDR + 1'd1) : W_ADDR;
+                    W_DATA <= IN;
+                    W_EN <= (in_count != 10'd640);
+                end
+`else
                 VIDEO::RESOLUTION_B1: begin
                     W_ADDR <= (in_count != 10'd288) ? (W_ADDR + 1'd1) : W_ADDR;
                     W_DATA <= IN;
@@ -359,6 +383,7 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
                     W_DATA <= IN;
                     W_EN <= (in_count != 10'd576);
                 end
+`endif
                 VIDEO::RESOLUTION_B2: begin
                     W_ADDR <= (in_count != 10'd384) ? (W_ADDR + 1'd1) : W_ADDR;
                     W_DATA <= IN;
@@ -485,9 +510,17 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
         end
         else if(OUT_EN && out_count != 10'd720) begin
             case (IN_RESOLUTION)
+`ifdef RATIO_1_125
+                VIDEO::RESOLUTION_B1:   out_state <= (out_state == 4'h8) ? 4'h0 : (out_state + 1'd1);
+`else
                 VIDEO::RESOLUTION_B1:   out_state <= (out_state == 4'h4) ? 4'h0 : (out_state + 1'd1);
+`endif
                 VIDEO::RESOLUTION_B2:   out_state <= (out_state == 4'he) ? 4'h0 : (out_state + 1'd1);
+`ifdef RATIO_1_125
                 VIDEO::RESOLUTION_B3:   out_state <= (out_state == 4'h4) ? 4'h0 : (out_state + 1'd1);
+`else
+                VIDEO::RESOLUTION_B3:   out_state <= (out_state == 4'h7) ? 4'h0 : (out_state + 1'd1);
+`endif
                 VIDEO::RESOLUTION_B4:   out_state <= (out_state == 4'he) ? 4'h0 : (out_state + 1'd1);
                 VIDEO::RESOLUTION_B5:   out_state <= (out_state == 4'h8) ? 4'h0 : (out_state + 1'd1);
                 VIDEO::RESOLUTION_B6:   out_state <= (out_state == 4'h8) ? 4'h0 : (out_state + 1'd1);
@@ -531,6 +564,22 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
             case (IN_RESOLUTION)
                 default:         R_ADDR <= R_ADDR + 1'd1;
 
+`ifdef RATIO_1_125
+                VIDEO::RESOLUTION_B1:                       // 5.4MHz       (32+256+32)*9/4=720
+                    case (out_state)
+                        default: R_ADDR <= R_ADDR;          //      R_DATA_P  R_DATA_C
+                        4'h0:    R_ADDR <= R_ADDR;          // 0000         x0
+                        4'h1:    R_ADDR <= R_ADDR + 1'd1;   // 0000         x0 +
+                        4'h2:    R_ADDR <= R_ADDR;          // 0111         01
+                        4'h3:    R_ADDR <= R_ADDR + 1'd1;   // 1111         01 +
+                        4'h4:    R_ADDR <= R_ADDR;          // 1122         12
+                        4'h5:    R_ADDR <= R_ADDR + 1'd1;   // 2222         12 +
+                        4'h6:    R_ADDR <= R_ADDR;          // 2223         23
+                        4'h7:    R_ADDR <= R_ADDR;          // 3333         23
+                        4'h8:    R_ADDR <= R_ADDR + 1'd1;   // 3333         33 +
+                                                            // 4444         34
+                    endcase
+`else
                 VIDEO::RESOLUTION_B1:                       // 5.4MHz       (16+256+16)*5/2=720
                     case (out_state)
                         default: R_ADDR <= R_ADDR;          //      R_DATA_P  R_DATA_C
@@ -541,6 +590,7 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
                         4'h4:    R_ADDR <= R_ADDR + 1'd1;   // 11           01 +
                                                             // 22           12
                     endcase
+`endif
 
                 VIDEO::RESOLUTION_B2:                       // 7.2MHz       (0+384+0)*15/8=720
                     case (out_state)
@@ -563,6 +613,22 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
                                                             // 88888888     78
                     endcase
 
+`ifdef RATIO_1_125
+                VIDEO::RESOLUTION_B3:                       // 10.7MHz      (64+512+64)*9/8=720
+                    case (out_state)
+                        default: R_ADDR <= R_ADDR;          //      R_DATA_P  R_DATA_C
+                        4'h0:    R_ADDR <= R_ADDR +1'd1;    // 00000000     x0 +
+                        4'h1:    R_ADDR <= R_ADDR +1'd1;    // 01111111     01 +
+                        4'h2:    R_ADDR <= R_ADDR +1'd1;    // 11222222     12 +
+                        4'h3:    R_ADDR <= R_ADDR +1'd1;    // 22233333     23 +
+                        4'h4:    R_ADDR <= R_ADDR +1'd1;    // 33334444     34 +
+                        4'h5:    R_ADDR <= R_ADDR +1'd1;    // 44444555     45 +
+                        4'h6:    R_ADDR <= R_ADDR +1'd1;    // 55555566     56 +
+                        4'h7:    R_ADDR <= R_ADDR;          // 66666667     67
+                        4'h8:    R_ADDR <= R_ADDR +1'd1;    // 77777777     67 +
+                                                            // 88888888     78
+                    endcase
+`else
                 VIDEO::RESOLUTION_B3:                       // 10.7MHz      (32+512+32)*5/4=720
                     case (out_state)
                         default: R_ADDR <= R_ADDR;          //      R_DATA_P  R_DATA_C
@@ -573,6 +639,7 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
                         4'h4:    R_ADDR <= R_ADDR + 1'd1;   // 3333         23 +
                                                             // 4444         34
                     endcase
+`endif
 
                 VIDEO::RESOLUTION_B4:                       // 14.3MHz      (0+768+0)*15/16=720
                     case (out_state)
@@ -624,6 +691,22 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
             case (IN_RESOLUTION)
                 default:         OUT <= c1[7:0];
 
+`ifdef RATIO_1_125
+                VIDEO::RESOLUTION_B1:                       // 5.4MHz       (32+256+32)*9/4=720
+                    case (out_state_delay)
+                        default: OUT <= 0;                  //              PC
+                        4'h0:    OUT <= p0_c4[9:2];         // 0000         x0
+                        4'h1:    OUT <= p0_c4[9:2];         // 0000         x0
+                        4'h2:    OUT <= p1_c3[9:2];         // 0111         01
+                        4'h3:    OUT <= p0_c4[9:2];         // 1111         01
+                        4'h4:    OUT <= p2_c2[9:2];         // 1122         12
+                        4'h5:    OUT <= p0_c4[9:2];         // 2222         12
+                        4'h6:    OUT <= p3_c1[9:2];         // 2223         23
+                        4'h7:    OUT <= p0_c4[9:2];         // 3333         23
+                        4'h8:    OUT <= p0_c4[9:2];         // 3333         23
+                                                            // 4444         34
+                    endcase
+`else
                 VIDEO::RESOLUTION_B1:                       // 5.4MHz       (16+256+16)*5/2=720
                     case (out_state_delay)
                         default: OUT <= 0;                  //              PC
@@ -634,6 +717,7 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
                         4'h4:    OUT <= p0_c2[8:1];         // 11           01
                                                             // 22           12
                     endcase
+`endif
 
                 VIDEO::RESOLUTION_B2:                       // 7.2MHz       (0+384+0)*15/8=720
                     case (out_state_delay)
@@ -656,6 +740,22 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
                                                             // 88888888     78
                     endcase
 
+`ifdef RATIO_1_125
+                VIDEO::RESOLUTION_B3:                       // 10.7MHz      (64+512+64)*9/8=720
+                    case (out_state_delay)
+                        default: OUT <= 0;                  //              PC
+                        4'h0:    OUT <= p0_c8[10:3];        // 00000000     x0
+                        4'h1:    OUT <= p1_c7[10:3];        // 01111111     01
+                        4'h2:    OUT <= p2_c6[10:3];        // 11222222     12
+                        4'h3:    OUT <= p3_c5[10:3];        // 22233333     23
+                        4'h4:    OUT <= p4_c4[10:3];        // 33334444     34
+                        4'h5:    OUT <= p5_c3[10:3];        // 44444555     45
+                        4'h6:    OUT <= p6_c2[10:3];        // 55555566     56
+                        4'h7:    OUT <= p7_c1[10:3];        // 66666667     67
+                        4'h8:    OUT <= p0_c8[10:3];        // 77777777     67
+                                                            // 88888888     78
+                    endcase
+`else
                 VIDEO::RESOLUTION_B3:                       // 10.7MHz      (32+512+32)*5/4=720
                     case (out_state_delay)
                         default: OUT <= 0;                  //              PC
@@ -666,6 +766,7 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
                         4'h4:    OUT <= p0_c4[9:2];         // 3333         23
                                                             // 4444         34
                     endcase
+`endif
 
                 VIDEO::RESOLUTION_B4:                       // 14.3MHz      (0+768+0)*15/16=720
                     case (out_state_delay)
