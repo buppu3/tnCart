@@ -517,9 +517,9 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
 `endif
                 VIDEO::RESOLUTION_B2:   out_state <= (out_state == 4'he) ? 4'h0 : (out_state + 1'd1);
 `ifdef RATIO_1_125
-                VIDEO::RESOLUTION_B3:   out_state <= (out_state == 4'h4) ? 4'h0 : (out_state + 1'd1);
+                VIDEO::RESOLUTION_B3:   out_state <= (out_state == 4'h8) ? 4'h0 : (out_state + 1'd1);
 `else
-                VIDEO::RESOLUTION_B3:   out_state <= (out_state == 4'h7) ? 4'h0 : (out_state + 1'd1);
+                VIDEO::RESOLUTION_B3:   out_state <= (out_state == 4'h4) ? 4'h0 : (out_state + 1'd1);
 `endif
                 VIDEO::RESOLUTION_B4:   out_state <= (out_state == 4'he) ? 4'h0 : (out_state + 1'd1);
                 VIDEO::RESOLUTION_B5:   out_state <= (out_state == 4'h8) ? 4'h0 : (out_state + 1'd1);
