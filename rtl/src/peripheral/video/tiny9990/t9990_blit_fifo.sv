@@ -39,7 +39,7 @@ module T9990_BLIT_FIFO (
     input wire          CLK_EN,
 
     input wire [1:0]    CLRM,           // カラーモード
-    output wire [5:0]   FREE_COUNT,     // FIFO 空き数
+    output reg [5:0]    FREE_COUNT,     // FIFO 空き数
     output reg [5:0]    AVAIL_COUNT,    // FIFO 格納数
 
     input wire          CLEAR,          // FIFO クリアフラグ
@@ -423,7 +423,19 @@ module T9990_BLIT_FIFO (
         end
     end
 
-    assign FREE_COUNT =  (6'd32-AVAIL_COUNT);
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n || CLEAR) begin
+            FREE_COUNT <= 0;
+        end
+        else begin
+            case (CLRM)
+                T9990_REG::CLRM_2BPP:  FREE_COUNT <= 6'd32 - AVAIL_COUNT;
+                T9990_REG::CLRM_4BPP:  FREE_COUNT <= 6'd16 - AVAIL_COUNT;
+                T9990_REG::CLRM_8BPP:  FREE_COUNT <= 6'd 8 - AVAIL_COUNT;
+                T9990_REG::CLRM_16BPP: FREE_COUNT <= 6'd 4 - AVAIL_COUNT;
+            endcase
+        end
+    end
 endmodule
 
 `default_nettype wire

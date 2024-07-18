@@ -102,7 +102,7 @@ module T9990_BLIT (
         .RESET_n,
         .CLK,
         .CLK_EN,
-        .CLRM(REG.CLRM),
+        .CLRM(SRC_CLRM),
         .FREE_COUNT,
         .AVAIL_COUNT,
         .CLEAR(FIFO_CLEAR),
@@ -288,9 +288,9 @@ module T9990_BLIT (
                     DST_NY <= 1'd1;
                 end
                 else begin
-                    SRC_NX <= REG.NX;
+                    SRC_NX <= REG.NX == 0 ? 12'd2048 : REG.NX;
                     SRC_NY <= REG.NY;
-                    DST_NX <= REG.NX;
+                    DST_NX <= REG.NX == 0 ? 12'd2048 : REG.NX;
                     DST_NY <= REG.NY;
                 end
 
@@ -585,21 +585,21 @@ module T9990_BLIT (
                 if(src_is_linear) begin
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= SRC_X;
-                    state = STATE_SRC_READ_VRAM_WAIT_ACK;
+                    state <= STATE_SRC_READ_VRAM_WAIT_ACK;
                 end
 
                 // VRAM 矩形
                 else if(src_is_xy) begin
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= SRC_XY_ADDR;
-                    state = STATE_SRC_READ_VRAM_WAIT_ACK;
+                    state <= STATE_SRC_READ_VRAM_WAIT_ACK;
                 end
 
                 // P#2
                 else if(src_is_cpu) begin
                     P2_CPU_TO_VDP.REQ <= 1;
                     STATUS.TR <= 1;
-                    state = STATE_SRC_READ_CPU_WAIT_ACK;
+                    state <= STATE_SRC_READ_CPU_WAIT_ACK;
                 end
 
                 // ROM
@@ -841,7 +841,7 @@ module T9990_BLIT (
                     ENQUEUE_DATA <= {8'b0, P2_CPU_TO_VDP.DATA, 16'b0};
                     P2_CPU_TO_VDP.REQ <= 1;
                     STATUS.TR <= 1;
-                    state = STATE_SRC_READ_CPU_H_WAIT_ACK;
+                    state <= STATE_SRC_READ_CPU_H_WAIT_ACK;
                 end
                 else begin
                     ENQUEUE_DATA <= {P2_CPU_TO_VDP.DATA, 24'b0};
@@ -973,8 +973,8 @@ module T9990_BLIT (
 
                 // 次の行の準備
                 SRC_X <= REG.SX;
-                SRC_Y = REG.DIY ? (SRC_Y - 1'd1) : (SRC_Y + 1'd1);
-                SRC_NX <= REG.NX;
+                SRC_Y <= REG.DIY ? (SRC_Y - 1'd1) : (SRC_Y + 1'd1);
+                SRC_NX <= REG.NX == 0 ? 12'd2048 : REG.NX;
                 SRC_NY <= SRC_NY - 1'd1;
             end
             else begin
@@ -999,7 +999,7 @@ module T9990_BLIT (
 
             if(AVAIL_COUNT < DST_IN_COUNT) begin
                 // 出力のためのデータが足りないので FIFO 入力を繰り返す
-                state <= STATE_SRC_IN;
+                state <= STATE_SETUP2;//state <= STATE_SRC_IN;
             end
             else begin
                 // FIFO から取り出し
@@ -1020,12 +1020,12 @@ module T9990_BLIT (
                 if(dst_is_linear) begin
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= DST_X;
-                    state = STATE_DST_READ_VRAM_WAIT_ACK;
+                    state <= STATE_DST_READ_VRAM_WAIT_ACK;
                 end
                 else begin
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= DST_XY_ADDR;
-                    state = STATE_DST_READ_VRAM_WAIT_ACK;
+                    state <= STATE_DST_READ_VRAM_WAIT_ACK;
                 end
             end
             else begin
@@ -1300,7 +1300,7 @@ module T9990_BLIT (
             if(!CMD_MEM.BUSY && !P2_VDP_TO_CPU.ACK) begin
                 if(dst_is_linear) begin
                     // 隣に移動
-                    DST_X = DST_X + DST_POS_COUNT;
+                    DST_X <= DST_X + DST_POS_COUNT;
                     DST_NX <= DST_NX - DST_POS_COUNT;
 
                     // 終わり?
@@ -1315,8 +1315,8 @@ module T9990_BLIT (
                 else if(DST_NX <= DST_POS_COUNT) begin
                     // 次の行の準備
                     DST_X <= REG.DX;
-                    DST_Y = REG.DIY ? (DST_Y - 1'd1) : (DST_Y + 1'd1);
-                    DST_NX <= REG.NX;
+                    DST_Y <= REG.DIY ? (DST_Y - 1'd1) : (DST_Y + 1'd1);
+                    DST_NX <= REG.NX == 0 ? 12'd2048 : REG.NX;
                     DST_NY <= DST_NY - 1'd1;
 
                     // 終わり?
@@ -1331,7 +1331,7 @@ module T9990_BLIT (
                 else begin
                     // 隣に移動
                     DST_NX <= DST_NX - DST_POS_COUNT;
-                    DST_X = DST_DIX ? (DST_X - DST_POS_COUNT) : (DST_X + DST_POS_COUNT);
+                    DST_X <= DST_DIX ? (DST_X - DST_POS_COUNT) : (DST_X + DST_POS_COUNT);
                     state <= STATE_SRC_IN;
                 end
             end
