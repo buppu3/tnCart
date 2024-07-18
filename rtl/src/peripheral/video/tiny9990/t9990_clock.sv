@@ -54,7 +54,6 @@ module T9990_CLOCK #(
     output wire             CLK_MASTER_EN,      // マスタークロック
     output wire             MEM_REQ,            // メモリアクセスタイミング
     output reg              DCLK_EN,            // ドットクロック
-    output reg              TG_EN,
     output reg [2:0]        RESO
 );
     // mode DCLK MCS DCKM HSCN C25M
@@ -112,16 +111,13 @@ module T9990_CLOCK #(
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n) begin
             state <= STATE_SYNCING;
-            TG_EN <= 0;
         end
         else if(change_conf) begin
             state <= STATE_SYNCING;
-            TG_EN <= 0;
         end
         else if(state == STATE_SYNCING) begin
             if(MEM_REQ) begin
                 state <= STATE_COMPLETE;
-                TG_EN <= 1;
             end
         end
     end

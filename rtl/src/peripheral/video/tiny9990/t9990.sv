@@ -119,7 +119,6 @@ module T9990 (
      ***************************************************************/
     logic CLK_MASTER_EN;
     logic MEM_REQ;
-    logic TG_EN;
     T9990_CLOCK #(
         .SYNC_MEMORY(SYNC_MEMORY)
     ) u_clk (
@@ -137,7 +136,6 @@ module T9990 (
         .CLK_MASTER_EN,
         .MEM_REQ,
         .DCLK_EN,
-        .TG_EN,
         .RESO
     );
 
@@ -251,7 +249,6 @@ module T9990 (
         .CLK,
         .CLK_MASTER_EN,
         .DCLK_EN,
-        .TG_EN,
 
         .MEM_REQ,
 
