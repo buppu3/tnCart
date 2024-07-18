@@ -71,6 +71,7 @@ module T9990_TIMING (
     input wire              CLK,
     input wire              CLK_MASTER_EN,
     input wire              DCLK_EN,
+    input wire              TG_EN,
 
     T9990_REGISTER_IF.VDP   REG,
     T9990_STATUS_IF.TIM     STATUS,
@@ -307,12 +308,14 @@ module T9990_TIMING (
     logic h_rst;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)     h_rst <= 0;
+        else if(!TG_EN)  h_rst <= 0;
         else if(DCLK_EN) h_rst <= (h_cnt == H_RESET);
     end
 
     logic [9:0] h_cnt;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)              h_cnt <= 0;
+        else if(!TG_EN)           h_cnt <= 0;
         else if(DCLK_EN && h_rst) h_cnt <= 0;
         else if(DCLK_EN         ) h_cnt <= h_cnt + 1'd1;
     end
@@ -325,12 +328,14 @@ module T9990_TIMING (
     logic v_rst;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)     v_rst <= 0;
+        else if(!TG_EN)  v_rst <= 0;
         else if(DCLK_EN) v_rst <= (h_cnt == H_RESET) && (v_cnt == V_TOTAL);
     end
 
     logic [8:0] v_cnt;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)              v_cnt <= 0;
+        else if(!TG_EN)           v_cnt <= 0;
         else if(DCLK_EN && v_rst) v_cnt <= 0;
         else if(DCLK_EN && v_inc) v_cnt <= v_cnt + 1'd1;
     end
