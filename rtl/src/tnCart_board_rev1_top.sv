@@ -343,6 +343,9 @@ module TNCART_BOARD_REV1_TOP (
         assign UmaRam[1].DOUT = 0;
         assign UmaRam[1].ACK_n = 1;
         assign UmaRam[1].TIMING = 0;
+        assign Uma.CLK14M_EN = 0;
+        assign Uma.CLK21M_EN = 0;
+        assign Uma.CLK25M_EN = 0;
     end
 
     /***************************************************************
@@ -461,6 +464,7 @@ module TNCART_BOARD_REV1_TOP (
         .Bus,
         .Ram(UmaRam[0]),
         .VideoRam(UmaRam[1]),
+        .UmaClock(Uma),
         .TF,
         .LedNextor,
         .Flash,

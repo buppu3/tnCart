@@ -11,7 +11,7 @@ create_generated_clock -name CLK_TMDS_P -source [get_nets {CLK_TMDS_S}] -master_
 create_generated_clock -name CLK_BASE -source [get_nets {CLK_27M}] -master_clock CLK_27M -divide_by 1 -multiply_by 4 -add [get_nets {CLK_BASE}]
 
 // 21.6MHz(CLK_21M)
-create_generated_clock -name CLK_21M -source [get_nets {CLK_BASE}] -divide_by 5 -multiply_by 1 -add [get_nets {Bus.CLK_21M}]
+//create_generated_clock -name CLK_21M -source [get_nets {CLK_BASE}] -divide_by 5 -multiply_by 1 -add [get_nets {Bus.CLK_21M}]
 
 // 10.8MHz(DCLK)
 create_generated_clock -name DCLK -source [get_nets {CLK_BASE}] -master_clock CLK_BASE -divide_by 10 -multiply_by 1 -add [get_nets {Video.DCLK}]

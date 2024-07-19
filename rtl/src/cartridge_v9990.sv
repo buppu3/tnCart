@@ -44,6 +44,7 @@ module CARTRIDGE_V9990 #(
     input   wire            CLK,
     BUS_IF.CARTRIDGE        Bus,
     RAM_IF.HOST             Ram,
+    UMA_IF.CLK              UmaClock,
     VIDEO_IF.OUT            Video
 );
     /***************************************************************
@@ -80,37 +81,10 @@ module CARTRIDGE_V9990 #(
     logic [7:0] CD_IN;
     always_ff @(posedge CLK) begin
         reset <= Bus.RESET_n && RESET_n;
-        CLK_21M_EN <= !prev_clk_21m && Bus.CLK_21M;
-        CLK_14M_EN <= !prev_clk_14m && Bus.CLK_14M;
-        CLK_25M_EN <= !prev_clk_21m && Bus.CLK_21M;
         CSR_n <= Bus.RD_n || cs_n;
         CSW_n <= Bus.WR_n || cs_n;
         MODE <= Bus.ADDR[3:0];
         CD_IN <= Bus.DIN;
-    end
-
-    /***************************************************************
-     * CLK
-     ***************************************************************/
-    logic prev_clk_21m;
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n) prev_clk_21m <= 0;
-        else         prev_clk_21m <= Bus.CLK_21M;
-    end
-
-    logic prev_clk_14m;
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n) prev_clk_14m <= 0;
-        else         prev_clk_14m <= Bus.CLK_14M;
-    end
-
-    logic CLK_21M_EN;
-    logic CLK_14M_EN;
-    logic CLK_25M_EN;
-    always_ff @(posedge CLK) begin
-        CLK_21M_EN <= !prev_clk_21m && Bus.CLK_21M;
-        CLK_14M_EN <= !prev_clk_14m && Bus.CLK_14M;
-        CLK_25M_EN <= !prev_clk_21m && Bus.CLK_21M;
     end
 
     /***************************************************************
@@ -127,9 +101,9 @@ module CARTRIDGE_V9990 #(
     T9990 u_vdp (
         .RESET_n(RESET_n && Bus.RESET_n),
         .CLK,
-        .CLK_21M_EN,
-        .CLK_14M_EN,
-        .CLK_25M_EN,
+        .CLK_21M_EN(UmaClock.CLK21M_EN),
+        .CLK_14M_EN(UmaClock.CLK14M_EN),
+        .CLK_25M_EN(UmaClock.CLK25M_EN),
 
         .CSR_n,
         .CSW_n,

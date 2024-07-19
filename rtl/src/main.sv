@@ -39,6 +39,7 @@ module MAIN (
     BUS_IF.CARTRIDGE        Bus,                // BUS I/F
     RAM_IF.HOST             Ram,                // RAM I/F
     RAM_IF.HOST             VideoRam,           // VRAM I/F
+    UMA_IF.CLK              UmaClock,           // UMA クロック
     SPI_IF.HOST             TF,                 // TF カード I/F
     LED_IF.HOST             LedNextor,          // Nextor 用 LED
     FLASH_IF.HOST           Flash,              // フラッシュメモリ
@@ -241,6 +242,7 @@ module MAIN (
             .CLK,
             .Bus            (ExpBus[BUS_V9990]),
             .Ram            (VideoRam),
+            .UmaClock,
             .Video          (Video)
         );
     end

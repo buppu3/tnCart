@@ -36,9 +36,7 @@
 /***************************************************************
  * クロック生成
  ***************************************************************/
-module T9990_CLOCK #(
-    parameter           SYNC_MEMORY = 1     // ドットクロックを RAM_REQ に同期する
-) (
+module T9990_CLOCK (
     // クロック入力
     input wire              RESET_n,            // リセット
     input wire              CLK,                // 動作クロック
@@ -54,6 +52,7 @@ module T9990_CLOCK #(
     output wire             CLK_MASTER_EN,      // マスタークロック
     output wire             MEM_REQ,            // メモリアクセスタイミング
     output reg              DCLK_EN,            // ドットクロック
+    output reg              TG_EN,              // タイミングジェネレータ動作許可
     output reg [2:0]        RESO
 );
     // mode DCLK MCS DCKM HSCN C25M
@@ -67,27 +66,7 @@ module T9990_CLOCK #(
     /***************************************************************
      * メモリアクセスタイミングの生成
      ***************************************************************/
-    if(SYNC_MEMORY) begin
-        assign MEM_REQ = RAM_REQ;
-    end
-    else begin
-        assign MEM_REQ = req;
-
-        // 21MHz counter
-        logic [1:0] mem_cnt;
-        always_ff @(posedge CLK or negedge RESET_n) begin
-            if(!RESET_n)        mem_cnt <= 0;
-            else if(CLK_21M_EN) mem_cnt <= mem_cnt + 1'd1;
-        end
-
-        // counter == 0 の時にメモリアクセスする
-        logic req;
-        always_ff @(posedge CLK or negedge RESET_n) begin
-            if(!RESET_n)          req <= 0;
-            else if(mem_cnt == 0) req <= 1;
-            else                  req <= 0;
-        end
-    end
+    assign MEM_REQ = RAM_REQ;
 
     /***************************************************************
      * 設定の変更を監視
@@ -101,38 +80,29 @@ module T9990_CLOCK #(
     wire change_conf = prev_conf != CONF;
 
     /***************************************************************
-     * ドットクロックとメモリを同期
+     * マスタークロック選択
+     ***************************************************************/
+    assign CLK_MASTER_EN = (REG.C25M == T9990_REG::C25M_25MHZ ? CLK_25M_EN : (REG.MCS == T9990_REG::MCS_14MHZ ? CLK_14M_EN : CLK_21M_EN));
+
+    /***************************************************************
+     * マスタークロックを分周
      ***************************************************************/
     enum logic [1:0] {
         STATE_SYNCING,
         STATE_COMPLETE
     } state;
 
+    // CLM_*M_EN は MEM_REQ より 2clk 早いので、2clk遅延した信号を用意する
+    logic [1:0] clk_master_delay;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n) begin
-            state <= STATE_SYNCING;
+            clk_master_delay <= 0;
         end
-        else if(change_conf) begin
-            state <= STATE_SYNCING;
-        end
-        else if(state == STATE_SYNCING) begin
-            if(MEM_REQ) begin
-                state <= STATE_COMPLETE;
-            end
+        else begin
+            clk_master_delay <= {clk_master_delay[0:0],CLK_MASTER_EN};
         end
     end
 
-    /***************************************************************
-     * マスタークロック選択
-     ***************************************************************/
-    assign CLK_MASTER_EN = (REG.C25M == T9990_REG::C25M_25MHZ ? CLK_25M_EN : (REG.MCS == T9990_REG::MCS_14MHZ ? CLK_14M_EN : CLK_21M_EN));
-    //logic clk_master_en_ff;
-    //assign CLK_MASTER_EN = clk_master_en_ff;
-    //always_ff @(posedge CLK) begin clk_master_en_ff <= (REG.C25M == T9990_REG::C25M_25MHZ ? CLK_25M_EN : (REG.MCS == T9990_REG::MCS_14MHZ ? CLK_14M_EN : CLK_21M_EN)); end
-
-    /***************************************************************
-     * マスタークロックを分周
-     ***************************************************************/
     logic [2:0] cnt;
     wire [2:0] DIV = REG.DCKM == T9990_REG::DCKM_DIV4 ? 3'd3 :
                      REG.DCKM == T9990_REG::DCKM_DIV2 ? 3'd1 :
@@ -140,27 +110,39 @@ module T9990_CLOCK #(
 
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n) begin
-            cnt <= 0;
+            cnt <= 3;
             DCLK_EN <= 0;
+            state <= STATE_SYNCING;
+            TG_EN <= 0;
         end
 
         else if(state == STATE_SYNCING || change_conf) begin
-            cnt <= DIV;
-            DCLK_EN <= 0;
+            // MASTER_CLKの2clk遅延した信号と MEM_REQ が同時にきたタイミングから分周開始
+            if(clk_master_delay[1] && MEM_REQ) begin
+                cnt <= DIV;
+                DCLK_EN <= 0;
+                TG_EN <= 1;
+                state <= STATE_COMPLETE;
+            end
+            else begin
+                cnt <= DIV;
+                DCLK_EN <= 0;
+                TG_EN <= 0;
+                state <= STATE_SYNCING;
+            end
         end
 
-        else if(!CLK_MASTER_EN) begin
-            cnt <= cnt;
-            DCLK_EN <= 0;
+        else if(CLK_MASTER_EN) begin
+            if(cnt == 0) begin
+                cnt <= DIV;
+                DCLK_EN <= 1;   // MEM_REQ より 1clk 早く　DCLK を出力
+            end
+            else begin
+                cnt <= cnt - 1'd1;
+                DCLK_EN <= 0;
+            end
         end
-
-        else if(cnt == 0) begin
-            cnt <= DIV;
-            DCLK_EN <= 1;
-        end
-
         else begin
-            cnt <= cnt - 1'd1;
             DCLK_EN <= 0;
         end
     end

@@ -71,6 +71,7 @@ module T9990_TIMING (
     input wire              CLK,
     input wire              CLK_MASTER_EN,
     input wire              DCLK_EN,
+    input wire              TG_EN,
 
     T9990_REGISTER_IF.VDP   REG,
     T9990_STATUS_IF.TIM     STATUS,
@@ -292,7 +293,6 @@ module T9990_TIMING (
     wire [9:0]  V_DISP_DIS      = REG.HSCN ? (REG.C25M ? (V480_DISP_DIS      - 1'd1) : (V400_DISP_DIS      - 1'd1)) : (REG.MCS ? (V240_DISP_DIS      - 1'd1) : (V212_DISP_DIS      - 1'd1));   // VD inactive ライン(v_incタイミング用)
     wire [9:0]  V_DISP_LI_START = REG.HSCN ? (REG.C25M ? (V480_DISP_LI_START - 1'd1) : (V400_DISP_LI_START - 1'd1)) : (REG.MCS ? (V240_DISP_LI_START - 1'd1) : (V212_DISP_LI_START - 1'd1));   // ILカウンタ開始ライン(v_inc タイミング用)
 
-    wire [9:0]  H_BG_INIT       = REG.HSCN ? (REG.C25M ? (H648_BG_ACTIVE     - 2'd3) : (H640_BG_ACTIVE     - 2'd3)) : REG.MCS ? (REG.DCKM[0] ? (H768_BG_ACTIVE     - 2'd3) : (H384_BG_ACTIVE     - 2'd3)) : (REG.DCKM[0] ? (H512_BG_ACTIVE     - 2'd3) : (H256_BG_ACTIVE     - 2'd3));
     wire [9:0]  H_BG_START      = REG.HSCN ? (REG.C25M ? (H648_BG_ACTIVE     - 2'd2) : (H640_BG_ACTIVE     - 2'd2)) : REG.MCS ? (REG.DCKM[0] ? (H768_BG_ACTIVE     - 2'd2) : (H384_BG_ACTIVE     - 2'd2)) : (REG.DCKM[0] ? (H512_BG_ACTIVE     - 2'd2) : (H256_BG_ACTIVE     - 2'd2));
     wire [9:0]  H_BG_ACTIVE     = REG.HSCN ? (REG.C25M ? (H648_BG_ACTIVE     - 1'd1) : (H640_BG_ACTIVE     - 1'd1)) : REG.MCS ? (REG.DCKM[0] ? (H768_BG_ACTIVE     - 1'd1) : (H384_BG_ACTIVE     - 1'd1)) : (REG.DCKM[0] ? (H512_BG_ACTIVE     - 1'd1) : (H256_BG_ACTIVE     - 1'd1));
     wire [9:0]  H_SPR_OUT_START = REG.HSCN ? (REG.C25M ? (H648_SPR_ACTIVE    - 2'd2) : (H640_SPR_ACTIVE    - 2'd2)) : REG.MCS ? (REG.DCKM[0] ? (H768_SPR_ACTIVE    - 2'd2) : (H384_SPR_ACTIVE    - 2'd2)) : (REG.DCKM[0] ? (H512_SPR_ACTIVE    - 2'd2) : (H256_SPR_ACTIVE    - 2'd2));
@@ -307,12 +307,14 @@ module T9990_TIMING (
     logic h_rst;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)     h_rst <= 0;
+        else if(!TG_EN)  h_rst <= 0;
         else if(DCLK_EN) h_rst <= (h_cnt == H_RESET);
     end
 
     logic [9:0] h_cnt;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)              h_cnt <= 0;
+        else if(!TG_EN)           h_cnt <= 0;
         else if(DCLK_EN && h_rst) h_cnt <= 0;
         else if(DCLK_EN         ) h_cnt <= h_cnt + 1'd1;
     end
@@ -325,12 +327,14 @@ module T9990_TIMING (
     logic v_rst;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)     v_rst <= 0;
+        else if(!TG_EN)  v_rst <= 0;
         else if(DCLK_EN) v_rst <= (h_cnt == H_RESET) && (v_cnt == V_TOTAL);
     end
 
     logic [8:0] v_cnt;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)              v_cnt <= 0;
+        else if(!TG_EN)           v_cnt <= 0;
         else if(DCLK_EN && v_rst) v_cnt <= 0;
         else if(DCLK_EN && v_inc) v_cnt <= v_cnt + 1'd1;
     end
