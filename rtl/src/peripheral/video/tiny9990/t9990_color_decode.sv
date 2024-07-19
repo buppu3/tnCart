@@ -33,6 +33,8 @@
 
 `default_nettype none
 
+`define CLRDEC_USE_DPB
+
 /***************************************************************
  * 色空間を変換
  ***************************************************************/
@@ -53,7 +55,19 @@ module T9990_COLOR_DECODE (
     /***************************************************************
      * データを保存
      ***************************************************************/
+`ifdef CLRDEC_USE_DPB
+    wire [15:0] delay;
+    T9990_COLOR_DECODE_DELAY u_delay (
+        .RESET_n,
+        .CLK,
+        .DCLK_EN,
+        .ADDR(INDEX),
+        .IN,
+        .OUT(delay)
+    );
+`else
     logic [15:0] buff[0:3] /* synthesis syn_ramstyle="block_ram" */;
+    wire [15:0] delay = buff[INDEX];
 
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n) begin
@@ -66,12 +80,33 @@ module T9990_COLOR_DECODE (
             buff[INDEX] <= IN;
         end
     end
+`endif
 
     /***************************************************************
      * Y 値を保存
      ***************************************************************/
+`ifdef CLRDEC_USE_DPB
+    wire [4:0] in_y = REG.YAE ? { IN[7:4], IN[7] } : IN[7:3];
+    wire [7:0] in_y5 = { 1'b0, in_y[4:0], 2'b00 } + { 3'b000, in_y };
+    wire [4:0] out_y;
+    wire [7:0] out_y5;
+    wire [7:0] Y  = {3'b000,out_y};
+    wire [8:0] Y5 = {1'b0, out_y5};
+
+    T9990_COLOR_DECODE_Y_BUFF u_ybuff (
+        .RESET_n,
+        .CLK,
+        .DCLK_EN,
+        .ADDR(INDEX),
+        .IN(in_y),
+        .IN5(in_y5),
+        .OUT(out_y),
+        .OUT5(out_y5)
+    );
+`else
     wire [7:0] in_y = REG.YAE ? { 3'b000, IN[7:4], IN[7] } : { 3'b000, IN[7:3] };
     logic [7:0] buff_y[0:3] /* synthesis syn_ramstyle="block_ram" */;
+    wire [7:0] Y  = buff_y[INDEX];      // 0~31
 
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n) begin
@@ -89,6 +124,7 @@ module T9990_COLOR_DECODE (
      * Y*5 の計算値を保存
      ***************************************************************/
     logic [8:0] buff_y5[0:3] /* synthesis syn_ramstyle="block_ram" */;
+    wire [8:0] Y5 = buff_y5[INDEX];     // 0~155
 
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n) begin
@@ -101,6 +137,7 @@ module T9990_COLOR_DECODE (
             buff_y5[INDEX] <= { in_y[6:0], 2'b00 } + in_y;
         end
     end
+`endif
 
     /***************************************************************
      * UV/JK 値を保存
@@ -135,9 +172,6 @@ module T9990_COLOR_DECODE (
     /***************************************************************
      * YJK/YUV -> RGB 変換
      ***************************************************************/
-    wire [7:0] Y  = buff_y[INDEX];      // 0~31
-    wire [8:0] Y5 = buff_y5[INDEX];     // 0~155
-
     logic [7:0] YUV_R;  // -32~62
     logic [7:0] YUV_B;  // -32~62
     logic [8:0] YUV_G4; // -93~251
@@ -194,7 +228,7 @@ module T9990_COLOR_DECODE (
         // BD16
         //
         else if(REG.CLRM == T9990_REG::CLRM_16BPP) begin
-            if(DCLK_EN) OUT <= buff[INDEX];
+            if(DCLK_EN) OUT <= delay;
         end
 
         //
@@ -202,10 +236,10 @@ module T9990_COLOR_DECODE (
         //
         else if(REG.CLRM == T9990_REG::CLRM_8BPP) begin
             if(DCLK_EN) OUT <= {
-                                buff[INDEX][7:0] == 0 ? 1'b1 : 1'b0,
-                                buff[INDEX][7:5], buff[INDEX][7:6],
-                                buff[INDEX][4:2], buff[INDEX][4:3],
-                                buff[INDEX][1:0], buff[INDEX][1:0], buff[INDEX][1] | buff[INDEX][0]
+                                delay[7:0] == 0 ? 1'b1 : 1'b0,
+                                delay[7:5], delay[7:6],
+                                delay[4:2], delay[4:3],
+                                delay[1:0], delay[1:0], delay[1] | delay[0]
                             };
         end
 
@@ -216,6 +250,97 @@ module T9990_COLOR_DECODE (
             OUT <= OUT;
         end
     end
+endmodule
+
+module T9990_COLOR_DECODE_DELAY (
+    input wire              RESET_n,
+    input wire              CLK,
+    input wire              DCLK_EN,
+    input wire [1:0]        ADDR,
+    input wire [15:0]       IN,
+    output wire [15:0]      OUT
+);
+    wire [1:0] ADDR_R = (ADDR + 2'd3) & 2'd3;
+    wire [15:0] dummy;
+
+    DPB dpb_inst_0 (
+        .DOA(OUT),
+        .DOB(dummy),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(!RESET_n),
+        .WREA(1'b0),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(!RESET_n),
+        .WREB(DCLK_EN),
+        .BLKSELA(3'b000),
+        .BLKSELB(3'b000),
+        .ADA({8'b00000000,ADDR_R[1:0],4'b0011}),
+        .DIA(16'd0),
+        .ADB({8'b00000000,ADDR[1:0],4'b0011}),
+        .DIB(IN)
+    );
+
+    defparam dpb_inst_0.READ_MODE0 = 1'b0;
+    defparam dpb_inst_0.READ_MODE1 = 1'b0;
+    defparam dpb_inst_0.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_0.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_0.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_0.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_0.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_0.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_0.RESET_MODE = "SYNC";
+
+endmodule
+
+module T9990_COLOR_DECODE_Y_BUFF (
+    input wire              RESET_n,
+    input wire              CLK,
+    input wire              DCLK_EN,
+    input wire [1:0]        ADDR,
+    input wire [4:0]        IN,
+    input wire [7:0]        IN5,
+    output wire [4:0]       OUT,
+    output wire [7:0]       OUT5
+);
+    wire [1:0] ADDR_R = (ADDR + 2'd3) & 2'd3;
+    wire [15:0] dummy;
+    wire [2:0] dummy2;
+
+    DPB dpb_inst_0 (
+        .DOA({dummy2,OUT5,OUT}),
+        .DOB(dummy),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(!RESET_n),
+        .WREA(1'b0),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(!RESET_n),
+        .WREB(DCLK_EN),
+        .BLKSELA(3'b000),
+        .BLKSELB(3'b000),
+        .ADA({8'b00000000,ADDR_R[1:0],4'b0011}),
+        .DIA(16'd0),
+        .ADB({8'b00000000,ADDR[1:0],4'b0011}),
+        .DIB({3'b000,IN5,IN})
+    );
+
+    defparam dpb_inst_0.READ_MODE0 = 1'b0;
+    defparam dpb_inst_0.READ_MODE1 = 1'b0;
+    defparam dpb_inst_0.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_0.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_0.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_0.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_0.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_0.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_0.RESET_MODE = "SYNC";
+
 endmodule
 
 `default_nettype wire

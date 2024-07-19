@@ -33,6 +33,9 @@
 
 `default_nettype none
 
+`define SPR_PAT_USE_DPB
+//`define SPR_ATR_USE_DPB
+
 /***************************************************************
  * スプライト/カーソル生成
  ***************************************************************/
@@ -127,11 +130,139 @@ module T9990_SPRITE #(
     wire [8:0] cur_offset_y = VCNT - cur_signed_y;
     wire cur_y_flag = (cur_offset_y[8:5] == 0);
 
-    logic [31:0] atr_buff[0:MAX_SPR_VIEW_COUNT-1] /* synthesis syn_ramstyle="block_ram" */;
+`ifdef SPR_PAT_USE_DPB
+    reg [3:0]   spr_pat_r_addr;
+    wire [63:0] spr_pat_r_data;
+    reg [3:0]   spr_pat_w_addr;
+    reg         spr_pat_w_en;
+    reg [63:0]  spr_pat_w_data;
+    T9990_SPRITE_PATTERN u_pat (
+        .RESET_n,
+        .CLK,
+        .W_ADDR(spr_pat_w_addr),
+        .W_DATA(spr_pat_w_data),
+        .W_EN(spr_pat_w_en),
+        .R_ADDR(spr_pat_r_addr),
+        .R_DATA(spr_pat_r_data)
+    );
+
+    // パターン読み出し
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n) begin
+            spr_pat_r_addr <= 0;
+        end
+        else if(FETCH_START) begin
+            spr_pat_r_addr <= 0;
+        end
+        else if(!copy_count[4] || state == STATE_OUT_INIT) begin
+            spr_pat_r_addr <= spr_pat_r_addr + 1'd1;
+        end
+        else begin
+            spr_pat_r_addr <= 0;
+        end
+    end
+
+    // パターン書き込み
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n) begin
+            spr_pat_w_en <= 0;
+        end
+        else if(MEM.ACK && state == STATE_SPR_PAT_L) begin
+            spr_pat_w_data[63:32] <= { MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24]};
+            spr_pat_w_en <= 0;
+        end
+        else if(MEM.ACK && state == STATE_SPR_PAT_R) begin
+            spr_pat_w_data[31:0] <= { MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24]};
+            spr_pat_w_addr <= fetch_index[3:0];
+            spr_pat_w_en <= 1;
+        end
+        else if(MEM.ACK && state == STATE_CUR_PAT) begin
+            spr_pat_w_data <= { MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 32'h00000000 };
+            spr_pat_w_en <= 1;
+            spr_pat_w_addr <= fetch_index[3:0];
+        end
+        else begin
+            spr_pat_w_en <= 0;
+        end
+    end
+`else
     logic [63:0] pat_buff[0:MAX_SPR_VIEW_COUNT-1] /* synthesis syn_ramstyle="block_ram" */;
+`endif
+
+`ifdef SPR_ATR_USE_DPB
+    reg [3:0]   spr_atr_r_addr;
+    wire [31:0] spr_atr_r_data;
+    reg [3:0]   spr_atr_w_addr;
+    reg         spr_atr_w_en;
+    reg [31:0]  spr_atr_w_data;
+    T9990_SPRITE_ATTRIBUTE u_atr (
+        .RESET_n,
+        .CLK,
+        .W_ADDR(spr_atr_w_addr),
+        .W_DATA(spr_atr_w_data),
+        .W_EN(spr_atr_w_en),
+        .R_ADDR(spr_atr_r_addr),
+        .R_DATA(spr_atr_r_data)
+    );
+
+    // アトリビュート読み出し
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n) begin
+            spr_atr_r_addr <= 0;
+        end
+        else if(state == STATE_OUT_INIT) begin
+            spr_atr_r_addr <= 4'd1;
+        end
+        else if(state == STATE_SPR_PAT_START) begin
+            spr_atr_r_addr <= 4'd1;
+        end
+        else if(state == STATE_CUR_PAT_START) begin
+            spr_atr_r_addr <= 4'd1;
+        end
+        else if(MEM.ACK && (state == STATE_SPR_PAT_R || state == STATE_CUR_PAT)) begin
+            if(fetch_remain == 0) spr_atr_r_addr <= 0;
+            else                  spr_atr_r_addr <= spr_atr_r_addr + 1'd1;
+        end
+        else if(state == STATE_IDLE && spr_atr_r_addr != 0) begin
+            spr_atr_r_addr <= spr_atr_r_addr + 1'd1;
+        end
+    end
+
+    // アトリビュート書き込み
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n) begin
+            spr_atr_w_en <= 0;
+        end
+        else if(fetch_attr) begin
+            spr_atr_w_addr <= fetch_visible_count[3:0];
+            spr_atr_w_data <= MEM.DOUT;
+            spr_atr_w_en <= 1;
+        end
+        else if(MEM.ACK && state == STATE_CUR_ATR_L) begin
+            spr_atr_w_data[15:0] <= {MEM.DOUT[7:0], MEM.DOUT[23:16]};
+            spr_atr_w_en <= 0;
+        end
+        else if(MEM.ACK && state == STATE_CUR_ATR_L) begin
+            spr_atr_w_data[15:0] <= {MEM.DOUT[7:0], MEM.DOUT[23:16]};
+            spr_atr_w_en <= 0;
+        end
+        else if(MEM.ACK && state == STATE_CUR_ATR_H) begin
+            spr_atr_w_addr <= fetch_index[3:0];
+            spr_atr_w_data[31:16] <= cur_y_flag ? {MEM.DOUT[7:0], MEM.DOUT[23:16]} : 16'b0001_0000_0000_0000;
+            spr_atr_w_en <= 1;
+        end
+        else begin
+            spr_atr_w_en <= 0;
+        end
+    end
+
+`else
+    logic [31:0] atr_buff[0:MAX_SPR_VIEW_COUNT-1] /* synthesis syn_ramstyle="block_ram" */;
+    logic [6:0] fetch_index_next;
+`endif
+
     logic [6:0] fetch_remain;
     logic [6:0] fetch_index;
-    logic [6:0] fetch_index_next;
     logic [4:0] fetch_visible_count;
     logic [7:0] fetch_pat_num;
     logic [4:0] fetch_pat_line;
@@ -164,11 +295,16 @@ module T9990_SPRITE #(
         // スプライトパターン取得準備
         else if(state == STATE_SPR_PAT_START) begin
             // 最初のパターン
+`ifdef SPR_ATR_USE_DPB
+            fetch_pat_num <= spr_atr_r_data[15:8];
+            fetch_pat_line <= spr_atr_r_data[4:0];
+`else
             fetch_pat_num <= atr_buff[0][15:8];
             fetch_pat_line <= VCNT[4:0] - atr_buff[0][4:0];
+            fetch_index_next <= 1'd1;
+`endif
 
             fetch_index <= 0;
-            fetch_index_next <= 1'd1;
             fetch_remain <= MAX_SPR_VIEW_COUNT - 1'd1;
             state <= STATE_SPR_PAT_L;
         end
@@ -176,10 +312,14 @@ module T9990_SPRITE #(
         // カーソルパターン取得準備
         else if(state == STATE_CUR_PAT_START) begin
             // 最初のパターン
+`ifdef SPR_ATR_USE_DPB
+            fetch_pat_line <= VCNT[4:0] - spr_atr_r_data[4:0];
+`else
             fetch_pat_line <= VCNT[4:0] - atr_buff[0][4:0];
+            fetch_index_next <= 1'd1;
+`endif
 
             fetch_index <= 0;
-            fetch_index_next <= 1'd1;
             fetch_remain <= MAX_CUR_PLANE_COUNT - 1'd1;
             state <= STATE_CUR_PAT;
         end
@@ -187,7 +327,9 @@ module T9990_SPRITE #(
         // アトリビュートを取り込む
         else if(fetch_attr) begin
             fetch_attr <= 0;
+`ifndef SPR_ATR_USE_DPB
             atr_buff[fetch_visible_count] <= MEM.DOUT;
+`endif
             fetch_visible_count <= fetch_visible_count + 1'd1;
         end
 
@@ -213,20 +355,29 @@ module T9990_SPRITE #(
                 // パターン(左半分)
                 STATE_SPR_PAT_L: begin
                     // パターンをバッファへ格納
+`ifndef SPR_PAT_USE_DPB
                     pat_buff[fetch_index][63:32] <= { MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24]};
+`endif
                     state <= STATE_SPR_PAT_R;
                 end
 
                 // パターン(右半分)
                 STATE_SPR_PAT_R: begin
                     // パターンをバッファへ格納
+`ifndef SPR_PAT_USE_DPB
                     pat_buff[fetch_index][31:0] <= { MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24]};
+`endif
                     fetch_index <= fetch_index + 1'd1;
 
                     // 次のパターン番号を取得
+`ifdef SPR_ATR_USE_DPB
+                    fetch_pat_num <= spr_atr_r_data[15:8];
+                    fetch_pat_line <= VCNT[4:0] - spr_atr_r_data[4:0];
+`else
                     fetch_pat_num <= atr_buff[fetch_index_next][15:8];
                     fetch_pat_line <= VCNT[4:0] - atr_buff[fetch_index_next][4:0];
                     fetch_index_next <= fetch_index_next + 1'd1;
+`endif
 
                     // 16枚をカウント
                     fetch_remain <= fetch_remain - 1'd1;
@@ -239,14 +390,18 @@ module T9990_SPRITE #(
                  ***************************************************************/
                 // アトリビュート(下位)
                 STATE_CUR_ATR_L: begin
+`ifndef SPR_ATR_USE_DPB
                     atr_buff[fetch_index][15:0] <= {MEM.DOUT[7:0], MEM.DOUT[23:16]};
+`endif
                     fetch_visible_count <= fetch_visible_count + 1'd1;
                     state <= STATE_CUR_ATR_H;
                 end
 
                 // アトリビュート(上位)
                 STATE_CUR_ATR_H: begin
+`ifndef SPR_ATR_USE_DPB
                     atr_buff[fetch_index][31:16] <= cur_y_flag ? {MEM.DOUT[7:0], MEM.DOUT[23:16]} : 16'b0001_0000_0000_0000;
+`endif
                     fetch_index <= fetch_index + 1'd1;
 
                     // 2枚をカウント
@@ -258,12 +413,18 @@ module T9990_SPRITE #(
                 // パターン
                 STATE_CUR_PAT: begin
                     // パターンをバッファへ格納
+`ifndef SPR_PAT_USE_DPB
                     pat_buff[fetch_index] <= { MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 32'h00000000 };
+`endif
                     fetch_index <= fetch_index + 1'd1;
 
                     // 次のパターン Y オフセットを取得
+`ifdef SPR_ATR_USE_DPB
+                    fetch_pat_line <= VCNT[4:0] - spr_atr_r_data[4:0];
+`else
                     fetch_pat_line <= VCNT[4:0] - atr_buff[fetch_index_next][4:0];
                     fetch_index_next <= fetch_index_next + 1'd1;
+`endif
 
                     // 2枚をカウント
                     fetch_remain <= fetch_remain - 1'd1;
@@ -318,10 +479,20 @@ module T9990_SPRITE #(
                         view_sc[v_num] <= 0;
                     end
                     else begin
+`ifdef SPR_PAT_USE_DPB
+                        view_pat[v_num] <= spr_pat_r_data;
+`else
                         view_pat[v_num] <= pat_buff[v_num];
+`endif
+`ifdef SPR_ATR_USE_DPB
+                        view_x[v_num] <= {spr_atr_r_data[25:24], spr_atr_r_data[23:16]} + (IS_CUR ? 6'd32 : 5'd16);
+                        view_pri[v_num] <= spr_atr_r_data[29:28];
+                        view_sc[v_num] <= spr_atr_r_data[31:30];
+`else
                         view_x[v_num] <= {atr_buff[v_num][25:24],atr_buff[v_num][23:16]} + (IS_CUR ? 6'd32 : 5'd16);
                         view_pri[v_num] <= atr_buff[v_num][29:28];
                         view_sc[v_num] <= atr_buff[v_num][31:30];
+`endif
                     end
                 end
 
@@ -532,6 +703,226 @@ module T9990_SPRITE #(
 `endif
         end
     end
+
+endmodule
+
+module T9990_SPRITE_ATTRIBUTE (
+    input wire          RESET_n,
+    input wire          CLK,
+
+    input wire [3:0]    W_ADDR,
+    input wire [31:0]   W_DATA,
+    input wire          W_EN,
+
+    input wire [3:0]    R_ADDR,
+    output wire [31:0]  R_DATA
+);
+    wire [15:0] dummy_0;
+    wire [15:0] dummy_1;
+
+    DPB dpb_inst_0 (
+        .DOA(R_DATA[15:0]),
+        .DOB(dummy_0),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(!RESET_n),
+        .WREA(1'b0),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(!RESET_n),
+        .WREB(W_EN),
+        .BLKSELA(3'b000),
+        .BLKSELB(3'b000),
+        .ADA({6'b000000,R_ADDR[3:0],4'b0011}),
+        .DIA(16'd0),
+        .ADB({6'b000000,W_ADDR[3:0],4'b0011}),
+        .DIB(W_DATA[15:0])
+    );
+
+    defparam dpb_inst_0.READ_MODE0 = 1'b0;
+    defparam dpb_inst_0.READ_MODE1 = 1'b0;
+    defparam dpb_inst_0.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_0.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_0.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_0.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_0.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_0.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_0.RESET_MODE = "SYNC";
+
+    DPB dpb_inst_1 (
+        .DOA(R_DATA[31:16]),
+        .DOB(dummy_1),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(!RESET_n),
+        .WREA(1'b0),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(!RESET_n),
+        .WREB(W_EN),
+        .BLKSELA(3'b000),
+        .BLKSELB(3'b000),
+        .ADA({6'b000000,R_ADDR[3:0],4'b0011}),
+        .DIA(16'd0),
+        .ADB({6'b000000,W_ADDR[3:0],4'b0011}),
+        .DIB(W_DATA[31:16])
+    );
+
+    defparam dpb_inst_1.READ_MODE0 = 1'b0;
+    defparam dpb_inst_1.READ_MODE1 = 1'b0;
+    defparam dpb_inst_1.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_1.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_1.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_1.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_1.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_1.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_1.RESET_MODE = "SYNC";
+
+endmodule
+
+module T9990_SPRITE_PATTERN (
+    input wire          RESET_n,
+    input wire          CLK,
+
+    input wire [3:0]    W_ADDR,
+    input wire [63:0]   W_DATA,
+    input wire          W_EN,
+
+    input wire [3:0]    R_ADDR,
+    output wire [63:0]  R_DATA
+);
+    wire [15:0] dummy_0;
+    wire [15:0] dummy_1;
+    wire [15:0] dummy_2;
+    wire [15:0] dummy_3;
+
+    DPB dpb_inst_0 (
+        .DOA(R_DATA[15:0]),
+        .DOB(dummy_0),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(!RESET_n),
+        .WREA(1'b0),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(!RESET_n),
+        .WREB(W_EN),
+        .BLKSELA(3'b000),
+        .BLKSELB(3'b000),
+        .ADA({6'b000000,R_ADDR[3:0],4'b0011}),
+        .DIA(16'd0),
+        .ADB({6'b000000,W_ADDR[3:0],4'b0011}),
+        .DIB(W_DATA[15:0])
+    );
+
+    defparam dpb_inst_0.READ_MODE0 = 1'b0;
+    defparam dpb_inst_0.READ_MODE1 = 1'b0;
+    defparam dpb_inst_0.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_0.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_0.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_0.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_0.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_0.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_0.RESET_MODE = "SYNC";
+
+    DPB dpb_inst_1 (
+        .DOA(R_DATA[31:16]),
+        .DOB(dummy_1),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(!RESET_n),
+        .WREA(1'b0),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(!RESET_n),
+        .WREB(W_EN),
+        .BLKSELA(3'b000),
+        .BLKSELB(3'b000),
+        .ADA({6'b000000,R_ADDR[3:0],4'b0011}),
+        .DIA(16'd0),
+        .ADB({6'b000000,W_ADDR[3:0],4'b0011}),
+        .DIB(W_DATA[31:16])
+    );
+
+    defparam dpb_inst_1.READ_MODE0 = 1'b0;
+    defparam dpb_inst_1.READ_MODE1 = 1'b0;
+    defparam dpb_inst_1.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_1.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_1.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_1.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_1.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_1.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_1.RESET_MODE = "SYNC";
+
+    DPB dpb_inst_2 (
+        .DOA(R_DATA[47:32]),
+        .DOB(dummy_2),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(!RESET_n),
+        .WREA(1'b0),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(!RESET_n),
+        .WREB(W_EN),
+        .BLKSELA(3'b000),
+        .BLKSELB(3'b000),
+        .ADA({6'b000000,R_ADDR[3:0],4'b0011}),
+        .DIA(16'd0),
+        .ADB({6'b000000,W_ADDR[3:0],4'b0011}),
+        .DIB(W_DATA[47:32])
+    );
+
+    defparam dpb_inst_2.READ_MODE0 = 1'b0;
+    defparam dpb_inst_2.READ_MODE1 = 1'b0;
+    defparam dpb_inst_2.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_2.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_2.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_2.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_2.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_2.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_2.RESET_MODE = "SYNC";
+
+    DPB dpb_inst_3 (
+        .DOA(R_DATA[63:48]),
+        .DOB(dummy_3),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(!RESET_n),
+        .WREA(1'b0),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(!RESET_n),
+        .WREB(W_EN),
+        .BLKSELA(3'b000),
+        .BLKSELB(3'b000),
+        .ADA({6'b000000,R_ADDR[3:0],4'b0011}),
+        .DIA(16'd0),
+        .ADB({6'b000000,W_ADDR[3:0],4'b0011}),
+        .DIB(W_DATA[63:48])
+    );
+
+    defparam dpb_inst_3.READ_MODE0 = 1'b0;
+    defparam dpb_inst_3.READ_MODE1 = 1'b0;
+    defparam dpb_inst_3.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_3.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_3.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_3.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_3.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_3.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_3.RESET_MODE = "SYNC";
 
 endmodule
 

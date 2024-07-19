@@ -33,6 +33,7 @@
 
 `default_nettype none
 
+`define UPSCAN_USE_DPB
 `define RATIO_1_125
 
 /***********************************************************************
@@ -824,8 +825,7 @@ module VIDEO_UPSCAN_BUFFER #(
     output reg [7:0]    R_DATA
 );
 
-`define USE_DPB
-`ifdef USE_DPB
+`ifdef UPSCAN_USE_DPB
     wire [7:0] dummy_a;
     wire [15:0] dummy_b;
 
