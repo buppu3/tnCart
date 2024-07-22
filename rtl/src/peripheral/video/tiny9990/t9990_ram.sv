@@ -66,13 +66,14 @@ interface T9990_CMD_MEM_IF;
     logic [31:0]    DOUT;
     logic           BUSY;
     logic           REQ;
+    logic [1:0]     DIN_SIZE;
     //logic           ACK;
     modport VDP (
-                    output  OE_n, WE_n, ADDR, DIN,
+                    output  OE_n, WE_n, ADDR, DIN, DIN_SIZE,
                     input   DOUT, BUSY, REQ//, ACK
                 );
     modport RAM (
-                    input   OE_n, WE_n, ADDR, DIN,
+                    input   OE_n, WE_n, ADDR, DIN, DIN_SIZE,
                     output  DOUT, BUSY, REQ//, ACK
                 );
 endinterface
@@ -176,7 +177,7 @@ module T9990_URB_RAM_VC (
             VC_MEM.WE_n <= 1;
             VC_MEM.ADDR <= 0;
             VC_MEM.DIN  <= 0;
-            VC_MEM.DIN_SIZE <= 2'h0;
+            VC_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
 
             CPU_MEM.BUSY <= 0;
             CMD_MEM.BUSY <= 0;
@@ -200,7 +201,7 @@ module T9990_URB_RAM_VC (
                 VC_MEM.WE_n <= CPU_MEM.WE_n;
                 VC_MEM.ADDR <= CPU_MEM.ADDR;
                 VC_MEM.DIN  <= {CPU_MEM.DIN,CPU_MEM.DIN,CPU_MEM.DIN,CPU_MEM.DIN};
-                VC_MEM.DIN_SIZE <= 2'h0;
+                VC_MEM.DIN_SIZE <= RAM::DIN_SIZE_8;
 
                 CPU_MEM.REQ <= 0;
                 CMD_MEM.REQ <= 0;
@@ -215,7 +216,7 @@ module T9990_URB_RAM_VC (
                 VC_MEM.WE_n <= CMD_MEM.WE_n;
                 VC_MEM.ADDR <= CMD_MEM.ADDR;
                 VC_MEM.DIN  <= CMD_MEM.DIN;
-                VC_MEM.DIN_SIZE <= 2'h2;
+                VC_MEM.DIN_SIZE <= CMD_MEM.DIN_SIZE;
 
                 CPU_MEM.REQ <= 0;
                 CMD_MEM.REQ <= 0;
@@ -240,7 +241,7 @@ module T9990_URB_RAM_VC (
             VC_MEM.WE_n <= 1;
             VC_MEM.ADDR <= 0;
             VC_MEM.DIN  <= 0;
-            VC_MEM.DIN_SIZE <= 2'h0;
+            VC_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
         end
     end
 endmodule
@@ -319,7 +320,7 @@ module T9990_RAM (
             RAM_WE_n <= 1;
             RAM_RFSH_n <= 1;
             RAM_DIN  <= 0;
-            RAM_DIN_SIZE  <= 0;
+            RAM_DIN_SIZE  <= RAM::DIN_SIZE_32;
             ack <= ack_bits_none;
             VC_MEM.ACK <= 0;
             SP_MEM.ACK <= 0;
@@ -349,19 +350,6 @@ module T9990_RAM (
                     T9990_TIMING::RAM_PB:   RAM_ADDR <= PB_MEM.ADDR;
                     T9990_TIMING::RAM_RF:   RAM_ADDR <= 0;
                 endcase
-
-                /* ToDo: P1モードの時のアドレス割り当て
-                if(P1) begin
-                    // P1
-                    // A17~A0 = Logical address(A0~A17)
-                    // A18 = VRAM1/VRAM0
-                end
-                else begin
-                    // P2, Bx
-                    // A0 = VRAM1/VRAM0
-                    // A18~A1 = Logical address(A0~A17)
-                end
-                */
 
                 case (timing_state)
                     default:                RAM_OE_n <= 1;
@@ -404,13 +392,13 @@ module T9990_RAM (
                 endcase
 
                 case (timing_state)
-                    default:                RAM_DIN_SIZE <= 0;
+                    default:                RAM_DIN_SIZE <= RAM::DIN_SIZE_32;
                     T9990_TIMING::RAM_VC:   RAM_DIN_SIZE <= VC_MEM.DIN_SIZE;
-                    T9990_TIMING::RAM_SP:   RAM_DIN_SIZE <= 0;
-                    T9990_TIMING::RAM_BP:   RAM_DIN_SIZE <= 0;
-                    T9990_TIMING::RAM_PA:   RAM_DIN_SIZE <= 0;
-                    T9990_TIMING::RAM_PB:   RAM_DIN_SIZE <= 0;
-                    T9990_TIMING::RAM_RF:   RAM_DIN_SIZE <= 0;
+                    T9990_TIMING::RAM_SP:   RAM_DIN_SIZE <= RAM::DIN_SIZE_32;
+                    T9990_TIMING::RAM_BP:   RAM_DIN_SIZE <= RAM::DIN_SIZE_32;
+                    T9990_TIMING::RAM_PA:   RAM_DIN_SIZE <= RAM::DIN_SIZE_32;
+                    T9990_TIMING::RAM_PB:   RAM_DIN_SIZE <= RAM::DIN_SIZE_32;
+                    T9990_TIMING::RAM_RF:   RAM_DIN_SIZE <= RAM::DIN_SIZE_32;
                 endcase
 
                 case (timing_state)

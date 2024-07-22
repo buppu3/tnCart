@@ -89,8 +89,6 @@ module T9990 (
     output wire         EO                  // 奇数/偶数
 );
 
-    localparam          SYNC_MEMORY = 1;    // RAM_REQ 信号と同期したドットクロックを生成する
-
 //`define DISABLE_SP
 //`define DISABLE_P1A
 //`define DISABLE_P1B

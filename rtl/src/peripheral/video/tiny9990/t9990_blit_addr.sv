@@ -40,12 +40,18 @@ module T9990_BLIT_ADDR (
     input wire              CLK,
     input wire [1:0]        XIMM,
     input wire [1:0]        CLRM,
+    input wire              P1,
     input wire [10:0]       X,
     input wire [11:0]       Y,
     output reg [18:0]       ADDR
 );
     always_ff @(posedge CLK) begin
-        case ({CLRM, XIMM})
+        if(P1) begin
+            // X[9] == 0 : SCREEN-A (00000h~)
+            // X[9] == 1 : SCREEN-B (40000h~)
+            ADDR <= { X[9], Y[9:0], X[ 8:3], 2'b00 };
+        end
+        else case ({CLRM, XIMM})
             {T9990_REG::CLRM_2BPP,  T9990_REG::XIMM_256 }:  ADDR <= {1'b0, Y[11:0], X[ 7:4], 2'b00};
             {T9990_REG::CLRM_2BPP,  T9990_REG::XIMM_512 }:  ADDR <= {      Y[11:0], X[ 8:4], 2'b00};
             {T9990_REG::CLRM_2BPP,  T9990_REG::XIMM_1024}:  ADDR <= {      Y[10:0], X[ 9:4], 2'b00};

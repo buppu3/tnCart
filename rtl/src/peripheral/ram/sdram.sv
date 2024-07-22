@@ -300,7 +300,7 @@ module SDRAM #(
                                             2'd3:   SDRAM_DQM <= 4'b0111;
                                         endcase
                                     RAM::DIN_SIZE_16:
-                                        case (Ram.ADDR[0:0])
+                                        case (Ram.ADDR[1:1])
                                             2'd0:   SDRAM_DQM <= 4'b1100;
                                             2'd1:   SDRAM_DQM <= 4'b0011;
                                         endcase
