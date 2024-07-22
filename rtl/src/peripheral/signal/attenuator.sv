@@ -32,6 +32,7 @@
 //
 
 `default_nettype none
+`define ATT_USE_MUL
 
 /***********************************************************************
  * アッテネーターパッケージ
@@ -74,6 +75,49 @@ module ATT_CONST #(
     input  wire [BIT_WIDTH-1:0]     IN,
     output reg  [BIT_WIDTH-1:0]     OUT
 );
+`ifdef ATT_USE_MUL
+    if(MUL == 0 || DIV == 0) begin
+        // 0 の場合は MUTE
+        always_ff @(posedge CLK or negedge RESET_n) begin
+            if(!RESET_n)    OUT <= 0;
+            else            OUT <= 0;
+        end
+    end
+    else begin
+        wire [17:0] sign = -1;
+        wire [17:0] zero = 0;
+        wire [17:0] mul_a = {(IN[BIT_WIDTH-1] ? sign[17:BIT_WIDTH] : zero[17:BIT_WIDTH]), IN[BIT_WIDTH-1:0]};
+        wire [17:0] mul_b = 1024 * MUL / DIV;
+        logic [35:0] mul_out;
+        MULT18X18 mult18x18_inst (
+            .DOUT(mul_out),
+            .SOA(),
+            .SOB(),
+            .A(mul_a),
+            .B(mul_b),
+            .ASIGN(1'b1),
+            .BSIGN(1'b0),
+            .SIA(18'd0),
+            .SIB(18'd0),
+            .CE(1'b1),
+            .CLK(CLK),
+            .RESET(!RESET_n),
+            .ASEL(1'b0),
+            .BSEL(1'b0)
+        );
+
+        defparam mult18x18_inst.AREG = 1'b1;
+        defparam mult18x18_inst.BREG = 1'b1;
+        defparam mult18x18_inst.OUT_REG = 1'b1;
+        defparam mult18x18_inst.PIPE_REG = 1'b0;
+        defparam mult18x18_inst.ASIGN_REG = 1'b0;
+        defparam mult18x18_inst.BSIGN_REG = 1'b0;
+        defparam mult18x18_inst.SOA_REG = 1'b0;
+        defparam mult18x18_inst.MULT_RESET_MODE = "SYNC";
+
+        assign OUT = mul_out[BIT_WIDTH+10-1:10];
+    end
+`else
     if(MUL == 0 || DIV == 0) begin
         // 0 の場合は MUTE
         always_ff @(posedge CLK or negedge RESET_n) begin
@@ -178,7 +222,7 @@ module ATT_CONST #(
             else OUT <= sign ? (~(result - 1'd1)) : result;
         end
     end
-
+`endif
 endmodule
 
 `default_nettype wire

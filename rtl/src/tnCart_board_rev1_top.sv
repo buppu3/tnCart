@@ -410,11 +410,24 @@ module TNCART_BOARD_REV1_TOP (
     );
 
     /***************************************************************
+     * DAC clock(108MHz/5 = 21.6MHz)
+     ***************************************************************/
+    localparam CLK_DAC_DIV = 5;
+    logic [2:0] clk_dac_cnt;
+    wire CLK_DAC_EN = (clk_dac_cnt == 0);
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)              clk_dac_cnt <= CLK_DAC_DIV - 1'd1;
+        else if(clk_dac_cnt == 0) clk_dac_cnt <= CLK_DAC_DIV - 1'd1;
+        else                      clk_dac_cnt <= clk_dac_cnt - 1'd1;
+    end
+
+    /***************************************************************
      * cartridge sound out
      ***************************************************************/
     SOUND_IF SoundInternal();
     DAC_1BIT u_dac_int (
         .CLK,
+        .CLK_EN(CLK_DAC_EN),
         .RESET_n,
         .IN             (SoundInternal),
         .OUT            (SOUND_INT)
@@ -426,6 +439,7 @@ module TNCART_BOARD_REV1_TOP (
     SOUND_IF SoundExternal();
     DAC_1BIT u_dac_ext (
         .CLK,
+        .CLK_EN(CLK_DAC_EN),
         .RESET_n,
         .IN             (SoundExternal),
         .OUT            (SOUND_EXT)

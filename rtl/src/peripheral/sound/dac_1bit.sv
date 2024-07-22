@@ -32,38 +32,76 @@
 //
 
 `default_nettype none
+`define DAC_USE_ALU
 
 /***********************************************************************
  * 1bit DAC module
  *  1ビット DAC 出力を行う
  ***********************************************************************/
-module DAC_1BIT #(
-    parameter                   DIV = 5         // 駆動クロック分周比
-) (
+module DAC_1BIT (
     input wire                  CLK,            // クロック
+    input wire                  CLK_EN,
     input wire                  RESET_n,        // リセット信号
 
     SOUND_IF.IN                 IN,             // 再生信号
 
     output reg                  OUT             // 出力ポート
 );
-    /***************************************************************
-     * 分周
-     ***************************************************************/
-    logic   [$clog2(DIV+1)-1:0] div_cnt;
+`ifdef DAC_USE_ALU
+    localparam BIT_WIDTH = $bits(IN.Signal);
 
-    always_ff @(posedge CLK or negedge RESET_n)
+    /***************************************************************
+     * 加算 alu_out = in + 512 - (alu_out[9] ? 1024 : 0);
+     ***************************************************************/
+    wire [53:0] alu_sign = 54'd0 - 54'd1;
+    wire [53:0] alu_zero = 54'd0;
+    wire [53:0] alu_in = {IN.Signal[BIT_WIDTH-1] ? alu_sign[53:BIT_WIDTH] : alu_zero[53:BIT_WIDTH], IN.Signal};
+    wire [10:0] alu_out;
+    wire [42:0] alu_out_dummy;
+    wire [54:0] alu_caso;
+    wire [53:0] alu_offset = 2 ** (BIT_WIDTH - 1);
+    wire [53:0] alu_reset = 2 ** (BIT_WIDTH);
+
+    ALU54D alu54d_inst (
+        .DOUT({alu_out_dummy,alu_out}),
+        .CASO(alu_caso),
+        .A(alu_in),
+        .B(alu_out[BIT_WIDTH] ? (alu_offset - alu_reset) : alu_offset),
+        .ASIGN(1'b1),
+        .BSIGN(1'b1),
+        .CASI(55'd0),
+        .ACCLOAD(1'b1),
+        .CE(CLK_EN),
+        .CLK(CLK),
+        .RESET(!RESET_n)
+    );
+
+    defparam alu54d_inst.AREG = 1'b1;
+    defparam alu54d_inst.BREG = 1'b0;
+    defparam alu54d_inst.ASIGN_REG = 1'b0;
+    defparam alu54d_inst.BSIGN_REG = 1'b0;
+    defparam alu54d_inst.ACCLOAD_REG = 1'b0;
+    defparam alu54d_inst.OUT_REG = 1'b1;
+    defparam alu54d_inst.B_ADD_SUB = 1'b0;
+    defparam alu54d_inst.C_ADD_SUB = 1'b0;
+    defparam alu54d_inst.ALUD_MODE = 0;
+    defparam alu54d_inst.ALU_RESET_MODE = "SYNC";
+
+    /***************************************************************
+     * 出力
+     ***************************************************************/
+    reg [10:0] alu_out2;
+    always @(posedge CLK or negedge RESET_n)
     begin
         if(!RESET_n) begin
-            div_cnt <= 0;
+            OUT <= 0;
         end
-        else if(div_cnt == DIV - 1) begin
-            div_cnt <= 0;
-        end
-        else begin
-            div_cnt <= div_cnt + 1'd1;
+        else if(CLK_EN) begin
+            OUT <= alu_out[BIT_WIDTH];
         end
     end
+
+`else
 
     /***************************************************************
      * バッファ
@@ -81,7 +119,7 @@ module DAC_1BIT #(
             in0 <= 0;
             in1 <= 0;
         end
-        else if(div_cnt == 0) begin
+        else if(CLK_EN) begin
             in0 <= IN.Signal;
             in1 <= in0;
             in_unsigned <= in1 + OFFSET;
@@ -101,12 +139,12 @@ module DAC_1BIT #(
             sum <= 0;
             OUT <= 0;
         end
-        else if(div_cnt == 0) begin
+        else if(CLK_EN) begin
             sum <= added[BIT_WIDTH-1:0];
             OUT <= overflow;
         end
     end
-
+`endif
 endmodule
 
 
