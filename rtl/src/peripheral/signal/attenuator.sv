@@ -84,8 +84,8 @@ module ATT_CONST #(
         end
     end
     else begin
-        wire [17:0] sign = -1;
-        wire [17:0] zero = 0;
+        wire [17:0] sign = 18'd0 - 18'd1;
+        wire [17:0] zero = 18'd0;
         wire [17:0] mul_a = {(IN[BIT_WIDTH-1] ? sign[17:BIT_WIDTH] : zero[17:BIT_WIDTH]), IN[BIT_WIDTH-1:0]};
         wire [17:0] mul_b = 1024 * MUL / DIV;
         logic [35:0] mul_out;
