@@ -306,8 +306,8 @@ module MAIN (
 
     if(CONFIG::ENABLE_MEGAROM) begin
         SOUND_ATTENUATOR #(
-            .MUL(1),
-            .DIV(2)
+            .MUL(CONFIG::ATT_EXT_MEGAROM_MUL),
+            .DIV(CONFIG::ATT_EXT_MEGAROM_DIV)
         ) u_att_ext_megarom (
             .RESET_n,
             .CLK,
@@ -321,8 +321,8 @@ module MAIN (
 
     if(CONFIG::ENABLE_FM) begin
         SOUND_ATTENUATOR #(
-            .MUL(1),
-            .DIV(2)
+            .MUL(CONFIG::ATT_EXT_FM_MUL),
+            .DIV(CONFIG::ATT_EXT_FM_DIV)
         ) u_att_ext_fm (
             .RESET_n,
             .CLK,
@@ -336,8 +336,8 @@ module MAIN (
 
     if(CONFIG::ENABLE_PSG) begin
         SOUND_ATTENUATOR #(
-            .MUL(1),
-            .DIV(2)
+            .MUL(CONFIG::ATT_EXT_PSG_MUL),
+            .DIV(CONFIG::ATT_EXT_PSG_DIV)
         ) u_att_ext_psg (
             .RESET_n,
             .CLK,
@@ -368,8 +368,8 @@ module MAIN (
 
     if(CONFIG::ENABLE_MEGAROM) begin
         SOUND_ATTENUATOR #(
-            .MUL(1),
-            .DIV(2)
+            .MUL(CONFIG::ATT_INT_MEGAROM_MUL),
+            .DIV(CONFIG::ATT_INT_MEGAROM_DIV)
         ) u_att_int_megarom (
             .RESET_n,
             .CLK,
@@ -383,8 +383,8 @@ module MAIN (
 
     if(CONFIG::ENABLE_FM) begin
         SOUND_ATTENUATOR #(
-            .MUL(1),
-            .DIV(2)
+            .MUL(CONFIG::ATT_INT_FM_MUL),
+            .DIV(CONFIG::ATT_INT_FM_DIV)
         ) u_att_int_fm (
             .RESET_n,
             .CLK,

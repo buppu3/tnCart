@@ -56,6 +56,21 @@ package CONFIG;
     localparam [23:0]   RAM_ADDR_VRAM           = 24'h78_0000;
 
     /***************************************************************
+     * アッテネータ
+     ***************************************************************/
+    localparam          ATT_EXT_PSG_MUL         = 4;
+    localparam          ATT_EXT_PSG_DIV         = 5;
+    localparam          ATT_EXT_FM_MUL          = 1;
+    localparam          ATT_EXT_FM_DIV          = 1;
+    localparam          ATT_EXT_MEGAROM_MUL     = 4;
+    localparam          ATT_EXT_MEGAROM_DIV     = 5;
+
+    localparam          ATT_INT_FM_MUL          = 1;
+    localparam          ATT_INT_FM_DIV          = 1;
+    localparam          ATT_INT_MEGAROM_MUL     = 4;
+    localparam          ATT_INT_MEGAROM_DIV     = 5;
+
+    /***************************************************************
      * 機能
      ***************************************************************/
     localparam          ENABLE_MEGAROM          = 1;            // メガロムカートリッジを有効
