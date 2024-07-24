@@ -93,10 +93,7 @@ module T9990_BLIT (
     reg [31:0] ENQUEUE_DATA;
     reg DEQUEUE;
     reg [4:0] DEQUEUE_COUNT;
-    wire [31:0] DEQUEUE_DATA2;
-    wire [31:0] DEQUEUE_DATA4;
-    wire [31:0] DEQUEUE_DATA8;
-    wire [31:0] DEQUEUE_DATA16;
+    wire [31:0] DEQUEUE_DATA;
     wire [5:0] FREE_COUNT;
     wire [5:0] AVAIL_COUNT;
     T9990_BLIT_FIFO u_fifo (
@@ -112,10 +109,7 @@ module T9990_BLIT (
         .ENQUEUE_DATA,
         .DEQUEUE,
         .DEQUEUE_COUNT,
-        .DEQUEUE_DATA2,
-        .DEQUEUE_DATA4,
-        .DEQUEUE_DATA8,
-        .DEQUEUE_DATA16
+        .DEQUEUE_DATA
     );
 
     reg [18:0] SRC_XY_ADDR;
@@ -1090,96 +1084,96 @@ module T9990_BLIT (
             if(DST_DIX) begin
                 if(DST_CLRM == T9990_REG::CLRM_2BPP) begin
                     case (DST_X[3:0])
-                        4'd0:   SRC_DATA <= {DEQUEUE_DATA2[31:30], 30'b0};
-                        4'd1:   SRC_DATA <= {DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 28'b0};
-                        4'd2:   SRC_DATA <= {DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 26'b0};
-                        4'd3:   SRC_DATA <= {DEQUEUE_DATA2[25:24], DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 24'b0};
-                        4'd3:   SRC_DATA <= {DEQUEUE_DATA2[23:22], DEQUEUE_DATA2[25:24], DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 22'b0};
-                        4'd4:   SRC_DATA <= {DEQUEUE_DATA2[21:20], DEQUEUE_DATA2[23:22], DEQUEUE_DATA2[25:24], DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 20'b0};
-                        4'd5:   SRC_DATA <= {DEQUEUE_DATA2[19:18], DEQUEUE_DATA2[21:20], DEQUEUE_DATA2[23:22], DEQUEUE_DATA2[25:24], DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 18'b0};
-                        4'd6:   SRC_DATA <= {DEQUEUE_DATA2[17:16], DEQUEUE_DATA2[19:18], DEQUEUE_DATA2[21:20], DEQUEUE_DATA2[23:22], DEQUEUE_DATA2[25:24], DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 16'b0};
-                        4'd7:   SRC_DATA <= {DEQUEUE_DATA2[15:14], DEQUEUE_DATA2[17:16], DEQUEUE_DATA2[19:18], DEQUEUE_DATA2[21:20], DEQUEUE_DATA2[23:22], DEQUEUE_DATA2[25:24], DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 14'b0};
-                        4'd8:   SRC_DATA <= {DEQUEUE_DATA2[13:12], DEQUEUE_DATA2[15:14], DEQUEUE_DATA2[17:16], DEQUEUE_DATA2[19:18], DEQUEUE_DATA2[21:20], DEQUEUE_DATA2[23:22], DEQUEUE_DATA2[25:24], DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 12'b0};
-                        4'd9:   SRC_DATA <= {DEQUEUE_DATA2[11:10], DEQUEUE_DATA2[13:12], DEQUEUE_DATA2[15:14], DEQUEUE_DATA2[17:16], DEQUEUE_DATA2[19:18], DEQUEUE_DATA2[21:20], DEQUEUE_DATA2[23:22], DEQUEUE_DATA2[25:24], DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 10'b0};
-                        4'd11:  SRC_DATA <= {DEQUEUE_DATA2[ 9: 8], DEQUEUE_DATA2[11:10], DEQUEUE_DATA2[13:12], DEQUEUE_DATA2[15:14], DEQUEUE_DATA2[17:16], DEQUEUE_DATA2[19:18], DEQUEUE_DATA2[21:20], DEQUEUE_DATA2[23:22], DEQUEUE_DATA2[25:24], DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 8'b0};
-                        4'd12:  SRC_DATA <= {DEQUEUE_DATA2[ 7: 6], DEQUEUE_DATA2[ 9: 8], DEQUEUE_DATA2[11:10], DEQUEUE_DATA2[13:12], DEQUEUE_DATA2[15:14], DEQUEUE_DATA2[17:16], DEQUEUE_DATA2[19:18], DEQUEUE_DATA2[21:20], DEQUEUE_DATA2[23:22], DEQUEUE_DATA2[25:24], DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 6'b0};
-                        4'd13:  SRC_DATA <= {DEQUEUE_DATA2[ 5: 4], DEQUEUE_DATA2[ 7: 6], DEQUEUE_DATA2[ 9: 8], DEQUEUE_DATA2[11:10], DEQUEUE_DATA2[13:12], DEQUEUE_DATA2[15:14], DEQUEUE_DATA2[17:16], DEQUEUE_DATA2[19:18], DEQUEUE_DATA2[21:20], DEQUEUE_DATA2[23:22], DEQUEUE_DATA2[25:24], DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 4'b0};
-                        4'd14:  SRC_DATA <= {DEQUEUE_DATA2[ 3: 2], DEQUEUE_DATA2[ 5: 4], DEQUEUE_DATA2[ 7: 6], DEQUEUE_DATA2[ 9: 8], DEQUEUE_DATA2[11:10], DEQUEUE_DATA2[13:12], DEQUEUE_DATA2[15:14], DEQUEUE_DATA2[17:16], DEQUEUE_DATA2[19:18], DEQUEUE_DATA2[21:20], DEQUEUE_DATA2[23:22], DEQUEUE_DATA2[25:24], DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30], 2'b0};
-                        4'd14:  SRC_DATA <= {DEQUEUE_DATA2[ 1: 0], DEQUEUE_DATA2[ 3: 2], DEQUEUE_DATA2[ 5: 4], DEQUEUE_DATA2[ 7: 6], DEQUEUE_DATA2[ 9: 8], DEQUEUE_DATA2[11:10], DEQUEUE_DATA2[13:12], DEQUEUE_DATA2[15:14], DEQUEUE_DATA2[17:16], DEQUEUE_DATA2[19:18], DEQUEUE_DATA2[21:20], DEQUEUE_DATA2[23:22], DEQUEUE_DATA2[25:24], DEQUEUE_DATA2[27:26], DEQUEUE_DATA2[29:28], DEQUEUE_DATA2[31:30]};
+                        4'd0:   SRC_DATA <= {DEQUEUE_DATA[31:30], 30'b0};
+                        4'd1:   SRC_DATA <= {DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 28'b0};
+                        4'd2:   SRC_DATA <= {DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 26'b0};
+                        4'd3:   SRC_DATA <= {DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 24'b0};
+                        4'd3:   SRC_DATA <= {DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 22'b0};
+                        4'd4:   SRC_DATA <= {DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 20'b0};
+                        4'd5:   SRC_DATA <= {DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 18'b0};
+                        4'd6:   SRC_DATA <= {DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 16'b0};
+                        4'd7:   SRC_DATA <= {DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 14'b0};
+                        4'd8:   SRC_DATA <= {DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 12'b0};
+                        4'd9:   SRC_DATA <= {DEQUEUE_DATA[11:10], DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 10'b0};
+                        4'd11:  SRC_DATA <= {DEQUEUE_DATA[ 9: 8], DEQUEUE_DATA[11:10], DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 8'b0};
+                        4'd12:  SRC_DATA <= {DEQUEUE_DATA[ 7: 6], DEQUEUE_DATA[ 9: 8], DEQUEUE_DATA[11:10], DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 6'b0};
+                        4'd13:  SRC_DATA <= {DEQUEUE_DATA[ 5: 4], DEQUEUE_DATA[ 7: 6], DEQUEUE_DATA[ 9: 8], DEQUEUE_DATA[11:10], DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 4'b0};
+                        4'd14:  SRC_DATA <= {DEQUEUE_DATA[ 3: 2], DEQUEUE_DATA[ 5: 4], DEQUEUE_DATA[ 7: 6], DEQUEUE_DATA[ 9: 8], DEQUEUE_DATA[11:10], DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 2'b0};
+                        4'd14:  SRC_DATA <= {DEQUEUE_DATA[ 1: 0], DEQUEUE_DATA[ 3: 2], DEQUEUE_DATA[ 5: 4], DEQUEUE_DATA[ 7: 6], DEQUEUE_DATA[ 9: 8], DEQUEUE_DATA[11:10], DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30]};
                     endcase
                 end
                 else if(DST_CLRM == T9990_REG::CLRM_4BPP) begin
                     case (DST_X[2:0])
-                        3'd0:   SRC_DATA <= {DEQUEUE_DATA4[31:28], 28'b0};
-                        3'd1:   SRC_DATA <= {DEQUEUE_DATA4[27:24], DEQUEUE_DATA4[31:28], 24'b0};
-                        3'd2:   SRC_DATA <= {DEQUEUE_DATA4[23:20], DEQUEUE_DATA4[27:24], DEQUEUE_DATA4[31:28], 20'b0};
-                        3'd3:   SRC_DATA <= {DEQUEUE_DATA4[19:16], DEQUEUE_DATA4[23:20], DEQUEUE_DATA4[27:24], DEQUEUE_DATA4[31:28], 16'b0};
-                        3'd4:   SRC_DATA <= {DEQUEUE_DATA4[15:12], DEQUEUE_DATA4[19:16], DEQUEUE_DATA4[23:20], DEQUEUE_DATA4[27:24], DEQUEUE_DATA4[31:28], 12'b0};
-                        3'd5:   SRC_DATA <= {DEQUEUE_DATA4[11: 8], DEQUEUE_DATA4[15:12], DEQUEUE_DATA4[19:16], DEQUEUE_DATA4[23:20], DEQUEUE_DATA4[27:24], DEQUEUE_DATA4[31:28], 8'b0};
-                        3'd6:   SRC_DATA <= {DEQUEUE_DATA4[ 7: 4], DEQUEUE_DATA4[11: 8], DEQUEUE_DATA4[15:12], DEQUEUE_DATA4[19:16], DEQUEUE_DATA4[23:20], DEQUEUE_DATA4[27:24], DEQUEUE_DATA4[31:28], 4'b0};
-                        3'd7:   SRC_DATA <= {DEQUEUE_DATA4[ 3: 0], DEQUEUE_DATA4[ 7: 4], DEQUEUE_DATA4[11: 8], DEQUEUE_DATA4[15:12], DEQUEUE_DATA4[19:16], DEQUEUE_DATA4[23:20], DEQUEUE_DATA4[27:24], DEQUEUE_DATA4[31:28]};
+                        3'd0:   SRC_DATA <= {DEQUEUE_DATA[31:28], 28'b0};
+                        3'd1:   SRC_DATA <= {DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28], 24'b0};
+                        3'd2:   SRC_DATA <= {DEQUEUE_DATA[23:20], DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28], 20'b0};
+                        3'd3:   SRC_DATA <= {DEQUEUE_DATA[19:16], DEQUEUE_DATA[23:20], DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28], 16'b0};
+                        3'd4:   SRC_DATA <= {DEQUEUE_DATA[15:12], DEQUEUE_DATA[19:16], DEQUEUE_DATA[23:20], DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28], 12'b0};
+                        3'd5:   SRC_DATA <= {DEQUEUE_DATA[11: 8], DEQUEUE_DATA[15:12], DEQUEUE_DATA[19:16], DEQUEUE_DATA[23:20], DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28], 8'b0};
+                        3'd6:   SRC_DATA <= {DEQUEUE_DATA[ 7: 4], DEQUEUE_DATA[11: 8], DEQUEUE_DATA[15:12], DEQUEUE_DATA[19:16], DEQUEUE_DATA[23:20], DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28], 4'b0};
+                        3'd7:   SRC_DATA <= {DEQUEUE_DATA[ 3: 0], DEQUEUE_DATA[ 7: 4], DEQUEUE_DATA[11: 8], DEQUEUE_DATA[15:12], DEQUEUE_DATA[19:16], DEQUEUE_DATA[23:20], DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28]};
                     endcase
                 end
                 else if(DST_CLRM == T9990_REG::CLRM_8BPP) begin
                     case (DST_X[1:0])
-                        2'd0:   SRC_DATA <= {DEQUEUE_DATA8[31:24], 24'b0};
-                        2'd1:   SRC_DATA <= {DEQUEUE_DATA8[23:16], DEQUEUE_DATA8[31:24], 16'b0};
-                        2'd2:   SRC_DATA <= {DEQUEUE_DATA8[15: 8], DEQUEUE_DATA8[23:16], DEQUEUE_DATA8[31:24], 8'b0};
-                        2'd2:   SRC_DATA <= {DEQUEUE_DATA8[ 7: 0], DEQUEUE_DATA8[15: 8], DEQUEUE_DATA8[23:16], DEQUEUE_DATA8[31:24]};
+                        2'd0:   SRC_DATA <= {DEQUEUE_DATA[31:24], 24'b0};
+                        2'd1:   SRC_DATA <= {DEQUEUE_DATA[23:16], DEQUEUE_DATA[31:24], 16'b0};
+                        2'd2:   SRC_DATA <= {DEQUEUE_DATA[15: 8], DEQUEUE_DATA[23:16], DEQUEUE_DATA[31:24], 8'b0};
+                        2'd2:   SRC_DATA <= {DEQUEUE_DATA[ 7: 0], DEQUEUE_DATA[15: 8], DEQUEUE_DATA[23:16], DEQUEUE_DATA[31:24]};
                     endcase
                 end
                 else begin
                     case (DST_X[0:0])
-                        2'd0:   SRC_DATA <= {DEQUEUE_DATA16[31:16], 16'b0};
-                        2'd1:   SRC_DATA <= {DEQUEUE_DATA16[15: 0], DEQUEUE_DATA16[31:16]};
+                        2'd0:   SRC_DATA <= {DEQUEUE_DATA[31:16], 16'b0};
+                        2'd1:   SRC_DATA <= {DEQUEUE_DATA[15: 0], DEQUEUE_DATA[31:16]};
                     endcase
                 end
             end
             else begin
                 if(DST_CLRM == T9990_REG::CLRM_2BPP) begin
                     case (DST_X[3:0])
-                        4'd0:   SRC_DATA <= DEQUEUE_DATA2;
-                        4'd1:   SRC_DATA <= { 2'b0, DEQUEUE_DATA2[31: 2]};
-                        4'd2:   SRC_DATA <= { 4'b0, DEQUEUE_DATA2[31: 4]};
-                        4'd3:   SRC_DATA <= { 6'b0, DEQUEUE_DATA2[31: 6]};
-                        4'd4:   SRC_DATA <= { 8'b0, DEQUEUE_DATA2[31: 8]};
-                        4'd5:   SRC_DATA <= {10'b0, DEQUEUE_DATA2[31:10]};
-                        4'd6:   SRC_DATA <= {12'b0, DEQUEUE_DATA2[31:12]};
-                        4'd7:   SRC_DATA <= {14'b0, DEQUEUE_DATA2[31:14]};
-                        4'd8:   SRC_DATA <= {16'b0, DEQUEUE_DATA2[31:16]};
-                        4'd9:   SRC_DATA <= {18'b0, DEQUEUE_DATA2[31:18]};
-                        4'd10:  SRC_DATA <= {20'b0, DEQUEUE_DATA2[31:20]};
-                        4'd11:  SRC_DATA <= {22'b0, DEQUEUE_DATA2[31:22]};
-                        4'd12:  SRC_DATA <= {24'b0, DEQUEUE_DATA2[31:24]};
-                        4'd13:  SRC_DATA <= {26'b0, DEQUEUE_DATA2[31:26]};
-                        4'd14:  SRC_DATA <= {28'b0, DEQUEUE_DATA2[31:28]};
-                        4'd15:  SRC_DATA <= {30'b0, DEQUEUE_DATA2[31:30]};
+                        4'd0:   SRC_DATA <= DEQUEUE_DATA;
+                        4'd1:   SRC_DATA <= { 2'b0, DEQUEUE_DATA[31: 2]};
+                        4'd2:   SRC_DATA <= { 4'b0, DEQUEUE_DATA[31: 4]};
+                        4'd3:   SRC_DATA <= { 6'b0, DEQUEUE_DATA[31: 6]};
+                        4'd4:   SRC_DATA <= { 8'b0, DEQUEUE_DATA[31: 8]};
+                        4'd5:   SRC_DATA <= {10'b0, DEQUEUE_DATA[31:10]};
+                        4'd6:   SRC_DATA <= {12'b0, DEQUEUE_DATA[31:12]};
+                        4'd7:   SRC_DATA <= {14'b0, DEQUEUE_DATA[31:14]};
+                        4'd8:   SRC_DATA <= {16'b0, DEQUEUE_DATA[31:16]};
+                        4'd9:   SRC_DATA <= {18'b0, DEQUEUE_DATA[31:18]};
+                        4'd10:  SRC_DATA <= {20'b0, DEQUEUE_DATA[31:20]};
+                        4'd11:  SRC_DATA <= {22'b0, DEQUEUE_DATA[31:22]};
+                        4'd12:  SRC_DATA <= {24'b0, DEQUEUE_DATA[31:24]};
+                        4'd13:  SRC_DATA <= {26'b0, DEQUEUE_DATA[31:26]};
+                        4'd14:  SRC_DATA <= {28'b0, DEQUEUE_DATA[31:28]};
+                        4'd15:  SRC_DATA <= {30'b0, DEQUEUE_DATA[31:30]};
                     endcase
                 end
                 else if(DST_CLRM == T9990_REG::CLRM_4BPP) begin
                     case (DST_X[2:0])
-                        3'd0:   SRC_DATA <= DEQUEUE_DATA4;
-                        3'd1:   SRC_DATA <= { 4'b0, DEQUEUE_DATA4[31: 4]};
-                        3'd2:   SRC_DATA <= { 8'b0, DEQUEUE_DATA4[31: 8]};
-                        3'd3:   SRC_DATA <= {12'b0, DEQUEUE_DATA4[31:12]};
-                        3'd4:   SRC_DATA <= {16'b0, DEQUEUE_DATA4[31:16]};
-                        3'd5:   SRC_DATA <= {20'b0, DEQUEUE_DATA4[31:20]};
-                        3'd6:   SRC_DATA <= {24'b0, DEQUEUE_DATA4[31:24]};
-                        3'd7:   SRC_DATA <= {28'b0, DEQUEUE_DATA4[31:28]};
+                        3'd0:   SRC_DATA <= DEQUEUE_DATA;
+                        3'd1:   SRC_DATA <= { 4'b0, DEQUEUE_DATA[31: 4]};
+                        3'd2:   SRC_DATA <= { 8'b0, DEQUEUE_DATA[31: 8]};
+                        3'd3:   SRC_DATA <= {12'b0, DEQUEUE_DATA[31:12]};
+                        3'd4:   SRC_DATA <= {16'b0, DEQUEUE_DATA[31:16]};
+                        3'd5:   SRC_DATA <= {20'b0, DEQUEUE_DATA[31:20]};
+                        3'd6:   SRC_DATA <= {24'b0, DEQUEUE_DATA[31:24]};
+                        3'd7:   SRC_DATA <= {28'b0, DEQUEUE_DATA[31:28]};
                     endcase
                 end
                 else if(DST_CLRM == T9990_REG::CLRM_8BPP) begin
                     case (DST_X[1:0])
-                        2'd0:   SRC_DATA <= DEQUEUE_DATA8;
-                        2'd1:   SRC_DATA <= { 8'b0, DEQUEUE_DATA8[31: 8]};
-                        2'd2:   SRC_DATA <= {16'b0, DEQUEUE_DATA8[31:16]};
-                        2'd3:   SRC_DATA <= {24'b0, DEQUEUE_DATA8[31:24]};
+                        2'd0:   SRC_DATA <= DEQUEUE_DATA;
+                        2'd1:   SRC_DATA <= { 8'b0, DEQUEUE_DATA[31: 8]};
+                        2'd2:   SRC_DATA <= {16'b0, DEQUEUE_DATA[31:16]};
+                        2'd3:   SRC_DATA <= {24'b0, DEQUEUE_DATA[31:24]};
                     endcase
                 end
                 else begin
                     case (DST_X[0:0])
-                        1'd0:   SRC_DATA <= DEQUEUE_DATA16;
-                        1'd1:   SRC_DATA <= {16'b0, DEQUEUE_DATA16[31:16]};
+                        1'd0:   SRC_DATA <= DEQUEUE_DATA;
+                        1'd1:   SRC_DATA <= {16'b0, DEQUEUE_DATA[31:16]};
                     endcase
                 end
             end
@@ -1493,210 +1487,6 @@ module T9990_BLIT_CALC_COUNT (
     // 2クロック目
     always_ff @(posedge CLK) begin
         COUNT <= count > remain ? remain : count;
-    end
-endmodule
-
-/***************************************************************
- * ビットマスク
- ***************************************************************/
-module T9990_BLIT_BITMASK (
-    input wire          CLK,
-    input wire [15:0]   WM,
-    input wire [1:0]    CLRM,
-    input wire          DIX,
-    input wire [3:0]    OFFSET,
-    input wire [4:0]    COUNT,
-    output reg [31:0]   BIT_MASK
-);
-    /***************************************************************
-     * COUNT の値で mask を生成
-     ***************************************************************/
-    reg [31:0] mask;
-    always_ff @(posedge CLK) begin
-        if(!DIX && CLRM == T9990_REG::CLRM_2BPP) begin
-            mask[31:30] <= (COUNT >  5'd0) ? 2'b11 : 2'b00;
-            mask[29:28] <= (COUNT >  5'd1) ? 2'b11 : 2'b00;
-            mask[27:26] <= (COUNT >  5'd2) ? 2'b11 : 2'b00;
-            mask[25:24] <= (COUNT >  5'd3) ? 2'b11 : 2'b00;
-            mask[23:22] <= (COUNT >  5'd4) ? 2'b11 : 2'b00;
-            mask[21:20] <= (COUNT >  5'd5) ? 2'b11 : 2'b00;
-            mask[19:18] <= (COUNT >  5'd6) ? 2'b11 : 2'b00;
-            mask[17:16] <= (COUNT >  5'd7) ? 2'b11 : 2'b00;
-            mask[15:14] <= (COUNT >  5'd8) ? 2'b11 : 2'b00;
-            mask[13:12] <= (COUNT >  5'd9) ? 2'b11 : 2'b00;
-            mask[11:10] <= (COUNT > 5'd10) ? 2'b11 : 2'b00;
-            mask[ 9: 8] <= (COUNT > 5'd11) ? 2'b11 : 2'b00;
-            mask[ 7: 6] <= (COUNT > 5'd12) ? 2'b11 : 2'b00;
-            mask[ 5: 4] <= (COUNT > 5'd13) ? 2'b11 : 2'b00;
-            mask[ 3: 2] <= (COUNT > 5'd14) ? 2'b11 : 2'b00;
-            mask[ 1: 0] <= (COUNT > 5'd15) ? 2'b11 : 2'b00;
-        end
-        else if(!DIX && CLRM == T9990_REG::CLRM_4BPP) begin
-            mask[31:28] <= (COUNT >  5'd0) ? 4'b1111 : 4'b0000;
-            mask[27:24] <= (COUNT >  5'd1) ? 4'b1111 : 4'b0000;
-            mask[23:20] <= (COUNT >  5'd2) ? 4'b1111 : 4'b0000;
-            mask[19:16] <= (COUNT >  5'd3) ? 4'b1111 : 4'b0000;
-            mask[15:12] <= (COUNT >  5'd4) ? 4'b1111 : 4'b0000;
-            mask[11: 8] <= (COUNT >  5'd5) ? 4'b1111 : 4'b0000;
-            mask[ 7: 4] <= (COUNT >  5'd6) ? 4'b1111 : 4'b0000;
-            mask[ 3: 0] <= (COUNT >  5'd7) ? 4'b1111 : 4'b0000;
-        end
-        else if(!DIX && CLRM == T9990_REG::CLRM_8BPP) begin
-            mask[31:24] <= (COUNT >  5'd0) ? 8'b11111111 : 8'b00000000;
-            mask[23:16] <= (COUNT >  5'd1) ? 8'b11111111 : 8'b00000000;
-            mask[15: 8] <= (COUNT >  5'd2) ? 8'b11111111 : 8'b00000000;
-            mask[ 7: 0] <= (COUNT >  5'd3) ? 8'b11111111 : 8'b00000000;
-        end
-        else if(!DIX && CLRM == T9990_REG::CLRM_16BPP) begin
-            mask[31:16] <= (COUNT >  5'd0) ? 16'b1111111111111111 : 16'b0000000000000000;
-            mask[15: 0] <= (COUNT >  5'd1) ? 16'b1111111111111111 : 16'b0000000000000000;
-        end
-
-        else if(DIX && CLRM == T9990_REG::CLRM_2BPP) begin
-            mask[ 1: 0] <= (COUNT >  5'd0) ? 2'b11 : 2'b00;
-            mask[ 3: 2] <= (COUNT >  5'd1) ? 2'b11 : 2'b00;
-            mask[ 5: 4] <= (COUNT >  5'd2) ? 2'b11 : 2'b00;
-            mask[ 7: 6] <= (COUNT >  5'd3) ? 2'b11 : 2'b00;
-            mask[ 9: 8] <= (COUNT >  5'd4) ? 2'b11 : 2'b00;
-            mask[11:10] <= (COUNT >  5'd5) ? 2'b11 : 2'b00;
-            mask[13:12] <= (COUNT >  5'd6) ? 2'b11 : 2'b00;
-            mask[15:14] <= (COUNT >  5'd7) ? 2'b11 : 2'b00;
-            mask[17:16] <= (COUNT >  5'd8) ? 2'b11 : 2'b00;
-            mask[19:18] <= (COUNT >  5'd9) ? 2'b11 : 2'b00;
-            mask[21:20] <= (COUNT > 5'd10) ? 2'b11 : 2'b00;
-            mask[23:22] <= (COUNT > 5'd11) ? 2'b11 : 2'b00;
-            mask[25:24] <= (COUNT > 5'd12) ? 2'b11 : 2'b00;
-            mask[27:26] <= (COUNT > 5'd13) ? 2'b11 : 2'b00;
-            mask[29:28] <= (COUNT > 5'd14) ? 2'b11 : 2'b00;
-            mask[31:30] <= (COUNT > 5'd15) ? 2'b11 : 2'b00;
-        end
-        else if(DIX && CLRM == T9990_REG::CLRM_8BPP) begin
-            mask[ 3: 0] <= (COUNT >  5'd0) ? 4'b1111 : 4'b0000;
-            mask[ 7: 4] <= (COUNT >  5'd1) ? 4'b1111 : 4'b0000;
-            mask[11: 8] <= (COUNT >  5'd2) ? 4'b1111 : 4'b0000;
-            mask[15:12] <= (COUNT >  5'd3) ? 4'b1111 : 4'b0000;
-            mask[19:16] <= (COUNT >  5'd4) ? 4'b1111 : 4'b0000;
-            mask[23:20] <= (COUNT >  5'd5) ? 4'b1111 : 4'b0000;
-            mask[27:24] <= (COUNT >  5'd6) ? 4'b1111 : 4'b0000;
-            mask[31:28] <= (COUNT >  5'd7) ? 4'b1111 : 4'b0000;
-        end
-        else if(!DIX && CLRM == T9990_REG::CLRM_8BPP) begin
-            mask[ 7: 0] <= (COUNT >  5'd0) ? 8'b11111111 : 8'b00000000;
-            mask[15: 8] <= (COUNT >  5'd1) ? 8'b11111111 : 8'b00000000;
-            mask[23:16] <= (COUNT >  5'd2) ? 8'b11111111 : 8'b00000000;
-            mask[31:24] <= (COUNT >  5'd3) ? 8'b11111111 : 8'b00000000;
-        end
-        else begin
-            mask[15: 0] <= (COUNT >  5'd0) ? 16'b1111111111111111 : 16'b0000000000000000;
-            mask[31:16] <= (COUNT >  5'd1) ? 16'b1111111111111111 : 16'b0000000000000000;
-        end
-    end
-
-    /***************************************************************
-     * mask をビットシフト
-     ***************************************************************/
-    reg [31:0] shifted_mask;
-    always_ff @(posedge CLK) begin
-        if(!DIX && CLRM == T9990_REG::CLRM_2BPP) begin
-            case (OFFSET[3:0])
-                5'd0:   shifted_mask <= mask;
-                5'd1:   shifted_mask <= { 2'h0, mask[31: 2]};
-                5'd2:   shifted_mask <= { 4'h0, mask[31: 4]};
-                5'd3:   shifted_mask <= { 6'h0, mask[31: 6]};
-                5'd4:   shifted_mask <= { 8'h0, mask[31: 8]};
-                5'd5:   shifted_mask <= {10'h0, mask[31:10]};
-                5'd6:   shifted_mask <= {12'h0, mask[31:12]};
-                5'd7:   shifted_mask <= {14'h0, mask[31:14]};
-                5'd8:   shifted_mask <= {16'h0, mask[31:16]};
-                5'd9:   shifted_mask <= {18'h0, mask[31:18]};
-                5'd10:  shifted_mask <= {20'h0, mask[31:20]};
-                5'd11:  shifted_mask <= {22'h0, mask[31:22]};
-                5'd12:  shifted_mask <= {24'h0, mask[31:24]};
-                5'd13:  shifted_mask <= {26'h0, mask[31:26]};
-                5'd14:  shifted_mask <= {28'h0, mask[31:28]};
-                5'd15:  shifted_mask <= {30'h0, mask[31:30]};
-            endcase
-        end
-        else if(!DIX && CLRM == T9990_REG::CLRM_4BPP) begin
-            case (OFFSET[2:0])
-                5'd0:   shifted_mask <= mask;
-                5'd1:   shifted_mask <= { 4'h0, mask[31: 4]};
-                5'd2:   shifted_mask <= { 8'h0, mask[31: 8]};
-                5'd3:   shifted_mask <= {12'h0, mask[31:12]};
-                5'd4:   shifted_mask <= {16'h0, mask[31:16]};
-                5'd5:   shifted_mask <= {20'h0, mask[31:20]};
-                5'd6:   shifted_mask <= {24'h0, mask[31:24]};
-                5'd7:   shifted_mask <= {28'h0, mask[31:28]};
-            endcase
-        end
-        else if(!DIX && CLRM == T9990_REG::CLRM_8BPP) begin
-            case (OFFSET[1:0])
-                5'd0:   shifted_mask <= mask;
-                5'd1:   shifted_mask <= { 8'h0, mask[31: 8]};
-                5'd2:   shifted_mask <= {16'h0, mask[31:16]};
-                5'd3:   shifted_mask <= {24'h0, mask[31:24]};
-            endcase
-        end
-        else if(!DIX && CLRM == T9990_REG::CLRM_16BPP) begin
-            case (OFFSET[0:0])
-                5'd0:   shifted_mask <= mask;
-                5'd1:   shifted_mask <= {16'h0, mask[31:16]};
-            endcase
-        end
-
-        else if(DIX && CLRM == T9990_REG::CLRM_2BPP) begin
-            case (OFFSET[3:0])
-                5'd15:  shifted_mask <= mask;
-                5'd14:  shifted_mask <= {mask[29:0],  2'h0};
-                5'd13:  shifted_mask <= {mask[27:0],  4'h0};
-                5'd12:  shifted_mask <= {mask[25:0],  6'h0};
-                5'd11:  shifted_mask <= {mask[23:0],  8'h0};
-                5'd10:  shifted_mask <= {mask[21:0], 10'h0};
-                5'd9:   shifted_mask <= {mask[19:0], 12'h0};
-                5'd8:   shifted_mask <= {mask[17:0], 14'h0};
-                5'd7:   shifted_mask <= {mask[15:0], 16'h0};
-                5'd6:   shifted_mask <= {mask[13:0], 18'h0};
-                5'd5:   shifted_mask <= {mask[11:0], 20'h0};
-                5'd4:   shifted_mask <= {mask[ 9:0], 22'h0};
-                5'd3:   shifted_mask <= {mask[ 7:0], 24'h0};
-                5'd2:   shifted_mask <= {mask[ 5:0], 26'h0};
-                5'd1:   shifted_mask <= {mask[ 3:0], 28'h0};
-                5'd0:   shifted_mask <= {mask[ 1:0], 30'h0};
-            endcase
-        end
-        else if(DIX && CLRM == T9990_REG::CLRM_4BPP) begin
-            case (OFFSET[2:0])
-                5'd7:   shifted_mask <= mask;
-                5'd6:   shifted_mask <= {mask[27:0],  4'h0};
-                5'd5:   shifted_mask <= {mask[23:0],  8'h0};
-                5'd4:   shifted_mask <= {mask[19:0], 12'h0};
-                5'd3:   shifted_mask <= {mask[15:0], 16'h0};
-                5'd2:   shifted_mask <= {mask[11:0], 20'h0};
-                5'd1:   shifted_mask <= {mask[ 7:0], 24'h0};
-                5'd0:   shifted_mask <= {mask[ 3:0], 28'h0};
-            endcase
-        end
-        else if(DIX && CLRM == T9990_REG::CLRM_8BPP) begin
-            case (OFFSET[1:0])
-                5'd3:   shifted_mask <= mask;
-                5'd2:   shifted_mask <= {mask[23:0],  8'h0};
-                5'd1:   shifted_mask <= {mask[15:0], 16'h0};
-                5'd0:   shifted_mask <= {mask[ 7:0], 24'h0};
-            endcase
-        end
-        else begin
-            case (OFFSET[0:0])
-                5'd1:   shifted_mask <= mask;
-                5'd0:   shifted_mask <= {mask[15:0], 16'h0};
-            endcase
-        end
-    end
-
-    /***************************************************************
-     * WM レジスタでマスク
-     ***************************************************************/
-    always_ff @(posedge CLK) begin
-        BIT_MASK <= shifted_mask & {WM[7:0], WM[15:8], WM[7:0], WM[15:8]};  // ビッグエンディアンで出力するので WM を入れ替え
     end
 endmodule
 
