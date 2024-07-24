@@ -172,12 +172,80 @@ module T9990_SPRITE #(
             spr_pat_w_en <= 0;
         end
         else if(MEM.ACK && state == STATE_SPR_PAT_R) begin
-            spr_pat_w_data[31:0] <= { MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24]};
+            if(fetch_pat_xpos[9:4] == 6'b111111) begin
+                // クリッピング
+                spr_pat_w_data <= { spr_pat_w_data[63:32], MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24]} << (4 * (1 + ~fetch_pat_xpos[3:0]));
+/*
+                case (fetch_pat_xpos[3:0])
+                    4'b1111:    spr_pat_w_data <= { spr_pat_w_data[59:32], MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24],  4'd0};  //  -1
+                    4'b1110:    spr_pat_w_data <= { spr_pat_w_data[55:32], MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24],  8'd0};  //  -2
+                    4'b1101:    spr_pat_w_data <= { spr_pat_w_data[51:32], MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 12'd0};  //  -3
+                    4'b1100:    spr_pat_w_data <= { spr_pat_w_data[47:32], MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 16'd0};  //  -4
+                    4'b1011:    spr_pat_w_data <= { spr_pat_w_data[43:32], MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 20'd0};  //  -5
+                    4'b1010:    spr_pat_w_data <= { spr_pat_w_data[39:32], MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 24'd0};  //  -6
+                    4'b1001:    spr_pat_w_data <= { spr_pat_w_data[35:32], MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 28'd0};  //  -7
+                    4'b1000:    spr_pat_w_data <= {                        MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 32'd0};  //  -8
+                    4'b0111:    spr_pat_w_data <= {                        MEM.DOUT[3:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 36'd0};  //  -9
+                    4'b0110:    spr_pat_w_data <= {                                       MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 40'd0};  // -10
+                    4'b0101:    spr_pat_w_data <= {                                       MEM.DOUT[11:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 44'd0};  // -11
+                    4'b0100:    spr_pat_w_data <= {                                                       MEM.DOUT[23:16], MEM.DOUT[31:24], 48'd0};  // -12
+                    4'b0011:    spr_pat_w_data <= {                                                       MEM.DOUT[19:16], MEM.DOUT[31:24], 52'd0};  // -13
+                    4'b0010:    spr_pat_w_data <= {                                                                        MEM.DOUT[31:24], 56'd0};  // -14
+                    4'b0001:    spr_pat_w_data <= {                                                                        MEM.DOUT[27:24], 60'd0};  // -15
+                    4'b0000:    spr_pat_w_data <= {                                                                                         64'd0};  // -16
+                endcase
+*/
+            end
+            else begin
+                spr_pat_w_data[31:0] <= { MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24]};
+            end
             spr_pat_w_addr <= fetch_index[3:0];
             spr_pat_w_en <= 1;
         end
         else if(MEM.ACK && state == STATE_CUR_PAT) begin
-            spr_pat_w_data <= { MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 32'h00000000 };
+            if(fetch_pat_xpos[9:5] == 5'b11111) begin
+                // クリッピング
+                spr_pat_w_data <= { MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 32'h00000000 } << (1 + ~fetch_pat_xpos[4:0]);
+/*
+                case (fetch_pat_xpos[4:0])
+                    5'b11111:   spr_pat_w_data <= { MEM.DOUT[6:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 33'd0 };   //  -1
+                    5'b11110:   spr_pat_w_data <= { MEM.DOUT[5:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 34'd0 };   //  -2
+                    5'b11101:   spr_pat_w_data <= { MEM.DOUT[4:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 35'd0 };   //  -3
+                    5'b11100:   spr_pat_w_data <= { MEM.DOUT[3:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 36'd0 };   //  -4
+                    5'b11011:   spr_pat_w_data <= { MEM.DOUT[2:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 37'd0 };   //  -5
+                    5'b11010:   spr_pat_w_data <= { MEM.DOUT[1:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 38'd0 };   //  -6
+                    5'b11001:   spr_pat_w_data <= { MEM.DOUT[0:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 39'd0 };   //  -7
+                    5'b11000:   spr_pat_w_data <= {                MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 40'd0 };   //  -8
+                    5'b10111:   spr_pat_w_data <= {                MEM.DOUT[14:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 41'd0 };   //  -9
+                    5'b10110:   spr_pat_w_data <= {                MEM.DOUT[13:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 42'd0 };   // -10
+                    5'b10101:   spr_pat_w_data <= {                MEM.DOUT[12:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 43'd0 };   // -11
+                    5'b10100:   spr_pat_w_data <= {                MEM.DOUT[11:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 44'd0 };   // -12
+                    5'b10011:   spr_pat_w_data <= {                MEM.DOUT[10:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 45'd0 };   // -13
+                    5'b10010:   spr_pat_w_data <= {                MEM.DOUT[ 9:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 46'd0 };   // -14
+                    5'b10001:   spr_pat_w_data <= {                MEM.DOUT[ 8:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 47'd0 };   // -15
+                    5'b10000:   spr_pat_w_data <= {                                MEM.DOUT[23:16], MEM.DOUT[31:24], 48'd0 };   // -16
+                    5'b01111:   spr_pat_w_data <= {                                MEM.DOUT[22:16], MEM.DOUT[31:24], 49'd0 };   // -17
+                    5'b01110:   spr_pat_w_data <= {                                MEM.DOUT[21:16], MEM.DOUT[31:24], 50'd0 };   // -18
+                    5'b01101:   spr_pat_w_data <= {                                MEM.DOUT[20:16], MEM.DOUT[31:24], 51'd0 };   // -19
+                    5'b01100:   spr_pat_w_data <= {                                MEM.DOUT[19:16], MEM.DOUT[31:24], 52'd0 };   // -20
+                    5'b01011:   spr_pat_w_data <= {                                MEM.DOUT[18:16], MEM.DOUT[31:24], 53'd0 };   // -21
+                    5'b01010:   spr_pat_w_data <= {                                MEM.DOUT[17:16], MEM.DOUT[31:24], 54'd0 };   // -22
+                    5'b01001:   spr_pat_w_data <= {                                MEM.DOUT[16:16], MEM.DOUT[31:24], 55'd0 };   // -23
+                    5'b01000:   spr_pat_w_data <= {                                                 MEM.DOUT[31:24], 56'd0 };   // -24
+                    5'b00111:   spr_pat_w_data <= {                                                 MEM.DOUT[30:24], 57'd0 };   // -25
+                    5'b00110:   spr_pat_w_data <= {                                                 MEM.DOUT[29:24], 58'd0 };   // -26
+                    5'b00101:   spr_pat_w_data <= {                                                 MEM.DOUT[28:24], 59'd0 };   // -27
+                    5'b00100:   spr_pat_w_data <= {                                                 MEM.DOUT[27:24], 60'd0 };   // -28
+                    5'b00011:   spr_pat_w_data <= {                                                 MEM.DOUT[26:24], 61'd0 };   // -29
+                    5'b00010:   spr_pat_w_data <= {                                                 MEM.DOUT[25:24], 62'd0 };   // -30
+                    5'b00001:   spr_pat_w_data <= {                                                 MEM.DOUT[24:24], 63'd0 };   // -31
+                    5'b00000:   spr_pat_w_data <= {                                                                  64'd0 };   // -32
+                endcase
+*/
+            end
+            else begin
+                spr_pat_w_data <= { MEM.DOUT[7:0], MEM.DOUT[15:8], MEM.DOUT[23:16], MEM.DOUT[31:24], 32'h00000000 };
+            end
             spr_pat_w_en <= 1;
             spr_pat_w_addr <= fetch_index[3:0];
         end
@@ -267,6 +335,7 @@ module T9990_SPRITE #(
     logic [7:0] fetch_pat_num;
     logic [4:0] fetch_pat_line;
     logic       fetch_attr;
+    logic [9:0] fetch_pat_xpos;
 
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n) begin
@@ -297,9 +366,11 @@ module T9990_SPRITE #(
             // 最初のパターン
 `ifdef SPR_ATR_USE_DPB
             fetch_pat_num <= spr_atr_r_data[15:8];
+            fetch_pat_xpos <= spr_atr_r_data[25:16];
             fetch_pat_line <= spr_atr_r_data[4:0];
 `else
             fetch_pat_num <= atr_buff[0][15:8];
+            fetch_pat_xpos <= atr_buff[0][25:16];
             fetch_pat_line <= VCNT[4:0] - atr_buff[0][4:0];
             fetch_index_next <= 1'd1;
 `endif
@@ -313,8 +384,10 @@ module T9990_SPRITE #(
         else if(state == STATE_CUR_PAT_START) begin
             // 最初のパターン
 `ifdef SPR_ATR_USE_DPB
+            fetch_pat_xpos <= spr_atr_r_data[25:16];
             fetch_pat_line <= VCNT[4:0] - spr_atr_r_data[4:0];
 `else
+            fetch_pat_xpos <= atr_buff[0][25:16];
             fetch_pat_line <= VCNT[4:0] - atr_buff[0][4:0];
             fetch_index_next <= 1'd1;
 `endif
@@ -372,9 +445,11 @@ module T9990_SPRITE #(
                     // 次のパターン番号を取得
 `ifdef SPR_ATR_USE_DPB
                     fetch_pat_num <= spr_atr_r_data[15:8];
+                    fetch_pat_xpos <= spr_atr_r_data[25:16];
                     fetch_pat_line <= VCNT[4:0] - spr_atr_r_data[4:0];
 `else
                     fetch_pat_num <= atr_buff[fetch_index_next][15:8];
+                    fetch_pat_xpos <= atr_buff[fetch_index_next][25:16];
                     fetch_pat_line <= VCNT[4:0] - atr_buff[fetch_index_next][4:0];
                     fetch_index_next <= fetch_index_next + 1'd1;
 `endif
@@ -420,8 +495,10 @@ module T9990_SPRITE #(
 
                     // 次のパターン Y オフセットを取得
 `ifdef SPR_ATR_USE_DPB
+                    fetch_pat_xpos <= spr_atr_r_data[25:16];
                     fetch_pat_line <= VCNT[4:0] - spr_atr_r_data[4:0];
 `else
+                    fetch_pat_xpos <= atr_buff[fetch_index_next][25:16];
                     fetch_pat_line <= VCNT[4:0] - atr_buff[fetch_index_next][4:0];
                     fetch_index_next <= fetch_index_next + 1'd1;
 `endif
@@ -459,6 +536,17 @@ module T9990_SPRITE #(
     generate
         genvar v_num;
         for(v_num = 0; v_num < MAX_SPR_VIEW_COUNT; v_num = v_num + 1) begin: view
+`ifdef SPR_PAT_USE_DPB
+            wire [63:0] curr_copy_pat = spr_pat_r_data;
+`else
+            wire [63:0] curr_copy_pat = pat_buff[v_num];
+`endif
+`ifdef SPR_ATR_USE_DPB
+            wire [31:0] curr_copy_atr = spr_atr_r_data;
+`else
+            wire [31:0] curr_copy_atr = atr_buff[v_num];
+`endif
+
             // 表示範囲内に入ったら X 座標値をシフト
             always_ff @(posedge CLK or negedge RESET_n) begin
                 if(!RESET_n) begin
@@ -479,20 +567,13 @@ module T9990_SPRITE #(
                         view_sc[v_num] <= 0;
                     end
                     else begin
-`ifdef SPR_PAT_USE_DPB
-                        view_pat[v_num] <= spr_pat_r_data;
-`else
-                        view_pat[v_num] <= pat_buff[v_num];
-`endif
-`ifdef SPR_ATR_USE_DPB
-                        view_x[v_num] <= {spr_atr_r_data[25:24], spr_atr_r_data[23:16]} + (IS_CUR ? 6'd32 : 5'd16);
-                        view_pri[v_num] <= spr_atr_r_data[29:28];
-                        view_sc[v_num] <= spr_atr_r_data[31:30];
-`else
-                        view_x[v_num] <= {atr_buff[v_num][25:24],atr_buff[v_num][23:16]} + (IS_CUR ? 6'd32 : 5'd16);
-                        view_pri[v_num] <= atr_buff[v_num][29:28];
-                        view_sc[v_num] <= atr_buff[v_num][31:30];
-`endif
+                        // パターンをコピー
+                        view_pat[v_num] <= curr_copy_pat;
+
+                        // アトリビュートをコピー
+                        view_x[v_num] <= {curr_copy_atr[25:24], curr_copy_atr[23:16]} + (IS_CUR ? 6'd32 : 5'd16);
+                        view_pri[v_num] <= curr_copy_atr[29:28];
+                        view_sc[v_num] <= curr_copy_atr[31:30];
                     end
                 end
 
