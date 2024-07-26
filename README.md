@@ -6,6 +6,8 @@ TangNano20K を搭載した MSX 用カートリッジ
 基板は WonderTang のピンアサインとほぼ同じで、バッファ IC は2電源タイプに変更してます。
 また、信号の衝突を防ぐために INT 信号はオープンコレクタに変更してあります。
 
+<img alt="基板イメージ" src="https://github.com/buppu3/tnCart/blob/main/pics/tnCart_rev1_3d.png?raw=true" width="40%" /><img alt="スロットに装着したカートリッジ基板" src="https://github.com/buppu3/tnCart/blob/main/pics/tnCart_rev1_mounted.png?raw=true" width="40%" />
+
 ## たぶん動く機能
 - 4MB 拡張 RAM
 - NEXTOR と TF カード制御
@@ -14,6 +16,10 @@ TangNano20K を搭載した MSX 用カートリッジ
 - メガロムエミュレーション
 - SCC 音源
 - V9990 の P1/BP6 モード(256x212dot)
+
+## 既知の不具合
+- 1chip MSX で動かない
+- V9990 の割り込み
 
 ## 今後の予定
 - PAC エミュレーション
