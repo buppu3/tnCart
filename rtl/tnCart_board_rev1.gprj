@@ -45,6 +45,7 @@
         <File path="src/peripheral/video/tiny9990/t9990_bitmap.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/video/tiny9990/t9990_blit.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/video/tiny9990/t9990_blit_addr.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_blit_bitmask.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/video/tiny9990/t9990_blit_fifo.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/video/tiny9990/t9990_clock.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/video/tiny9990/t9990_color_decode.sv" type="file.verilog" enable="1"/>
