@@ -58,7 +58,8 @@ endinterface
 
 module UMA #(
     parameter COUNT         = 2,
-    parameter DIV           = 30        // 3.58MHz の分周値
+    parameter DIV           = 30,       // 3.58MHz の分周値
+    parameter DELAY         = 5         // 3.58MHz クロックエッジからメモリアクセスまでのディレイ
 ) (
     input   wire            RESET_n,
     input   wire            CLK,
@@ -78,65 +79,90 @@ module UMA #(
     /***************************************************************
      * 3.58MHz に同期して 10.74MHz 毎にメモリ切り替え
      ***************************************************************/
-    localparam DIV10MHz = (DIV * 2 / 3);
-    logic [6:0] mem_cnt;
+    localparam DIVCNT_TOP   = (DELAY);
+
+    localparam DIVCNT_25M_0 = (DIVCNT_TOP + DIV * 0 / 7);
+    localparam DIVCNT_25M_1 = (DIVCNT_TOP + DIV * 1 / 7);
+    localparam DIVCNT_25M_2 = (DIVCNT_TOP + DIV * 2 / 7);
+    localparam DIVCNT_25M_3 = (DIVCNT_TOP + DIV * 3 / 7);
+    localparam DIVCNT_25M_4 = (DIVCNT_TOP + DIV * 4 / 7);
+    localparam DIVCNT_25M_5 = (DIVCNT_TOP + DIV * 5 / 7);
+    localparam DIVCNT_25M_6 = (DIVCNT_TOP + DIV * 6 / 7);
+
+    localparam DIVCNT_21M_0 = (DIVCNT_TOP + DIV * 0 / 6);
+    localparam DIVCNT_21M_1 = (DIVCNT_TOP + DIV * 1 / 6);
+    localparam DIVCNT_21M_2 = (DIVCNT_TOP + DIV * 2 / 6);
+    localparam DIVCNT_21M_3 = (DIVCNT_TOP + DIV * 3 / 6);
+    localparam DIVCNT_21M_4 = (DIVCNT_TOP + DIV * 4 / 6);
+    localparam DIVCNT_21M_5 = (DIVCNT_TOP + DIV * 5 / 6);
+
+    localparam DIVCNT_14M_0 = (DIVCNT_TOP + DIV * 0 / 4);
+    localparam DIVCNT_14M_1 = (DIVCNT_TOP + DIV * 1 / 4);
+    localparam DIVCNT_14M_2 = (DIVCNT_TOP + DIV * 2 / 4);
+    localparam DIVCNT_14M_3 = (DIVCNT_TOP + DIV * 3 / 4);
+
+    localparam DIVCNT_10M_0 = (DIVCNT_TOP + DIV * 0 / 3);
+    localparam DIVCNT_10M_1 = (DIVCNT_TOP + DIV * 1 / 3);
+    localparam DIVCNT_10M_2 = (DIVCNT_TOP + DIV * 2 / 3);
+
+    logic [$clog2(DIV)-1:0] mem_cnt;
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                       mem_cnt <= 0;
-        else if(mem_cnt == (DIV10MHz - 1)) mem_cnt <= 0;
-        else                               mem_cnt <= mem_cnt + 1'd1;
+        if(!RESET_n)                  mem_cnt <= 0;
+        else if(mem_cnt == (DIV - 1)) mem_cnt <= 0;
+        else if(CLK_EN)               mem_cnt <= 0;
+        else                          mem_cnt <= mem_cnt + 1'd1;
     end
 
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)             Secondary[0].TIMING <= 0;
-        else if(mem_cnt == 6'd0) Secondary[0].TIMING <= 1;
-        else                     Secondary[0].TIMING <= 0;
+        if(!RESET_n)                                    Uma.CLK25M_EN <= 0;
+        else if(mem_cnt == (DIVCNT_25M_0 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_25M_1 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_25M_2 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_25M_3 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_25M_4 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_25M_5 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_25M_6 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
+        else                                            Uma.CLK25M_EN <= 0;
     end
 
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                       Secondary[1].TIMING <= 0;
-        else if(mem_cnt == (DIV10MHz / 2)) Secondary[1].TIMING <= 1;
-        else                               Secondary[1].TIMING <= 0;
-    end
-
-    logic [6:0] clk25m_cnt;
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                          clk25m_cnt <= CLK_OFFSET;
-        else if(clk25m_cnt == (DIV25MHz - 1)) clk25m_cnt <= 0;
-        else                                  clk25m_cnt <= clk25m_cnt + 1'd1;
-    end
-
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                Uma.CLK25M_EN <= 0;
-        else if(clk25m_cnt == 6'd0) Uma.CLK25M_EN <= 1;
-        else if(clk25m_cnt == 6'd4) Uma.CLK25M_EN <= 1;
-        else if(clk25m_cnt == 6'd8) Uma.CLK25M_EN <= 1;
-        else                        Uma.CLK25M_EN <= 0;
-    end
-
-    logic [6:0] clk21m_cnt;
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                          clk21m_cnt <= CLK_OFFSET;
-        else if(clk21m_cnt == (DIV21MHz - 1)) clk21m_cnt <= 0;
-        else                                  clk21m_cnt <= clk21m_cnt + 1'd1;
+        if(!RESET_n)                                    Uma.CLK21M_EN <= 0;
+        else if(mem_cnt == (DIVCNT_21M_0 - CLK_OFFSET)) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_21M_1 - CLK_OFFSET)) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_21M_2 - CLK_OFFSET)) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_21M_3 - CLK_OFFSET)) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_21M_4 - CLK_OFFSET)) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_21M_5 - CLK_OFFSET)) Uma.CLK21M_EN <= 1;
+        else                                            Uma.CLK21M_EN <= 0;
     end
 
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                Uma.CLK21M_EN <= 0;
-        else if(clk21m_cnt == 6'd0) Uma.CLK21M_EN <= 1;
-        else                        Uma.CLK21M_EN <= 0;
+        if(!RESET_n)                                    Uma.CLK14M_EN <= 0;
+        else if(mem_cnt == (DIVCNT_14M_0 - CLK_OFFSET)) Uma.CLK14M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_14M_1 - CLK_OFFSET)) Uma.CLK14M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_14M_2 - CLK_OFFSET)) Uma.CLK14M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_14M_3 - CLK_OFFSET)) Uma.CLK14M_EN <= 1;
+        else                                            Uma.CLK14M_EN <= 0;
     end
 
-    logic [6:0] clk14m_cnt;
+    logic timing_toggle;
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                          clk14m_cnt <= CLK_OFFSET;
-        else if(clk14m_cnt == (DIV14MHz - 1)) clk14m_cnt <= 0;
-        else                                  clk14m_cnt <= clk14m_cnt + 1'd1;
-    end
-
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                Uma.CLK14M_EN <= 0;
-        else if(clk14m_cnt == 6'd0) Uma.CLK14M_EN <= 1;
-        else                        Uma.CLK14M_EN <= 0;
+        if(!RESET_n) begin
+            Secondary[0].TIMING <= 0;
+            Secondary[1].TIMING <= 0;
+            timing_toggle <= 0;
+        end
+        else if(mem_cnt == DIVCNT_10M_0 ||
+                mem_cnt == DIVCNT_10M_1 ||
+                mem_cnt == DIVCNT_10M_2 ) begin
+            Secondary[0].TIMING <= ~timing_toggle;
+            Secondary[1].TIMING <= timing_toggle;
+            timing_toggle <= ~timing_toggle;
+        end
+        else begin
+            Secondary[0].TIMING <= 0;
+            Secondary[1].TIMING <= 0;
+        end
     end
 
     /***************************************************************
