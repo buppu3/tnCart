@@ -46,7 +46,8 @@ module VIDEO_UPSCAN #(
     parameter [9:0] H_DISP  = 10'd720,
     parameter [9:0] V_TOTAL = 10'd525,
     parameter [9:0] V_SYNC  = 10'd2,
-    parameter RESOLUTION    = VIDEO::RESOLUTION_720_480
+    parameter RESOLUTION    = VIDEO::RESOLUTION_720_480,
+    parameter ROW_COUNT     = 3     // 2=ダブルバッファ / 3=トリプルバッファ (出力側HSYNCと入力側HSYNCが完全に同期できない場合はトリプルバッファを使う)
 ) (
     input wire      RESET_n,
     input wire      DCLK,
@@ -78,12 +79,14 @@ module VIDEO_UPSCAN #(
      ***************************************************************/
     logic   IN_EN;
     logic   IN_START;
-    logic   IN_LINE;
+    logic [$clog2(ROW_COUNT)-1:0]  IN_LINE;
     logic   OUT_EN;
     logic   OUT_START;
-    logic   OUT_LINE;
+    logic [$clog2(ROW_COUNT)-1:0]  OUT_LINE;
 
-    VIDEO_UPSCAN_STRETCH_BUFFER u_buff_r (
+    VIDEO_UPSCAN_STRETCH_BUFFER #(
+        .ROW_COUNT(ROW_COUNT)
+    ) u_buff_r (
         .RESET_n,
         .CLEAR(1'b0),
 
@@ -101,7 +104,9 @@ module VIDEO_UPSCAN #(
         .OUT(OUT.R)
     );
 
-    VIDEO_UPSCAN_STRETCH_BUFFER u_buff_g (
+    VIDEO_UPSCAN_STRETCH_BUFFER #(
+        .ROW_COUNT(ROW_COUNT)
+    ) u_buff_g (
         .RESET_n,
         .CLEAR(1'b0),
 
@@ -119,7 +124,9 @@ module VIDEO_UPSCAN #(
         .OUT(OUT.G)
     );
 
-    VIDEO_UPSCAN_STRETCH_BUFFER u_buff_b (
+    VIDEO_UPSCAN_STRETCH_BUFFER #(
+        .ROW_COUNT(ROW_COUNT)
+    ) u_buff_b (
         .RESET_n,
         .CLEAR(1'b0),
 
@@ -165,9 +172,12 @@ module VIDEO_UPSCAN #(
     end
 
     always_ff @(posedge IN.DCLK or negedge RESET_n) begin
-        if(!RESET_n)                         IN_LINE <= 1;               // RESET
-        else if(in_prev_in_vs_n && !in_vs_n) IN_LINE <= 1;               // VSYNC
-        else if(in_prev_in_hs_n && !in_hs_n) IN_LINE <= !IN_LINE;        // HSYNC
+        if(!RESET_n)                         IN_LINE <= ROW_COUNT - 1;  // RESET
+        else if(in_prev_in_vs_n && !in_vs_n) IN_LINE <= ROW_COUNT - 1;  // VSYNC
+        else if(in_prev_in_hs_n && !in_hs_n) begin                      // HSYNC
+            if(IN_LINE == ROW_COUNT - 1)     IN_LINE <= 0;
+            else                             IN_LINE <= IN_LINE + 1'd1;
+        end
     end
 
     always_ff @(posedge IN.DCLK or negedge RESET_n) begin
@@ -214,7 +224,8 @@ module VIDEO_UPSCAN #(
      ***************************************************************/
     logic [9:0] out_h_cnt;
     logic [9:0] out_v_cnt;
-    logic [1:0] out_line_cnt;
+    logic [$clog2(ROW_COUNT)-1:0] out_line_cnt;
+    logic out_line_toggle;
 
     wire out_h_inc = 1;
     wire out_h_rst = (out_h_cnt == H_TOTAL - 1'd1) && out_h_inc;
@@ -236,9 +247,18 @@ module VIDEO_UPSCAN #(
     end
 
     always_ff @(posedge DCLK or negedge RESET_n) begin
+        if(!RESET_n)                              out_line_toggle <= 0;
+        else if(out_prev_in_vs_n && !out_in_vs_n) out_line_toggle <= 0;             // IN.VSYNC
+        else if(out_h_rst)                        out_line_toggle <= !out_line_toggle; // OUT.HSYNC
+    end
+
+    always_ff @(posedge DCLK or negedge RESET_n) begin
         if(!RESET_n)                              out_line_cnt <= 0;
-        else if(out_prev_in_vs_n && !out_in_vs_n) out_line_cnt <= 0;                    // IN.VSYNC
-        else if(out_h_rst)                        out_line_cnt <= out_line_cnt + 1'd1;  // OUT.HSYNC
+        else if(out_prev_in_vs_n && !out_in_vs_n) out_line_cnt <= 0;                // IN.VSYNC
+        else if(out_h_rst && out_line_toggle) begin                                 // OUT.HSYNC
+            if(out_line_cnt == ROW_COUNT - 1)     out_line_cnt <= 0;
+            else                                  out_line_cnt <= out_line_cnt + 1'd1;
+        end
     end
 
     always_ff @(posedge DCLK or negedge RESET_n) begin
@@ -248,8 +268,8 @@ module VIDEO_UPSCAN #(
     end
 
     always_ff @(posedge DCLK or negedge RESET_n) begin
-        if(!RESET_n)                OUT_LINE <= 0;                  // RESET
-        else if(out_h_cnt == 10'd1) OUT_LINE <= out_line_cnt[1];    // OUT.HSYNC + 1clk
+        if(!RESET_n)                OUT_LINE <= 0;                                  // RESET
+        else if(out_h_cnt == 10'd1) OUT_LINE <= out_line_cnt;                       // OUT.HSYNC + 1clk
     end
 
     always_ff @(posedge DCLK or negedge RESET_n) begin
@@ -280,7 +300,9 @@ endmodule
 /***********************************************************************
  * 拡大縮小付きバッファ
  ***********************************************************************/
-module VIDEO_UPSCAN_STRETCH_BUFFER (
+module VIDEO_UPSCAN_STRETCH_BUFFER #(
+    parameter ROW_COUNT = 2
+) (
     input wire          RESET_n,
     input wire          CLEAR,
 
@@ -288,28 +310,29 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
     input wire          IN_CLK,
     input wire          IN_EN,
     input wire          IN_START,
-    input wire          IN_LINE,
+    input wire [$clog2(ROW_COUNT)-1:0] IN_LINE,
     input wire [7:0]    IN,
 
     input wire          OUT_CLK,
     input wire          OUT_EN,
     input wire          OUT_START,
-    input wire          OUT_LINE,
+    input wire [$clog2(ROW_COUNT)-1:0] OUT_LINE,
     output reg [7:0]    OUT
 );
     localparam [10:0]   MAX_BUFFER_WIDTH = 11'd768;
+    localparam [15:0]   MAX_BUFFER_SIZE = MAX_BUFFER_WIDTH * ROW_COUNT;
 
     /***************************************************************
      * メモリ
      ***************************************************************/
-    logic [10:0] W_ADDR;
+    logic [$clog2(MAX_BUFFER_SIZE)-1:0] W_ADDR;
     logic [7:0]  W_DATA;
     logic        W_EN;
-    logic [10:0] R_ADDR;
+    logic [$clog2(MAX_BUFFER_SIZE)-1:0] R_ADDR;
     logic [7:0]  R_DATA;
 
     VIDEO_UPSCAN_BUFFER #(
-        .COUNT(MAX_BUFFER_WIDTH * 2)
+        .COUNT(MAX_BUFFER_SIZE)
     ) u_buf (
         .W_CLK(IN_CLK),
         .W_ADDR,
@@ -357,7 +380,19 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
             W_EN <= 0;
         end
         else if(IN_START) begin
-            W_ADDR <= IN_LINE ? 11'b11111111111 : (MAX_BUFFER_WIDTH-1);
+            if(ROW_COUNT == 3) begin
+                case (IN_LINE)
+                    2'd0:   W_ADDR <= $bits(W_ADDR)'(MAX_BUFFER_WIDTH * 0 - 1);
+                    2'd1:   W_ADDR <= $bits(W_ADDR)'(MAX_BUFFER_WIDTH * 1 - 1);
+                    2'd2:   W_ADDR <= $bits(W_ADDR)'(MAX_BUFFER_WIDTH * 2 - 1);
+                endcase
+            end
+            else begin
+                case (IN_LINE)
+                    1'd0:   W_ADDR <= $bits(W_ADDR)'(MAX_BUFFER_WIDTH * 0 - 1);
+                    1'd1:   W_ADDR <= $bits(W_ADDR)'(MAX_BUFFER_WIDTH * 1 - 1);
+                endcase
+            end
             W_EN <= 0;
         end
         else if(IN_EN) begin
@@ -559,7 +594,19 @@ module VIDEO_UPSCAN_STRETCH_BUFFER (
             R_ADDR <= 0;
         end
         else if(OUT_START) begin
-            R_ADDR <= OUT_LINE ? 0 : MAX_BUFFER_WIDTH;
+            if(ROW_COUNT == 3) begin
+                case (OUT_LINE)
+                    2'd0:   R_ADDR <= $bits(R_ADDR)'(MAX_BUFFER_WIDTH * 0);
+                    2'd1:   R_ADDR <= $bits(R_ADDR)'(MAX_BUFFER_WIDTH * 1);
+                    2'd2:   R_ADDR <= $bits(R_ADDR)'(MAX_BUFFER_WIDTH * 2);
+                endcase
+            end
+            else begin
+                case (OUT_LINE)
+                    1'd0:   R_ADDR <= $bits(R_ADDR)'(MAX_BUFFER_WIDTH * 0);
+                    1'd1:   R_ADDR <= $bits(R_ADDR)'(MAX_BUFFER_WIDTH * 1);
+                endcase
+            end
         end
         else if(OUT_EN && out_count != 10'd720) begin
             case (IN_RESOLUTION)
@@ -816,50 +863,125 @@ module VIDEO_UPSCAN_BUFFER #(
     parameter COUNT = 768 * 2
 ) (
     input wire          W_CLK,
-    input wire [10:0]   W_ADDR,
+    input wire [$clog2(COUNT)-1:0]   W_ADDR,
     input wire [7:0]    W_DATA,
     input wire          W_EN,
 
     input wire          R_CLK,
-    input wire [10:0]   R_ADDR,
+    input wire [$clog2(COUNT)-1:0]   R_ADDR,
     output reg [7:0]    R_DATA
 );
 
 `ifdef UPSCAN_USE_DPB
-    wire [7:0] dummy_a;
-    wire [15:0] dummy_b;
+    if(COUNT < 2048) begin
 
-    DPB u_dpb (
-        .DOA({dummy_a[7:0],R_DATA[7:0]}),
-        .CLKA(R_CLK),
-        .OCEA(1'b1),
-        .CEA(1'b1),
-        .RESETA(1'b0),
-        .WREA(1'b0),
-        .BLKSELA(3'b000),
-        .ADA({R_ADDR[10:0],3'b000}),
-        .DIA({8'b00000000,8'b00000000}),
+        wire [7:0] dummy_a;
+        wire [15:0] dummy_b;
 
-        .DOB(dummy_b),
-        .CLKB(W_CLK),
-        .OCEB(1'b0),
-        .CEB(1'b1),
-        .RESETB(1'b0),
-        .WREB(W_EN),
-        .BLKSELB(3'b000),
-        .ADB({W_ADDR[10:0],3'b000}),
-        .DIB({8'b00000000,W_DATA[7:0]})
-    );
+        DPB u_dpb (
+            .DOA({dummy_a[7:0],R_DATA[7:0]}),
+            .CLKA(R_CLK),
+            .OCEA(1'b1),
+            .CEA(1'b1),
+            .RESETA(1'b0),
+            .WREA(1'b0),
+            .BLKSELA(3'b000),
+            .ADA({R_ADDR[10:0],3'b000}),
+            .DIA({8'b00000000,8'b00000000}),
 
-    defparam u_dpb.READ_MODE0 = 1'b0;
-    defparam u_dpb.READ_MODE1 = 1'b0;
-    defparam u_dpb.WRITE_MODE0 = 2'b00;
-    defparam u_dpb.WRITE_MODE1 = 2'b00;
-    defparam u_dpb.BIT_WIDTH_0 = 8;
-    defparam u_dpb.BIT_WIDTH_1 = 8;
-    defparam u_dpb.BLK_SEL_0 = 3'b000;
-    defparam u_dpb.BLK_SEL_1 = 3'b000;
-    defparam u_dpb.RESET_MODE = "SYNC";
+            .DOB(dummy_b),
+            .CLKB(W_CLK),
+            .OCEB(1'b0),
+            .CEB(1'b1),
+            .RESETB(1'b0),
+            .WREB(W_EN),
+            .BLKSELB(3'b000),
+            .ADB({W_ADDR[10:0],3'b000}),
+            .DIB({8'b00000000,W_DATA[7:0]})
+        );
+
+        defparam u_dpb.READ_MODE0 = 1'b0;
+        defparam u_dpb.READ_MODE1 = 1'b0;
+        defparam u_dpb.WRITE_MODE0 = 2'b00;
+        defparam u_dpb.WRITE_MODE1 = 2'b00;
+        defparam u_dpb.BIT_WIDTH_0 = 8;
+        defparam u_dpb.BIT_WIDTH_1 = 8;
+        defparam u_dpb.BLK_SEL_0 = 3'b000;
+        defparam u_dpb.BLK_SEL_1 = 3'b000;
+        defparam u_dpb.RESET_MODE = "SYNC";
+    end
+    else begin
+        wire [11:0] u_dpb_0_douta_w;
+        wire [15:0] u_dpb_0_doutb_w;
+
+        DPB u_dpb_0 (
+            .DOA({u_dpb_0_douta_w[11:0],R_DATA[3:0]}),
+            .CLKA(R_CLK),
+            .OCEA(1'b1),
+            .CEA(1'b1),
+            .RESETA(1'b0),
+            .WREA(1'b0),
+            .BLKSELA(3'b000),
+            .ADA({R_ADDR[11:0],2'b00}),
+            .DIA(16'b0000000000000000),
+
+            .DOB(u_dpb_0_doutb_w[15:0]),
+            .CLKB(W_CLK),
+            .OCEB(1'b1),
+            .CEB(1'b1),
+            .RESETB(1'b0),
+            .WREB(W_EN),
+            .BLKSELB(3'b000),
+            .ADB({W_ADDR[11:0],2'b00}),
+            .DIB({12'b000000000000,W_DATA[3:0]})
+        );
+
+        defparam u_dpb_0.READ_MODE0 = 1'b0;
+        defparam u_dpb_0.READ_MODE1 = 1'b0;
+        defparam u_dpb_0.WRITE_MODE0 = 2'b00;
+        defparam u_dpb_0.WRITE_MODE1 = 2'b00;
+        defparam u_dpb_0.BIT_WIDTH_0 = 4;
+        defparam u_dpb_0.BIT_WIDTH_1 = 4;
+        defparam u_dpb_0.BLK_SEL_0 = 3'b000;
+        defparam u_dpb_0.BLK_SEL_1 = 3'b000;
+        defparam u_dpb_0.RESET_MODE = "SYNC";
+
+        wire [11:0] u_dpb_1_douta_w;
+        wire [15:0] u_dpb_1_doutb_w;
+
+        DPB u_dpb_1 (
+            .DOA({u_dpb_1_douta_w[11:0],R_DATA[7:4]}),
+            .CLKA(R_CLK),
+            .OCEA(1'b1),
+            .CEA(1'b1),
+            .RESETA(1'b0),
+            .WREA(1'b0),
+            .BLKSELA(3'b000),
+            .ADA({R_ADDR[11:0],2'b00}),
+            .DIA(16'b0000000000000000),
+
+            .DOB(u_dpb_1_doutb_w[15:0]),
+            .CLKB(W_CLK),
+            .OCEB(1'b1),
+            .CEB(1'b1),
+            .RESETB(1'b0),
+            .WREB(W_EN),
+            .BLKSELB(3'b000),
+            .ADB({W_ADDR[11:0],2'b00}),
+            .DIB({12'b000000000000,W_DATA[7:4]})
+        );
+
+        defparam u_dpb_1.READ_MODE0 = 1'b0;
+        defparam u_dpb_1.READ_MODE1 = 1'b0;
+        defparam u_dpb_1.WRITE_MODE0 = 2'b00;
+        defparam u_dpb_1.WRITE_MODE1 = 2'b00;
+        defparam u_dpb_1.BIT_WIDTH_0 = 4;
+        defparam u_dpb_1.BIT_WIDTH_1 = 4;
+        defparam u_dpb_1.BLK_SEL_0 = 3'b000;
+        defparam u_dpb_1.BLK_SEL_1 = 3'b000;
+        defparam u_dpb_1.RESET_MODE = "SYNC";
+    end
+
 `else
     logic [6-1:0] buff[0:(COUNT)-1] /* synthesis syn_ramstyle="block_ram" */;
 
