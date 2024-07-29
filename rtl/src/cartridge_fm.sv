@@ -183,6 +183,75 @@ module CARTRIDGE_FM #(
         end
     end
 
+if(CONFIG::ENABLE_FM == CONFIG::ENABLE_IKAOPLL) begin
+    /***************************************************************
+     * IKA OPLL
+     ***************************************************************/
+    wire cs_io_n = ((ExtBus[0].ADDR[7:1] != IO_BASE_ADDR[7:1]) || ExtBus[0].IORQ_n) || !iosw_reg[0];                // 7Ch~7Dh
+    wire cs_mem_opll_n = (ExtBus[0].ADDR[15:1] != MIO_BASE_ADDR[15:1]) || ExtBus[0].MERQ_n || ExtBus[0].SLTSL_n;    // 7FF4h~7FF5h
+
+    wire dac_stb;
+    wire [12:0] dac_sig;
+
+    IKAOPLL #(
+        .FULLY_SYNCHRONOUS(1'b1),
+        .FAST_RESET(1'b1),
+        .ALTPATCH_CONFIG_MODE(1'b0),
+        .USE_PIPELINED_MULTIPLIER(1'b1)
+    ) u_opll (
+        .i_XIN_EMUCLK(ExtBus[0].CLK_21M),
+        .o_XOUT(),
+
+        .i_phiM_PCEN_n(!ExtBus[0].CLK_EN_21M),
+
+        .i_IC_n(ExtBus[0].RESET_n),
+        .i_ALTPATCH_EN(1'b0),
+
+        .i_CS_n(cs_io_n && cs_mem_opll_n),
+        .i_WR_n(ExtBus[0].WR_n),
+        .i_A0(ExtBus[0].ADDR[0]),
+
+        .i_D(ExtBus[0].DIN),
+        .o_D(),
+        .o_D_OE(),
+
+        .o_DAC_EN_MO(),
+        .o_DAC_EN_RO(),
+
+        .o_IMP_NOFLUC_SIGN(),
+        .o_IMP_NOFLUC_MAG(),
+
+        .o_IMP_FLUC_SIGNED_MO(),
+        .o_IMP_FLUC_SIGNED_RO(),
+
+        .o_ACC_SIGNED_STRB(dac_stb),
+        .o_ACC_SIGNED(dac_sig)
+    );
+
+/*
+    always_ff @(posedge dac_stb or negedge RESET_n) begin
+        if(!RESET_n) begin
+            Sound.Signal <= 0;
+        end
+        else begin
+            Sound.Signal <= dac_sig[12:3];
+        end
+    end
+*/
+    reg dac_stb_delay;
+    always_ff @(posedge Bus.CLK_21M) dac_stb_delay <= dac_stb;
+
+    always_ff @(posedge Bus.CLK_21M or negedge RESET_n) begin
+        if(!RESET_n) begin
+            Sound.Signal <= 0;
+        end
+        else if(!dac_stb_delay && dac_stb) begin
+            Sound.Signal <= dac_sig[12:3];
+        end
+    end
+
+end
+else if(CONFIG::ENABLE_FM == CONFIG::ENABLE_VM2413) begin
     /***************************************************************
      * VM2413
      ***************************************************************/
@@ -252,6 +321,7 @@ module CARTRIDGE_FM #(
             out_ff <= out0;
         end
     end
+end
 
 endmodule
 

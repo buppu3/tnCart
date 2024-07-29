@@ -36,6 +36,15 @@
         <File path="src/peripheral/signal/attenuator.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/signal/limiter.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/signal/sign_extension.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_dac.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_eg.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_lfo.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_op.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_pg.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_primitives.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_reg.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_timinggen.v" type="file.verilog" enable="1"/>
         <File path="src/peripheral/sound/dac_1bit.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/sound/scc/scc.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/sound/sound.sv" type="file.verilog" enable="1"/>

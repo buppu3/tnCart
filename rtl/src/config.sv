@@ -34,6 +34,13 @@
 `default_nettype none
 
 package CONFIG;
+    /***************************************************************
+     * 機能に指定する定数
+     ***************************************************************/
+    localparam DISABLE          = 0;            // 機能の無効
+    localparam ENABLE           = 1;            // 機能の有効
+    localparam ENABLE_VM2413    = 1;            // 機能の有効(VM2413)
+    localparam ENABLE_IKAOPLL   = 2;            // 機能の有効(IKAOPLL)
 
     /***************************************************************
      * フラッシュ
@@ -73,14 +80,14 @@ package CONFIG;
     /***************************************************************
      * 機能
      ***************************************************************/
-    localparam          ENABLE_MEGAROM          = 1;            // メガロムカートリッジを有効
-    localparam          ENABLE_FM               = 1;            // FM 音源カートリッジを有効
-    localparam          ENABLE_NEXTOR           = 1;            // NEXTOR カートリッジを有効
-    localparam          ENABLE_RAM              = 1;            // 拡張 RAM カートリッジを有効
-    localparam          ENABLE_PSG              = 1;            // PSG を有効
-    localparam          ENABLE_SCC              = 1;            // SCC を有効
-    localparam          ENABLE_V9990            = 0;            // V9990 を有効
-    localparam          ENABLE_V9990_CMD        = 0;            // V9990 の VDP コマンドを有効(V9990のVDPコマンドを有効にすると回路の規模が大きくなるので、他の大きな機能と同時使用はできない)
+    localparam          ENABLE_MEGAROM          = ENABLE;           // メガロムカートリッジを有効にするか(DISABLE/ENABLE)
+    localparam          ENABLE_FM               = ENABLE_IKAOPLL;   // FM 音源カートリッジを有効にするか(DISABLE/ENABLE_VM2413/ENABLE_IKAOPLL)
+    localparam          ENABLE_NEXTOR           = ENABLE;           // NEXTOR カートリッジを有効にするか(DISABLE/ENABLE)
+    localparam          ENABLE_RAM              = ENABLE;           // 拡張 RAM カートリッジを有効にするか(DISABLE/ENABLE)
+    localparam          ENABLE_PSG              = ENABLE;           // PSG を有効にするか(DISABLE/ENABLE)
+    localparam          ENABLE_SCC              = ENABLE;           // SCC を有効にするか(DISABLE/ENABLE)
+    localparam          ENABLE_V9990            = DISABLE;          // V9990 を有効にするか(DISABLE/ENABLE)
+    localparam          ENABLE_V9990_CMD        = DISABLE;          // V9990 の VDP コマンドを有効(V9990のVDPコマンドを有効にすると回路の規模が大きくなるので、他の大きな機能と同時使用はできない)
 
 endpackage
 

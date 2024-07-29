@@ -27,7 +27,8 @@ TangNano20K を搭載した MSX 用カートリッジ
 ## 使用モジュール
 各機能の実装に下記モジュールを使用しています。
 - PSG https://github.com/dnotq/ym2149_audio
-- OPLL https://github.com/hra1129/one-chip-msx-kai/tree/main/source/pld/src/sound/opll/vm2413
+- OPLL(VM2413) https://github.com/hra1129/one-chip-msx-kai/tree/main/source/pld/src/sound/opll/vm2413
+- OPLL(IKAOPLL) https://github.com/ika-musume/IKAOPLL
 
 ## メモ
 - V9990 機能を有効にする際は、config.sv の ENABLE_V9990, ENABLE_V9990_CMD を 1 に、ENABLE_FM, ENABLE_PSG, ENABLE_SCC 等を 0 に変更してから論理合成してください。全ての機能を有効にした状態では回路の規模が大きくなるため、TangNano20K では合成できません。
