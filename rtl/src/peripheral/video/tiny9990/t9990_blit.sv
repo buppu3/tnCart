@@ -90,9 +90,11 @@ module T9990_BLIT (
     reg FIFO_CLEAR;
     reg ENQUEUE;
     reg [4:0] ENQUEUE_COUNT;
+    reg [3:0] ENQUEUE_SHIFT;
     reg [31:0] ENQUEUE_DATA;
     reg DEQUEUE;
     reg [4:0] DEQUEUE_COUNT;
+    reg [3:0] DEQUEUE_SHIFT;
     wire [31:0] DEQUEUE_DATA;
     wire [5:0] FREE_COUNT;
     wire [5:0] AVAIL_COUNT;
@@ -106,9 +108,11 @@ module T9990_BLIT (
         .CLEAR(FIFO_CLEAR),
         .ENQUEUE,
         .ENQUEUE_COUNT,
+//        .ENQUEUE_SHIFT,
         .ENQUEUE_DATA,
         .DEQUEUE,
         .DEQUEUE_COUNT,
+        .DEQUEUE_SHIFT,
         .DEQUEUE_DATA
     );
 
@@ -174,11 +178,19 @@ module T9990_BLIT (
         P1 <= REG.DSPM == T9990_REG::DSPM_P1;
     end
 
-    reg [31:0] mem_dout;            // VRAM 読み出しデータ
+    // ENQUEUE 可能か？
+    reg ena_enqueue;
+    always_ff @(posedge CLK) if(CLK_EN) ena_enqueue <= FREE_COUNT >= SRC_OUT_COUNT && src_enable;
+
     reg [15:0] save_mem_dout;       // P1 モード VRAM0 データ一時保存用
-    wire [31:0] cmd_mem_dout_be = { mem_dout[7:0], mem_dout[15:8], mem_dout[23:16], mem_dout[31:24]};   // VRAM 読み出しデータ(ビッグエンディアン)
+
     wire [31:0] src_data_le = {SRC_DATA[7:0], SRC_DATA[15:8], SRC_DATA[23:16], SRC_DATA[31:24]};        // ロジカルオペレーション SRC データ(リトルエンディアン)
     wire [31:0] bit_mask_le = {BIT_MASK[7:0], BIT_MASK[15:8], BIT_MASK[23:16], BIT_MASK[31:24]};        // ビットマスク(リトルエンディアン)
+    wire [31:0] masked_src_data_le = src_data_le & bit_mask_le;                                         // ビットマスク後の SRC データ(リトルエンディアン)
+
+    wire [31:0] cmd_mem_dout_p1_be  = { save_mem_dout[7:0], CMD_MEM.DOUT[7:0], save_mem_dout[15:8], CMD_MEM.DOUT[15:8]};    // 転送元 VRAM 読み出しデータ(P1モード、ビッグエンディアン)
+    wire [31:0] cmd_mem_dout_np1_be = { CMD_MEM.DOUT[7:0], CMD_MEM.DOUT[15:8], CMD_MEM.DOUT[23:16], CMD_MEM.DOUT[31:24]};   // 転送元 VRAM 読み出しデータ(ビッグエンディアン)
+    wire [31:0] cmd_mem_dout_be  = P1 ? cmd_mem_dout_p1_be : cmd_mem_dout_np1_be;                                           // 転送元 VRAM 読み出しデータ
 
     wire [4:0] SRC_OUT_COUNT = SRC_COUNT;
     wire [4:0] SRC_POS_COUNT = SRC_COUNT;
@@ -199,6 +211,7 @@ module T9990_BLIT (
         STATE_ADVANCE,
         STATE_SETUP,
         STATE_SETUP2,
+        STATE_SETUP3,
         STATE_SRC_IN,
         STATE_SRC_READ_P1_EVEN_VRAM_WAIT_ACK,
         STATE_SRC_READ_P1_EVEN_VRAM_WAIT_BUSY,
@@ -206,14 +219,14 @@ module T9990_BLIT (
         STATE_SRC_READ_P1_ODD_VRAM_WAIT_BUSY,
         STATE_SRC_READ_VRAM_WAIT_ACK,
         STATE_SRC_READ_VRAM_WAIT_BUSY,
-        STATE_SRC_READ_VRAM_CONV_2I,
-        STATE_SRC_READ_VRAM_CONV_4I,
-        STATE_SRC_READ_VRAM_CONV_8I,
-        STATE_SRC_READ_VRAM_CONV_16I,
+        //STATE_SRC_READ_VRAM_CONV_2I,
+        //STATE_SRC_READ_VRAM_CONV_4I,
+        //STATE_SRC_READ_VRAM_CONV_8I,
+        //STATE_SRC_READ_VRAM_CONV_16I,
         STATE_SRC_READ_VRAM_CONV_2N,
-        STATE_SRC_READ_VRAM_CONV_4N,
-        STATE_SRC_READ_VRAM_CONV_8N,
-        STATE_SRC_READ_VRAM_CONV_16N,
+        //STATE_SRC_READ_VRAM_CONV_4N,
+        //STATE_SRC_READ_VRAM_CONV_8N,
+        //STATE_SRC_READ_VRAM_CONV_16N,
         STATE_SRC_READ_VRAM_CONV_8C,
         STATE_SRC_READ_CPU_WAIT_ACK,
         STATE_SRC_READ_CPU_WAIT_BUSY,
@@ -420,7 +433,7 @@ module T9990_BLIT (
         end
 
         //
-        // SRC_XY_ADDR, SRC_COUNT, BIT_MASK を計算
+        // SRC_COUNT, BIT_MASK 計算
         //
         else if(state == STATE_SETUP) begin
             FIFO_CLEAR <= 0;
@@ -428,9 +441,16 @@ module T9990_BLIT (
         end
 
         //
-        // SRC_XY_ADDR, SRC_COUNT, BIT_MASK を計算
+        // SRC_COUNT, BIT_MASK 確定
         //
         else if(state == STATE_SETUP2) begin
+            state <= STATE_SETUP3;
+        end
+
+        //
+        // ena_enqueue 確定
+        //
+        else if(state == STATE_SETUP3) begin
             state <= STATE_SRC_IN;
         end
 
@@ -447,7 +467,7 @@ module T9990_BLIT (
             end
 
             // 転送元データが必要なら読み出し開始
-            else if(FREE_COUNT >= SRC_OUT_COUNT && src_enable) begin
+            else if(ena_enqueue) begin
                 // VRAM リニア(P1モード)
                 if(P1 && src_is_linear) begin
                     CMD_MEM.OE_n <= 0;
@@ -550,32 +570,6 @@ module T9990_BLIT (
         end
 
         //
-        // VRAM 読み出し完了したらデータを並び替え
-        //
-        else if(state == STATE_SRC_READ_P1_ODD_VRAM_WAIT_BUSY) begin
-            if(!CMD_MEM.BUSY) begin
-                // 偶数アドレスと奇数アドレスのデータを合成
-                mem_dout <= {CMD_MEM.DOUT[15:8], save_mem_dout[15:8], CMD_MEM.DOUT[7:0], save_mem_dout[7:0]};
-
-                if(src_is_char) begin
-                    state <= STATE_SRC_READ_VRAM_CONV_8C;
-                end
-                else begin
-                    case ({SRC_DIX, SRC_CLRM})
-                        {1'b0, T9990_REG::CLRM_2BPP }:  state <= STATE_SRC_READ_VRAM_CONV_2N;
-                        {1'b0, T9990_REG::CLRM_4BPP }:  state <= STATE_SRC_READ_VRAM_CONV_4N;
-                        {1'b0, T9990_REG::CLRM_8BPP }:  state <= STATE_SRC_READ_VRAM_CONV_8N;
-                        {1'b0, T9990_REG::CLRM_16BPP}:  state <= STATE_SRC_READ_VRAM_CONV_16N;
-                        {1'b1, T9990_REG::CLRM_2BPP }:  state <= STATE_SRC_READ_VRAM_CONV_2I;
-                        {1'b1, T9990_REG::CLRM_4BPP }:  state <= STATE_SRC_READ_VRAM_CONV_4I;
-                        {1'b1, T9990_REG::CLRM_8BPP }:  state <= STATE_SRC_READ_VRAM_CONV_8I;
-                        {1'b1, T9990_REG::CLRM_16BPP}:  state <= STATE_SRC_READ_VRAM_CONV_16I;
-                    endcase
-                end
-            end
-        end
-
-        //
         // VRAM 読み出し要求を受け付けるまで待つ
         //
         else if(state == STATE_SRC_READ_VRAM_WAIT_ACK) begin
@@ -588,170 +582,65 @@ module T9990_BLIT (
         //
         // VRAM 読み出し完了したらデータを並び替え
         //
-        else if(state == STATE_SRC_READ_VRAM_WAIT_BUSY) begin
+        else if(state == STATE_SRC_READ_VRAM_WAIT_BUSY || state == STATE_SRC_READ_P1_ODD_VRAM_WAIT_BUSY) begin
             if(!CMD_MEM.BUSY) begin
-                mem_dout <= CMD_MEM.DOUT[31:0];
-
                 if(src_is_char) begin
                     state <= STATE_SRC_READ_VRAM_CONV_8C;
+                    ENQUEUE_DATA <= cmd_mem_dout_be;
                 end
                 else begin
-                    case ({SRC_DIX, SRC_CLRM})
-                        {1'b0, T9990_REG::CLRM_2BPP }:  state <= STATE_SRC_READ_VRAM_CONV_2N;
-                        {1'b0, T9990_REG::CLRM_4BPP }:  state <= STATE_SRC_READ_VRAM_CONV_4N;
-                        {1'b0, T9990_REG::CLRM_8BPP }:  state <= STATE_SRC_READ_VRAM_CONV_8N;
-                        {1'b0, T9990_REG::CLRM_16BPP}:  state <= STATE_SRC_READ_VRAM_CONV_16N;
-                        {1'b1, T9990_REG::CLRM_2BPP }:  state <= STATE_SRC_READ_VRAM_CONV_2I;
-                        {1'b1, T9990_REG::CLRM_4BPP }:  state <= STATE_SRC_READ_VRAM_CONV_4I;
-                        {1'b1, T9990_REG::CLRM_8BPP }:  state <= STATE_SRC_READ_VRAM_CONV_8I;
-                        {1'b1, T9990_REG::CLRM_16BPP}:  state <= STATE_SRC_READ_VRAM_CONV_16I;
-                    endcase
+                    if(SRC_DIX) begin
+                        // ドットを左右反転して転送元 VRAM データを ENQUEUE_DATA に格納
+                        case (SRC_CLRM)
+                            T9990_REG::CLRM_2BPP:   ENQUEUE_DATA <= {cmd_mem_dout_be[ 1: 0], cmd_mem_dout_be[ 3: 2], cmd_mem_dout_be[ 5: 4], cmd_mem_dout_be[ 7: 6], cmd_mem_dout_be[ 9: 8], cmd_mem_dout_be[11:10], cmd_mem_dout_be[13:12], cmd_mem_dout_be[15:14], cmd_mem_dout_be[17:16], cmd_mem_dout_be[19:18], cmd_mem_dout_be[21:20], cmd_mem_dout_be[23:22], cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30]};
+                            T9990_REG::CLRM_4BPP:   ENQUEUE_DATA <= {cmd_mem_dout_be[ 3: 0], cmd_mem_dout_be[ 7: 4], cmd_mem_dout_be[11: 8], cmd_mem_dout_be[15:12], cmd_mem_dout_be[19:16], cmd_mem_dout_be[23:20], cmd_mem_dout_be[27:24], cmd_mem_dout_be[31:28]};
+                            T9990_REG::CLRM_8BPP:   ENQUEUE_DATA <= {cmd_mem_dout_be[ 7: 0], cmd_mem_dout_be[15: 8], cmd_mem_dout_be[23:16], cmd_mem_dout_be[31:24]};
+                            T9990_REG::CLRM_16BPP:  ENQUEUE_DATA <= {cmd_mem_dout_be[15: 0], cmd_mem_dout_be[31:16]};
+                        endcase
+                    end
+                    else begin
+                        // ドットを反転しないで転送元 VRAM データを ENQUEUE_DATA に格納
+                        ENQUEUE_DATA <= cmd_mem_dout_be;
+                    end
+
+                    state <= STATE_SRC_READ_VRAM_CONV_2N;
                 end
+
+                // ビットシフト量を計算
+                case ({SRC_DIX, SRC_CLRM})
+                    {1'b0, T9990_REG::CLRM_2BPP}:   ENQUEUE_SHIFT <=   SRC_X[3:0];
+                    {1'b0, T9990_REG::CLRM_4BPP}:   ENQUEUE_SHIFT <= { SRC_X[2:0], 1'b0};
+                    {1'b0, T9990_REG::CLRM_8BPP}:   ENQUEUE_SHIFT <= { SRC_X[1:0], 2'b00};
+                    {1'b0, T9990_REG::CLRM_16BPP}:  ENQUEUE_SHIFT <= { SRC_X[0:0], 3'b000};
+                    {1'b1, T9990_REG::CLRM_2BPP}:   ENQUEUE_SHIFT <=  ~SRC_X[3:0];
+                    {1'b1, T9990_REG::CLRM_4BPP}:   ENQUEUE_SHIFT <= {~SRC_X[2:0], 1'b0};
+                    {1'b1, T9990_REG::CLRM_8BPP}:   ENQUEUE_SHIFT <= {~SRC_X[1:0], 2'b00};
+                    {1'b1, T9990_REG::CLRM_16BPP}:  ENQUEUE_SHIFT <= {~SRC_X[0:0], 3'b000};
+                endcase
             end
         end
 
         //
-        // データを逆方向に並び替えて FIFO へ格納
-        //
-        else if(state == STATE_SRC_READ_VRAM_CONV_2I) begin
-            case (SRC_X[3:0])
-                4'd0:   ENQUEUE_DATA <= {cmd_mem_dout_be[31:30], 30'b0};
-                4'd1:   ENQUEUE_DATA <= {cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 28'b0};
-                4'd2:   ENQUEUE_DATA <= {cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 26'b0};
-                4'd3:   ENQUEUE_DATA <= {cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 24'b0};
-                4'd4:   ENQUEUE_DATA <= {cmd_mem_dout_be[23:22], cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 22'b0};
-                4'd5:   ENQUEUE_DATA <= {cmd_mem_dout_be[21:20], cmd_mem_dout_be[23:22], cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 20'b0};
-                4'd6:   ENQUEUE_DATA <= {cmd_mem_dout_be[19:18], cmd_mem_dout_be[21:20], cmd_mem_dout_be[23:22], cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 18'b0};
-                4'd7:   ENQUEUE_DATA <= {cmd_mem_dout_be[17:16], cmd_mem_dout_be[19:18], cmd_mem_dout_be[21:20], cmd_mem_dout_be[23:22], cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 16'b0};
-                4'd8:   ENQUEUE_DATA <= {cmd_mem_dout_be[15:14], cmd_mem_dout_be[17:16], cmd_mem_dout_be[19:18], cmd_mem_dout_be[21:20], cmd_mem_dout_be[23:22], cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 14'b0};
-                4'd9:   ENQUEUE_DATA <= {cmd_mem_dout_be[13:12], cmd_mem_dout_be[15:14], cmd_mem_dout_be[17:16], cmd_mem_dout_be[19:18], cmd_mem_dout_be[21:20], cmd_mem_dout_be[23:22], cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 12'b0};
-                4'd10:  ENQUEUE_DATA <= {cmd_mem_dout_be[11:10], cmd_mem_dout_be[13:12], cmd_mem_dout_be[15:14], cmd_mem_dout_be[17:16], cmd_mem_dout_be[19:18], cmd_mem_dout_be[21:20], cmd_mem_dout_be[23:22], cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 10'b0};
-                4'd11:  ENQUEUE_DATA <= {cmd_mem_dout_be[ 9: 8], cmd_mem_dout_be[11:10], cmd_mem_dout_be[13:12], cmd_mem_dout_be[15:14], cmd_mem_dout_be[17:16], cmd_mem_dout_be[19:18], cmd_mem_dout_be[21:20], cmd_mem_dout_be[23:22], cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 8'b0};
-                4'd12:  ENQUEUE_DATA <= {cmd_mem_dout_be[ 7: 6], cmd_mem_dout_be[ 9: 8], cmd_mem_dout_be[11:10], cmd_mem_dout_be[13:12], cmd_mem_dout_be[15:14], cmd_mem_dout_be[17:16], cmd_mem_dout_be[19:18], cmd_mem_dout_be[21:20], cmd_mem_dout_be[23:22], cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 6'b0};
-                4'd13:  ENQUEUE_DATA <= {cmd_mem_dout_be[ 5: 4], cmd_mem_dout_be[ 7: 6], cmd_mem_dout_be[ 9: 8], cmd_mem_dout_be[11:10], cmd_mem_dout_be[13:12], cmd_mem_dout_be[15:14], cmd_mem_dout_be[17:16], cmd_mem_dout_be[19:18], cmd_mem_dout_be[21:20], cmd_mem_dout_be[23:22], cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 4'b0};
-                4'd14:  ENQUEUE_DATA <= {cmd_mem_dout_be[ 3: 2], cmd_mem_dout_be[ 5: 4], cmd_mem_dout_be[ 7: 6], cmd_mem_dout_be[ 9: 8], cmd_mem_dout_be[11:10], cmd_mem_dout_be[13:12], cmd_mem_dout_be[15:14], cmd_mem_dout_be[17:16], cmd_mem_dout_be[19:18], cmd_mem_dout_be[21:20], cmd_mem_dout_be[23:22], cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30], 2'b0};
-                4'd15:  ENQUEUE_DATA <= {cmd_mem_dout_be[ 1: 0], cmd_mem_dout_be[ 3: 2], cmd_mem_dout_be[ 5: 4], cmd_mem_dout_be[ 7: 6], cmd_mem_dout_be[ 9: 8], cmd_mem_dout_be[11:10], cmd_mem_dout_be[13:12], cmd_mem_dout_be[15:14], cmd_mem_dout_be[17:16], cmd_mem_dout_be[19:18], cmd_mem_dout_be[21:20], cmd_mem_dout_be[23:22], cmd_mem_dout_be[25:24], cmd_mem_dout_be[27:26], cmd_mem_dout_be[29:28], cmd_mem_dout_be[31:30]};
-            endcase
-
-            ENQUEUE <= 1;
-            state <= STATE_SRC_ENQUEUE_WAIT1;
-        end
-
-        //
-        // データを逆方向に並び替えて FIFO へ格納
-        //
-        else if(state == STATE_SRC_READ_VRAM_CONV_4I) begin
-            case (SRC_X[2:0])
-                3'd0:   ENQUEUE_DATA <= {cmd_mem_dout_be[31:28], 28'b0};
-                3'd1:   ENQUEUE_DATA <= {cmd_mem_dout_be[27:24], cmd_mem_dout_be[31:28], 24'b0};
-                3'd2:   ENQUEUE_DATA <= {cmd_mem_dout_be[23:20], cmd_mem_dout_be[27:24], cmd_mem_dout_be[31:28], 20'b0};
-                3'd3:   ENQUEUE_DATA <= {cmd_mem_dout_be[19:16], cmd_mem_dout_be[23:20], cmd_mem_dout_be[27:24], cmd_mem_dout_be[31:28], 16'b0};
-                3'd4:   ENQUEUE_DATA <= {cmd_mem_dout_be[15:12], cmd_mem_dout_be[19:16], cmd_mem_dout_be[23:20], cmd_mem_dout_be[27:24], cmd_mem_dout_be[31:28], 12'b0};
-                3'd5:   ENQUEUE_DATA <= {cmd_mem_dout_be[11: 8], cmd_mem_dout_be[15:12], cmd_mem_dout_be[19:16], cmd_mem_dout_be[23:20], cmd_mem_dout_be[27:24], cmd_mem_dout_be[31:28], 8'b0};
-                3'd6:   ENQUEUE_DATA <= {cmd_mem_dout_be[ 7: 4], cmd_mem_dout_be[11: 8], cmd_mem_dout_be[15:12], cmd_mem_dout_be[19:16], cmd_mem_dout_be[23:20], cmd_mem_dout_be[27:24], cmd_mem_dout_be[31:28], 4'b0};
-                3'd7:   ENQUEUE_DATA <= {cmd_mem_dout_be[ 3: 0], cmd_mem_dout_be[ 7: 4], cmd_mem_dout_be[11: 8], cmd_mem_dout_be[15:12], cmd_mem_dout_be[19:16], cmd_mem_dout_be[23:20], cmd_mem_dout_be[27:24], cmd_mem_dout_be[31:28]};
-            endcase
-            
-            ENQUEUE <= 1;
-            state <= STATE_SRC_ENQUEUE_WAIT1;
-        end
-
-        //
-        // データを逆方向に並び替えて FIFO へ格納
-        //
-        else if(state == STATE_SRC_READ_VRAM_CONV_8I) begin
-            case (SRC_X[1:0])
-                2'd0:   ENQUEUE_DATA <= {cmd_mem_dout_be[31:24], 24'b0};
-                2'd1:   ENQUEUE_DATA <= {cmd_mem_dout_be[23:16], cmd_mem_dout_be[31:24], 16'b0};
-                2'd2:   ENQUEUE_DATA <= {cmd_mem_dout_be[15: 8], cmd_mem_dout_be[23:16], cmd_mem_dout_be[31:24], 8'b0};
-                2'd3:   ENQUEUE_DATA <= {cmd_mem_dout_be[ 7: 0], cmd_mem_dout_be[15: 8], cmd_mem_dout_be[23:16], cmd_mem_dout_be[31:24]};
-            endcase
-
-            ENQUEUE <= 1;
-            state <= STATE_SRC_ENQUEUE_WAIT1;
-        end
-
-        //
-        // データを逆方向に並び替えて FIFO へ格納
-        //
-        else if(state == STATE_SRC_READ_VRAM_CONV_16I) begin
-            case (SRC_X[0:0])
-                1'd0:   ENQUEUE_DATA <= {cmd_mem_dout_be[31:16], 16'b0};
-                1'd1:   ENQUEUE_DATA <= {cmd_mem_dout_be[15: 0], cmd_mem_dout_be[31:16]};
-            endcase
-
-            ENQUEUE <= 1;
-            state <= STATE_SRC_ENQUEUE_WAIT1;
-        end
-
-        //
-        // データを順方向に並び替えて FIFO へ格納
+        // ビットシフトしてから FIFO へ格納
         //
         else if(state == STATE_SRC_READ_VRAM_CONV_2N) begin
-            case (SRC_X[3:0])
-                4'd0:   ENQUEUE_DATA <= cmd_mem_dout_be;
-                4'd1:   ENQUEUE_DATA <= {cmd_mem_dout_be[29:0],  2'b0};
-                4'd2:   ENQUEUE_DATA <= {cmd_mem_dout_be[27:0],  4'b0};
-                4'd3:   ENQUEUE_DATA <= {cmd_mem_dout_be[25:0],  6'b0};
-                4'd4:   ENQUEUE_DATA <= {cmd_mem_dout_be[23:0],  8'b0};
-                4'd5:   ENQUEUE_DATA <= {cmd_mem_dout_be[21:0], 10'b0};
-                4'd6:   ENQUEUE_DATA <= {cmd_mem_dout_be[19:0], 12'b0};
-                4'd7:   ENQUEUE_DATA <= {cmd_mem_dout_be[17:0], 14'b0};
-                4'd8:   ENQUEUE_DATA <= {cmd_mem_dout_be[15:0], 16'b0};
-                4'd9:   ENQUEUE_DATA <= {cmd_mem_dout_be[13:0], 18'b0};
-                4'd10:  ENQUEUE_DATA <= {cmd_mem_dout_be[11:0], 20'b0};
-                4'd11:  ENQUEUE_DATA <= {cmd_mem_dout_be[ 9:0], 22'b0};
-                4'd12:  ENQUEUE_DATA <= {cmd_mem_dout_be[ 7:0], 24'b0};
-                4'd13:  ENQUEUE_DATA <= {cmd_mem_dout_be[ 5:0], 26'b0};
-                4'd14:  ENQUEUE_DATA <= {cmd_mem_dout_be[ 3:0], 28'b0};
-                4'd15:  ENQUEUE_DATA <= {cmd_mem_dout_be[ 1:0], 30'b0};
-            endcase
-            
-            ENQUEUE <= 1;
-            state <= STATE_SRC_ENQUEUE_WAIT1;
-        end
-
-        //
-        // データを順方向に並び替えて FIFO へ格納
-        //
-        else if(state == STATE_SRC_READ_VRAM_CONV_4N) begin
-            case (SRC_X[2:0])
-                3'd0:   ENQUEUE_DATA <= cmd_mem_dout_be;
-                3'd1:   ENQUEUE_DATA <= {cmd_mem_dout_be[27:0],  4'b0};
-                3'd2:   ENQUEUE_DATA <= {cmd_mem_dout_be[23:0],  8'b0};
-                3'd3:   ENQUEUE_DATA <= {cmd_mem_dout_be[19:0], 12'b0};
-                3'd4:   ENQUEUE_DATA <= {cmd_mem_dout_be[15:0], 16'b0};
-                3'd5:   ENQUEUE_DATA <= {cmd_mem_dout_be[11:0], 20'b0};
-                3'd6:   ENQUEUE_DATA <= {cmd_mem_dout_be[ 7:0], 24'b0};
-                3'd7:   ENQUEUE_DATA <= {cmd_mem_dout_be[ 3:0], 28'b0};
-            endcase
-            
-            ENQUEUE <= 1;
-            state <= STATE_SRC_ENQUEUE_WAIT1;
-        end
-
-        //
-        // データを順方向に並び替えて FIFO へ格納
-        //
-        else if(state == STATE_SRC_READ_VRAM_CONV_8N) begin
-            case (SRC_X[1:0])
-                2'd0:   ENQUEUE_DATA <= cmd_mem_dout_be;
-                2'd1:   ENQUEUE_DATA <= {cmd_mem_dout_be[23:0],  8'b0};
-                2'd2:   ENQUEUE_DATA <= {cmd_mem_dout_be[15:0], 16'b0};
-                2'd3:   ENQUEUE_DATA <= {cmd_mem_dout_be[ 7:0], 24'b0};
-            endcase
-            
-            ENQUEUE <= 1;
-            state <= STATE_SRC_ENQUEUE_WAIT1;
-        end
-
-        //
-        // データを順方向に並び替えて FIFO へ格納
-        //
-        else if(state == STATE_SRC_READ_VRAM_CONV_16N) begin
-            case (SRC_X[0:0])
-                1'd0:   ENQUEUE_DATA <= cmd_mem_dout_be;
-                1'd1:   ENQUEUE_DATA <= {cmd_mem_dout_be[15:0], 16'b0};
+            case (ENQUEUE_SHIFT)
+                4'd0:   ENQUEUE_DATA <= ENQUEUE_DATA;
+                4'd1:   ENQUEUE_DATA <= {ENQUEUE_DATA[29:0],  2'b0};
+                4'd2:   ENQUEUE_DATA <= {ENQUEUE_DATA[27:0],  4'b0};
+                4'd3:   ENQUEUE_DATA <= {ENQUEUE_DATA[25:0],  6'b0};
+                4'd4:   ENQUEUE_DATA <= {ENQUEUE_DATA[23:0],  8'b0};
+                4'd5:   ENQUEUE_DATA <= {ENQUEUE_DATA[21:0], 10'b0};
+                4'd6:   ENQUEUE_DATA <= {ENQUEUE_DATA[19:0], 12'b0};
+                4'd7:   ENQUEUE_DATA <= {ENQUEUE_DATA[17:0], 14'b0};
+                4'd8:   ENQUEUE_DATA <= {ENQUEUE_DATA[15:0], 16'b0};
+                4'd9:   ENQUEUE_DATA <= {ENQUEUE_DATA[13:0], 18'b0};
+                4'd10:  ENQUEUE_DATA <= {ENQUEUE_DATA[11:0], 20'b0};
+                4'd11:  ENQUEUE_DATA <= {ENQUEUE_DATA[ 9:0], 22'b0};
+                4'd12:  ENQUEUE_DATA <= {ENQUEUE_DATA[ 7:0], 24'b0};
+                4'd13:  ENQUEUE_DATA <= {ENQUEUE_DATA[ 5:0], 26'b0};
+                4'd14:  ENQUEUE_DATA <= {ENQUEUE_DATA[ 3:0], 28'b0};
+                4'd15:  ENQUEUE_DATA <= {ENQUEUE_DATA[ 1:0], 30'b0};
             endcase
 
             ENQUEUE <= 1;
@@ -763,10 +652,10 @@ module T9990_BLIT (
         //
         else if(state == STATE_SRC_READ_VRAM_CONV_8C) begin
             case (SRC_X[1:0])
-                2'd0:   decode_data <= cmd_mem_dout_be;
-                2'd1:   decode_data <= {cmd_mem_dout_be[23:0],  8'b0};
-                2'd2:   decode_data <= {cmd_mem_dout_be[15:0], 16'b0};
-                2'd3:   decode_data <= {cmd_mem_dout_be[ 7:0], 24'b0};
+                2'd0:   decode_data <= ENQUEUE_DATA;
+                2'd1:   decode_data <= {ENQUEUE_DATA[23:0],  8'b0};
+                2'd2:   decode_data <= {ENQUEUE_DATA[15:0], 16'b0};
+                2'd3:   decode_data <= {ENQUEUE_DATA[ 7:0], 24'b0};
             endcase
             decode_count <= {SRC_OUT_COUNT[2:0], 3'b000};
             state <= STATE_SRC_DECODE;
@@ -960,6 +849,16 @@ module T9990_BLIT (
             else begin
                 // FIFO から取り出し
                 DEQUEUE_COUNT <= DST_IN_COUNT;
+                case ({DST_DIX, DST_CLRM})
+                    {1'b0, T9990_REG::CLRM_2BPP}:  DEQUEUE_SHIFT <=   DST_X[3:0];
+                    {1'b0, T9990_REG::CLRM_4BPP}:  DEQUEUE_SHIFT <= { DST_X[2:0], 1'b0};
+                    {1'b0, T9990_REG::CLRM_8BPP}:  DEQUEUE_SHIFT <= { DST_X[1:0], 2'b0};
+                    {1'b0, T9990_REG::CLRM_16BPP}: DEQUEUE_SHIFT <= { DST_X[0:0], 3'b0};
+                    {1'b1, T9990_REG::CLRM_2BPP}:  DEQUEUE_SHIFT <=  ~DST_X[3:0];
+                    {1'b1, T9990_REG::CLRM_4BPP}:  DEQUEUE_SHIFT <= {~DST_X[2:0], 1'b0};
+                    {1'b1, T9990_REG::CLRM_8BPP}:  DEQUEUE_SHIFT <= {~DST_X[1:0], 2'b0};
+                    {1'b1, T9990_REG::CLRM_16BPP}: DEQUEUE_SHIFT <= {~DST_X[0:0], 3'b0};
+                endcase
                 DEQUEUE <= 1;
                 state <= STATE_DST_READ_VRAM;
             end
@@ -1046,7 +945,7 @@ module T9990_BLIT (
         end
 
         //
-        // VRAM 読み出し完了したら FIFO へ格納
+        // VRAM 読み出し完了したら DST_DATA へ格納
         //
         else if(state == STATE_DST_READ_P1_ODD_VRAM_WAIT_BUSY) begin
             if(!CMD_MEM.BUSY) begin
@@ -1068,7 +967,7 @@ module T9990_BLIT (
         end
 
         //
-        // VRAM 読み出し完了したら FIFO へ格納
+        // VRAM 読み出し完了したら DST_DATA へ格納
         //
         else if(state == STATE_DST_READ_VRAM_WAIT_BUSY) begin
             if(!CMD_MEM.BUSY) begin
@@ -1082,159 +981,77 @@ module T9990_BLIT (
         //
         else if(state == STATE_SRC_DEQUEUE_DONE) begin
             if(DST_DIX) begin
-                if(DST_CLRM == T9990_REG::CLRM_2BPP) begin
-                    case (DST_X[3:0])
-                        4'd0:   SRC_DATA <= {DEQUEUE_DATA[31:30], 30'b0};
-                        4'd1:   SRC_DATA <= {DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 28'b0};
-                        4'd2:   SRC_DATA <= {DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 26'b0};
-                        4'd3:   SRC_DATA <= {DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 24'b0};
-                        4'd3:   SRC_DATA <= {DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 22'b0};
-                        4'd4:   SRC_DATA <= {DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 20'b0};
-                        4'd5:   SRC_DATA <= {DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 18'b0};
-                        4'd6:   SRC_DATA <= {DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 16'b0};
-                        4'd7:   SRC_DATA <= {DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 14'b0};
-                        4'd8:   SRC_DATA <= {DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 12'b0};
-                        4'd9:   SRC_DATA <= {DEQUEUE_DATA[11:10], DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 10'b0};
-                        4'd11:  SRC_DATA <= {DEQUEUE_DATA[ 9: 8], DEQUEUE_DATA[11:10], DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 8'b0};
-                        4'd12:  SRC_DATA <= {DEQUEUE_DATA[ 7: 6], DEQUEUE_DATA[ 9: 8], DEQUEUE_DATA[11:10], DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 6'b0};
-                        4'd13:  SRC_DATA <= {DEQUEUE_DATA[ 5: 4], DEQUEUE_DATA[ 7: 6], DEQUEUE_DATA[ 9: 8], DEQUEUE_DATA[11:10], DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 4'b0};
-                        4'd14:  SRC_DATA <= {DEQUEUE_DATA[ 3: 2], DEQUEUE_DATA[ 5: 4], DEQUEUE_DATA[ 7: 6], DEQUEUE_DATA[ 9: 8], DEQUEUE_DATA[11:10], DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30], 2'b0};
-                        4'd14:  SRC_DATA <= {DEQUEUE_DATA[ 1: 0], DEQUEUE_DATA[ 3: 2], DEQUEUE_DATA[ 5: 4], DEQUEUE_DATA[ 7: 6], DEQUEUE_DATA[ 9: 8], DEQUEUE_DATA[11:10], DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30]};
-                    endcase
-                end
-                else if(DST_CLRM == T9990_REG::CLRM_4BPP) begin
-                    case (DST_X[2:0])
-                        3'd0:   SRC_DATA <= {DEQUEUE_DATA[31:28], 28'b0};
-                        3'd1:   SRC_DATA <= {DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28], 24'b0};
-                        3'd2:   SRC_DATA <= {DEQUEUE_DATA[23:20], DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28], 20'b0};
-                        3'd3:   SRC_DATA <= {DEQUEUE_DATA[19:16], DEQUEUE_DATA[23:20], DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28], 16'b0};
-                        3'd4:   SRC_DATA <= {DEQUEUE_DATA[15:12], DEQUEUE_DATA[19:16], DEQUEUE_DATA[23:20], DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28], 12'b0};
-                        3'd5:   SRC_DATA <= {DEQUEUE_DATA[11: 8], DEQUEUE_DATA[15:12], DEQUEUE_DATA[19:16], DEQUEUE_DATA[23:20], DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28], 8'b0};
-                        3'd6:   SRC_DATA <= {DEQUEUE_DATA[ 7: 4], DEQUEUE_DATA[11: 8], DEQUEUE_DATA[15:12], DEQUEUE_DATA[19:16], DEQUEUE_DATA[23:20], DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28], 4'b0};
-                        3'd7:   SRC_DATA <= {DEQUEUE_DATA[ 3: 0], DEQUEUE_DATA[ 7: 4], DEQUEUE_DATA[11: 8], DEQUEUE_DATA[15:12], DEQUEUE_DATA[19:16], DEQUEUE_DATA[23:20], DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28]};
-                    endcase
-                end
-                else if(DST_CLRM == T9990_REG::CLRM_8BPP) begin
-                    case (DST_X[1:0])
-                        2'd0:   SRC_DATA <= {DEQUEUE_DATA[31:24], 24'b0};
-                        2'd1:   SRC_DATA <= {DEQUEUE_DATA[23:16], DEQUEUE_DATA[31:24], 16'b0};
-                        2'd2:   SRC_DATA <= {DEQUEUE_DATA[15: 8], DEQUEUE_DATA[23:16], DEQUEUE_DATA[31:24], 8'b0};
-                        2'd2:   SRC_DATA <= {DEQUEUE_DATA[ 7: 0], DEQUEUE_DATA[15: 8], DEQUEUE_DATA[23:16], DEQUEUE_DATA[31:24]};
-                    endcase
-                end
-                else begin
-                    case (DST_X[0:0])
-                        2'd0:   SRC_DATA <= {DEQUEUE_DATA[31:16], 16'b0};
-                        2'd1:   SRC_DATA <= {DEQUEUE_DATA[15: 0], DEQUEUE_DATA[31:16]};
-                    endcase
-                end
+                // 左右反転して SRC_DATA へ格納
+                case (DST_CLRM)
+                    T9990_REG::CLRM_2BPP:   SRC_DATA <= {DEQUEUE_DATA[ 1: 0], DEQUEUE_DATA[ 3: 2], DEQUEUE_DATA[ 5: 4], DEQUEUE_DATA[ 7: 6], DEQUEUE_DATA[ 9: 8], DEQUEUE_DATA[11:10], DEQUEUE_DATA[13:12], DEQUEUE_DATA[15:14], DEQUEUE_DATA[17:16], DEQUEUE_DATA[19:18], DEQUEUE_DATA[21:20], DEQUEUE_DATA[23:22], DEQUEUE_DATA[25:24], DEQUEUE_DATA[27:26], DEQUEUE_DATA[29:28], DEQUEUE_DATA[31:30]};
+                    T9990_REG::CLRM_4BPP:   SRC_DATA <= {DEQUEUE_DATA[ 3: 0], DEQUEUE_DATA[ 7: 4], DEQUEUE_DATA[11: 8], DEQUEUE_DATA[15:12], DEQUEUE_DATA[19:16], DEQUEUE_DATA[23:20], DEQUEUE_DATA[27:24], DEQUEUE_DATA[31:28]};
+                    T9990_REG::CLRM_8BPP:   SRC_DATA <= {DEQUEUE_DATA[ 7: 0], DEQUEUE_DATA[15: 8], DEQUEUE_DATA[23:16], DEQUEUE_DATA[31:24]};
+                    T9990_REG::CLRM_16BPP:  SRC_DATA <= {DEQUEUE_DATA[15: 0], DEQUEUE_DATA[31:16]};
+                endcase
             end
             else begin
-                if(DST_CLRM == T9990_REG::CLRM_2BPP) begin
-                    case (DST_X[3:0])
-                        4'd0:   SRC_DATA <= DEQUEUE_DATA;
-                        4'd1:   SRC_DATA <= { 2'b0, DEQUEUE_DATA[31: 2]};
-                        4'd2:   SRC_DATA <= { 4'b0, DEQUEUE_DATA[31: 4]};
-                        4'd3:   SRC_DATA <= { 6'b0, DEQUEUE_DATA[31: 6]};
-                        4'd4:   SRC_DATA <= { 8'b0, DEQUEUE_DATA[31: 8]};
-                        4'd5:   SRC_DATA <= {10'b0, DEQUEUE_DATA[31:10]};
-                        4'd6:   SRC_DATA <= {12'b0, DEQUEUE_DATA[31:12]};
-                        4'd7:   SRC_DATA <= {14'b0, DEQUEUE_DATA[31:14]};
-                        4'd8:   SRC_DATA <= {16'b0, DEQUEUE_DATA[31:16]};
-                        4'd9:   SRC_DATA <= {18'b0, DEQUEUE_DATA[31:18]};
-                        4'd10:  SRC_DATA <= {20'b0, DEQUEUE_DATA[31:20]};
-                        4'd11:  SRC_DATA <= {22'b0, DEQUEUE_DATA[31:22]};
-                        4'd12:  SRC_DATA <= {24'b0, DEQUEUE_DATA[31:24]};
-                        4'd13:  SRC_DATA <= {26'b0, DEQUEUE_DATA[31:26]};
-                        4'd14:  SRC_DATA <= {28'b0, DEQUEUE_DATA[31:28]};
-                        4'd15:  SRC_DATA <= {30'b0, DEQUEUE_DATA[31:30]};
-                    endcase
-                end
-                else if(DST_CLRM == T9990_REG::CLRM_4BPP) begin
-                    case (DST_X[2:0])
-                        3'd0:   SRC_DATA <= DEQUEUE_DATA;
-                        3'd1:   SRC_DATA <= { 4'b0, DEQUEUE_DATA[31: 4]};
-                        3'd2:   SRC_DATA <= { 8'b0, DEQUEUE_DATA[31: 8]};
-                        3'd3:   SRC_DATA <= {12'b0, DEQUEUE_DATA[31:12]};
-                        3'd4:   SRC_DATA <= {16'b0, DEQUEUE_DATA[31:16]};
-                        3'd5:   SRC_DATA <= {20'b0, DEQUEUE_DATA[31:20]};
-                        3'd6:   SRC_DATA <= {24'b0, DEQUEUE_DATA[31:24]};
-                        3'd7:   SRC_DATA <= {28'b0, DEQUEUE_DATA[31:28]};
-                    endcase
-                end
-                else if(DST_CLRM == T9990_REG::CLRM_8BPP) begin
-                    case (DST_X[1:0])
-                        2'd0:   SRC_DATA <= DEQUEUE_DATA;
-                        2'd1:   SRC_DATA <= { 8'b0, DEQUEUE_DATA[31: 8]};
-                        2'd2:   SRC_DATA <= {16'b0, DEQUEUE_DATA[31:16]};
-                        2'd3:   SRC_DATA <= {24'b0, DEQUEUE_DATA[31:24]};
-                    endcase
-                end
-                else begin
-                    case (DST_X[0:0])
-                        1'd0:   SRC_DATA <= DEQUEUE_DATA;
-                        1'd1:   SRC_DATA <= {16'b0, DEQUEUE_DATA[31:16]};
-                    endcase
-                end
+                // 左右反転せずに SRC_DATA へ格納
+                SRC_DATA <= DEQUEUE_DATA;
             end
 
             state <= STATE_LOGOP;
         end
 
         //
-        // ロジカルオペレーション1
+        // ロジカルオペレーション
         //
         else if(state == STATE_LOGOP) begin
             if(REG.TP) begin
-                // ビットマスク更新
+                // 1ドット毎に 0 と比較してライトデータを作成
                 if(DST_CLRM == T9990_REG::CLRM_2BPP) begin
                     WRT_DATA <= {
-                        (src_data_le[31:30] != 0 && bit_mask_le[30] != 0) ? LOGOP[31:30] : DST_DATA[31:30],
-                        (src_data_le[29:28] != 0 && bit_mask_le[28] != 0) ? LOGOP[29:28] : DST_DATA[29:28],
-                        (src_data_le[27:26] != 0 && bit_mask_le[26] != 0) ? LOGOP[27:26] : DST_DATA[27:26],
-                        (src_data_le[25:24] != 0 && bit_mask_le[24] != 0) ? LOGOP[25:24] : DST_DATA[25:24],
-                        (src_data_le[23:22] != 0 && bit_mask_le[22] != 0) ? LOGOP[23:22] : DST_DATA[23:22],
-                        (src_data_le[21:20] != 0 && bit_mask_le[20] != 0) ? LOGOP[21:20] : DST_DATA[21:20],
-                        (src_data_le[19:18] != 0 && bit_mask_le[18] != 0) ? LOGOP[19:18] : DST_DATA[19:18],
-                        (src_data_le[17:16] != 0 && bit_mask_le[16] != 0) ? LOGOP[17:16] : DST_DATA[17:16],
-                        (src_data_le[15:14] != 0 && bit_mask_le[14] != 0) ? LOGOP[15:14] : DST_DATA[15:14],
-                        (src_data_le[13:12] != 0 && bit_mask_le[12] != 0) ? LOGOP[13:12] : DST_DATA[13:12],
-                        (src_data_le[11:10] != 0 && bit_mask_le[10] != 0) ? LOGOP[11:10] : DST_DATA[11:10],
-                        (src_data_le[ 9: 8] != 0 && bit_mask_le[ 8] != 0) ? LOGOP[ 9: 8] : DST_DATA[ 9: 8],
-                        (src_data_le[ 7: 6] != 0 && bit_mask_le[ 6] != 0) ? LOGOP[ 7: 6] : DST_DATA[ 7: 6],
-                        (src_data_le[ 5: 4] != 0 && bit_mask_le[ 4] != 0) ? LOGOP[ 5: 4] : DST_DATA[ 5: 4],
-                        (src_data_le[ 3: 2] != 0 && bit_mask_le[ 2] != 0) ? LOGOP[ 3: 2] : DST_DATA[ 3: 2],
-                        (src_data_le[ 1: 0] != 0 && bit_mask_le[ 0] != 0) ? LOGOP[ 1: 0] : DST_DATA[ 1: 0]
+                        (masked_src_data_le[31:30] != 0) ? LOGOP[31:30] : DST_DATA[31:30],
+                        (masked_src_data_le[29:28] != 0) ? LOGOP[29:28] : DST_DATA[29:28],
+                        (masked_src_data_le[27:26] != 0) ? LOGOP[27:26] : DST_DATA[27:26],
+                        (masked_src_data_le[25:24] != 0) ? LOGOP[25:24] : DST_DATA[25:24],
+                        (masked_src_data_le[23:22] != 0) ? LOGOP[23:22] : DST_DATA[23:22],
+                        (masked_src_data_le[21:20] != 0) ? LOGOP[21:20] : DST_DATA[21:20],
+                        (masked_src_data_le[19:18] != 0) ? LOGOP[19:18] : DST_DATA[19:18],
+                        (masked_src_data_le[17:16] != 0) ? LOGOP[17:16] : DST_DATA[17:16],
+                        (masked_src_data_le[15:14] != 0) ? LOGOP[15:14] : DST_DATA[15:14],
+                        (masked_src_data_le[13:12] != 0) ? LOGOP[13:12] : DST_DATA[13:12],
+                        (masked_src_data_le[11:10] != 0) ? LOGOP[11:10] : DST_DATA[11:10],
+                        (masked_src_data_le[ 9: 8] != 0) ? LOGOP[ 9: 8] : DST_DATA[ 9: 8],
+                        (masked_src_data_le[ 7: 6] != 0) ? LOGOP[ 7: 6] : DST_DATA[ 7: 6],
+                        (masked_src_data_le[ 5: 4] != 0) ? LOGOP[ 5: 4] : DST_DATA[ 5: 4],
+                        (masked_src_data_le[ 3: 2] != 0) ? LOGOP[ 3: 2] : DST_DATA[ 3: 2],
+                        (masked_src_data_le[ 1: 0] != 0) ? LOGOP[ 1: 0] : DST_DATA[ 1: 0]
                     };
                 end
                 else if(DST_CLRM == T9990_REG::CLRM_4BPP) begin
                     WRT_DATA <= {
-                        (src_data_le[31:28] != 0 && bit_mask_le[28] != 0) ? LOGOP[31:28] : DST_DATA[31:28],
-                        (src_data_le[27:24] != 0 && bit_mask_le[24] != 0) ? LOGOP[27:24] : DST_DATA[27:24],
-                        (src_data_le[23:20] != 0 && bit_mask_le[20] != 0) ? LOGOP[23:20] : DST_DATA[23:20],
-                        (src_data_le[19:16] != 0 && bit_mask_le[16] != 0) ? LOGOP[19:16] : DST_DATA[19:16],
-                        (src_data_le[15:12] != 0 && bit_mask_le[12] != 0) ? LOGOP[15:12] : DST_DATA[15:12],
-                        (src_data_le[11: 8] != 0 && bit_mask_le[ 8] != 0) ? LOGOP[11: 8] : DST_DATA[11: 8],
-                        (src_data_le[ 7: 4] != 0 && bit_mask_le[ 4] != 0) ? LOGOP[ 7: 4] : DST_DATA[ 7: 4],
-                        (src_data_le[ 3: 0] != 0 && bit_mask_le[ 0] != 0) ? LOGOP[ 3: 0] : DST_DATA[ 3: 0]
+                        (masked_src_data_le[31:28] != 0) ? LOGOP[31:28] : DST_DATA[31:28],
+                        (masked_src_data_le[27:24] != 0) ? LOGOP[27:24] : DST_DATA[27:24],
+                        (masked_src_data_le[23:20] != 0) ? LOGOP[23:20] : DST_DATA[23:20],
+                        (masked_src_data_le[19:16] != 0) ? LOGOP[19:16] : DST_DATA[19:16],
+                        (masked_src_data_le[15:12] != 0) ? LOGOP[15:12] : DST_DATA[15:12],
+                        (masked_src_data_le[11: 8] != 0) ? LOGOP[11: 8] : DST_DATA[11: 8],
+                        (masked_src_data_le[ 7: 4] != 0) ? LOGOP[ 7: 4] : DST_DATA[ 7: 4],
+                        (masked_src_data_le[ 3: 0] != 0) ? LOGOP[ 3: 0] : DST_DATA[ 3: 0]
                     };
                 end
                 else if(DST_CLRM == T9990_REG::CLRM_8BPP) begin
                     WRT_DATA <= {
-                        (src_data_le[31:24] != 0 && bit_mask_le[24] != 0) ? LOGOP[31:24] : DST_DATA[31:24],
-                        (src_data_le[23:16] != 0 && bit_mask_le[16] != 0) ? LOGOP[23:16] : DST_DATA[23:16],
-                        (src_data_le[15: 8] != 0 && bit_mask_le[ 8] != 0) ? LOGOP[15: 8] : DST_DATA[15: 8],
-                        (src_data_le[ 7: 0] != 0 && bit_mask_le[ 0] != 0) ? LOGOP[ 7: 0] : DST_DATA[ 7: 0]
+                        (masked_src_data_le[31:24] != 0) ? LOGOP[31:24] : DST_DATA[31:24],
+                        (masked_src_data_le[23:16] != 0) ? LOGOP[23:16] : DST_DATA[23:16],
+                        (masked_src_data_le[15: 8] != 0) ? LOGOP[15: 8] : DST_DATA[15: 8],
+                        (masked_src_data_le[ 7: 0] != 0) ? LOGOP[ 7: 0] : DST_DATA[ 7: 0]
                     };
                 end
                 else begin
                     WRT_DATA <= {
-                        (src_data_le[31:16] != 0 && bit_mask_le[16] != 0) ? LOGOP[31:16] : DST_DATA[31:16],
-                        (src_data_le[15: 0] != 0 && bit_mask_le[ 0] != 0) ? LOGOP[15: 0] : DST_DATA[15: 0]
+                        (masked_src_data_le[31:16] != 0) ? LOGOP[31:16] : DST_DATA[31:16],
+                        (masked_src_data_le[15: 0] != 0) ? LOGOP[15: 0] : DST_DATA[15: 0]
                     };
                 end
             end
             else begin
+                // ライトデータを作成
                 WRT_DATA <= (LOGOP & bit_mask_le) | (DST_DATA & ~bit_mask_le);
             end
 

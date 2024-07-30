@@ -46,10 +46,14 @@ module T9990_BLIT_FIFO (
 
     input wire          ENQUEUE,        // FIFO 格納フラグ
     input wire [4:0]    ENQUEUE_COUNT,  // FIFO 格納ドット数
+`ifdef TEST
+    input wire [3:0]    ENQUEUE_SHIFT,  // FIFO 格納ビットシフト数
+`endif
     input wire [31:0]   ENQUEUE_DATA,   // 2BPP/4BPP/8BPP/16BPP データ入力
 
     input wire          DEQUEUE,        // FIFO 取り出しフラグ
     input wire [4:0]    DEQUEUE_COUNT,  // FIFO 取り出しドット数
+    input wire [3:0]    DEQUEUE_SHIFT,  // FIFO 格納ビットシフト数
     output reg [31:0]   DEQUEUE_DATA    // 2BPP データ出力
 );
     /***************************************************************
@@ -160,6 +164,49 @@ module T9990_BLIT_FIFO (
         end
     end
 
+`ifdef TEST
+    reg [31:0] enqueue_shift_data;
+    always_ff @(posedge CLK) begin
+        if(CLK_EN && ENQUEUE) begin
+            case (ENQUEUE_SHIFT)
+                4'd0:   enqueue_shift_data <=  ENQUEUE_DATA;
+                4'd1:   enqueue_shift_data <= {ENQUEUE_DATA[29:0],  2'b0};
+                4'd2:   enqueue_shift_data <= {ENQUEUE_DATA[27:0],  4'b0};
+                4'd3:   enqueue_shift_data <= {ENQUEUE_DATA[25:0],  6'b0};
+                4'd4:   enqueue_shift_data <= {ENQUEUE_DATA[23:0],  8'b0};
+                4'd5:   enqueue_shift_data <= {ENQUEUE_DATA[21:0], 10'b0};
+                4'd6:   enqueue_shift_data <= {ENQUEUE_DATA[19:0], 12'b0};
+                4'd7:   enqueue_shift_data <= {ENQUEUE_DATA[17:0], 14'b0};
+                4'd8:   enqueue_shift_data <= {ENQUEUE_DATA[15:0], 16'b0};
+                4'd9:   enqueue_shift_data <= {ENQUEUE_DATA[13:0], 18'b0};
+                4'd10:  enqueue_shift_data <= {ENQUEUE_DATA[11:0], 20'b0};
+                4'd11:  enqueue_shift_data <= {ENQUEUE_DATA[ 9:0], 22'b0};
+                4'd12:  enqueue_shift_data <= {ENQUEUE_DATA[ 7:0], 24'b0};
+                4'd13:  enqueue_shift_data <= {ENQUEUE_DATA[ 5:0], 26'b0};
+                4'd14:  enqueue_shift_data <= {ENQUEUE_DATA[ 3:0], 28'b0};
+                4'd15:  enqueue_shift_data <= {ENQUEUE_DATA[ 1:0], 30'b0};
+            endcase
+        end
+    end
+
+    wire [1:0] in_pixel_2[0:15];
+    assign in_pixel_2[ 0] = enqueue_shift_data[31:30];
+    assign in_pixel_2[ 1] = enqueue_shift_data[29:28];
+    assign in_pixel_2[ 2] = enqueue_shift_data[27:26];
+    assign in_pixel_2[ 3] = enqueue_shift_data[25:24];
+    assign in_pixel_2[ 4] = enqueue_shift_data[23:22];
+    assign in_pixel_2[ 5] = enqueue_shift_data[21:20];
+    assign in_pixel_2[ 6] = enqueue_shift_data[19:18];
+    assign in_pixel_2[ 7] = enqueue_shift_data[17:16];
+    assign in_pixel_2[ 8] = enqueue_shift_data[15:14];
+    assign in_pixel_2[ 9] = enqueue_shift_data[13:12];
+    assign in_pixel_2[10] = enqueue_shift_data[11:10];
+    assign in_pixel_2[11] = enqueue_shift_data[ 9: 8];
+    assign in_pixel_2[12] = enqueue_shift_data[ 7: 6];
+    assign in_pixel_2[13] = enqueue_shift_data[ 5: 4];
+    assign in_pixel_2[14] = enqueue_shift_data[ 3: 2];
+    assign in_pixel_2[15] = enqueue_shift_data[ 1: 0];
+`else
     wire [1:0] in_pixel_2[0:15];
     assign in_pixel_2[ 0] = ENQUEUE_DATA[31:30];
     assign in_pixel_2[ 1] = ENQUEUE_DATA[29:28];
@@ -177,6 +224,7 @@ module T9990_BLIT_FIFO (
     assign in_pixel_2[13] = ENQUEUE_DATA[ 5: 4];
     assign in_pixel_2[14] = ENQUEUE_DATA[ 3: 2];
     assign in_pixel_2[15] = ENQUEUE_DATA[ 1: 0];
+`endif
 
     reg [4:0] w_offset[0:15];
     always_ff @(posedge CLK or negedge RESET_n) begin
@@ -342,22 +390,176 @@ module T9990_BLIT_FIFO (
         if(!RESET_n || CLEAR) begin
         end
         else if(DEQUEUE && CLK_EN) begin
-            DEQUEUE_DATA[31:30] <= buffer[r_offset[ 0]];
-            DEQUEUE_DATA[29:28] <= buffer[r_offset[ 1]];
-            DEQUEUE_DATA[27:26] <= buffer[r_offset[ 2]];
-            DEQUEUE_DATA[25:24] <= buffer[r_offset[ 3]];
-            DEQUEUE_DATA[23:22] <= buffer[r_offset[ 4]];
-            DEQUEUE_DATA[21:20] <= buffer[r_offset[ 5]];
-            DEQUEUE_DATA[19:18] <= buffer[r_offset[ 6]];
-            DEQUEUE_DATA[17:16] <= buffer[r_offset[ 7]];
-            DEQUEUE_DATA[15:14] <= buffer[r_offset[ 8]];
-            DEQUEUE_DATA[13:12] <= buffer[r_offset[ 9]];
-            DEQUEUE_DATA[11:10] <= buffer[r_offset[10]];
-            DEQUEUE_DATA[ 9: 8] <= buffer[r_offset[11]];
-            DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[12]];
-            DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[13]];
-            DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[14]];
-            DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[15]];
+            case (DEQUEUE_SHIFT)
+                4'd0: begin
+                    DEQUEUE_DATA[31:30] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[29:28] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[27:26] <= buffer[r_offset[ 2]];
+                    DEQUEUE_DATA[25:24] <= buffer[r_offset[ 3]];
+                    DEQUEUE_DATA[23:22] <= buffer[r_offset[ 4]];
+                    DEQUEUE_DATA[21:20] <= buffer[r_offset[ 5]];
+                    DEQUEUE_DATA[19:18] <= buffer[r_offset[ 6]];
+                    DEQUEUE_DATA[17:16] <= buffer[r_offset[ 7]];
+                    DEQUEUE_DATA[15:14] <= buffer[r_offset[ 8]];
+                    DEQUEUE_DATA[13:12] <= buffer[r_offset[ 9]];
+                    DEQUEUE_DATA[11:10] <= buffer[r_offset[10]];
+                    DEQUEUE_DATA[ 9: 8] <= buffer[r_offset[11]];
+                    DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[12]];
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[13]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[14]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[15]];
+                end
+                4'd1: begin
+                    DEQUEUE_DATA[29:28] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[27:26] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[25:24] <= buffer[r_offset[ 2]];
+                    DEQUEUE_DATA[23:22] <= buffer[r_offset[ 3]];
+                    DEQUEUE_DATA[21:20] <= buffer[r_offset[ 4]];
+                    DEQUEUE_DATA[19:18] <= buffer[r_offset[ 5]];
+                    DEQUEUE_DATA[17:16] <= buffer[r_offset[ 6]];
+                    DEQUEUE_DATA[15:14] <= buffer[r_offset[ 7]];
+                    DEQUEUE_DATA[13:12] <= buffer[r_offset[ 8]];
+                    DEQUEUE_DATA[11:10] <= buffer[r_offset[ 9]];
+                    DEQUEUE_DATA[ 9: 8] <= buffer[r_offset[10]];
+                    DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[11]];
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[12]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[13]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[14]];
+                end
+                4'd2: begin
+                    DEQUEUE_DATA[27:26] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[25:24] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[23:22] <= buffer[r_offset[ 2]];
+                    DEQUEUE_DATA[21:20] <= buffer[r_offset[ 3]];
+                    DEQUEUE_DATA[19:18] <= buffer[r_offset[ 4]];
+                    DEQUEUE_DATA[17:16] <= buffer[r_offset[ 5]];
+                    DEQUEUE_DATA[15:14] <= buffer[r_offset[ 6]];
+                    DEQUEUE_DATA[13:12] <= buffer[r_offset[ 7]];
+                    DEQUEUE_DATA[11:10] <= buffer[r_offset[ 8]];
+                    DEQUEUE_DATA[ 9: 8] <= buffer[r_offset[ 9]];
+                    DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[10]];
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[11]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[12]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[13]];
+                end
+                4'd3: begin
+                    DEQUEUE_DATA[25:24] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[23:22] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[21:20] <= buffer[r_offset[ 2]];
+                    DEQUEUE_DATA[19:18] <= buffer[r_offset[ 3]];
+                    DEQUEUE_DATA[17:16] <= buffer[r_offset[ 4]];
+                    DEQUEUE_DATA[15:14] <= buffer[r_offset[ 5]];
+                    DEQUEUE_DATA[13:12] <= buffer[r_offset[ 6]];
+                    DEQUEUE_DATA[11:10] <= buffer[r_offset[ 7]];
+                    DEQUEUE_DATA[ 9: 8] <= buffer[r_offset[ 8]];
+                    DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[ 9]];
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[10]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[11]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[12]];
+                end
+                4'd4: begin
+                    DEQUEUE_DATA[23:22] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[21:20] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[19:18] <= buffer[r_offset[ 2]];
+                    DEQUEUE_DATA[17:16] <= buffer[r_offset[ 3]];
+                    DEQUEUE_DATA[15:14] <= buffer[r_offset[ 4]];
+                    DEQUEUE_DATA[13:12] <= buffer[r_offset[ 5]];
+                    DEQUEUE_DATA[11:10] <= buffer[r_offset[ 6]];
+                    DEQUEUE_DATA[ 9: 8] <= buffer[r_offset[ 7]];
+                    DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[ 8]];
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[ 9]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[10]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[11]];
+                end
+                4'd5: begin
+                    DEQUEUE_DATA[21:20] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[19:18] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[17:16] <= buffer[r_offset[ 2]];
+                    DEQUEUE_DATA[15:14] <= buffer[r_offset[ 3]];
+                    DEQUEUE_DATA[13:12] <= buffer[r_offset[ 4]];
+                    DEQUEUE_DATA[11:10] <= buffer[r_offset[ 5]];
+                    DEQUEUE_DATA[ 9: 8] <= buffer[r_offset[ 6]];
+                    DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[ 7]];
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[ 8]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[ 9]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[10]];
+                end
+                4'd6: begin
+                    DEQUEUE_DATA[19:18] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[17:16] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[15:14] <= buffer[r_offset[ 2]];
+                    DEQUEUE_DATA[13:12] <= buffer[r_offset[ 3]];
+                    DEQUEUE_DATA[11:10] <= buffer[r_offset[ 4]];
+                    DEQUEUE_DATA[ 9: 8] <= buffer[r_offset[ 5]];
+                    DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[ 6]];
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[ 7]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[ 8]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[ 9]];
+                end
+                4'd7: begin
+                    DEQUEUE_DATA[17:16] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[15:14] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[13:12] <= buffer[r_offset[ 2]];
+                    DEQUEUE_DATA[11:10] <= buffer[r_offset[ 3]];
+                    DEQUEUE_DATA[ 9: 8] <= buffer[r_offset[ 4]];
+                    DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[ 5]];
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[ 6]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[ 7]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[ 8]];
+                end
+                4'd8: begin
+                    DEQUEUE_DATA[15:14] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[13:12] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[11:10] <= buffer[r_offset[ 2]];
+                    DEQUEUE_DATA[ 9: 8] <= buffer[r_offset[ 3]];
+                    DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[ 4]];
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[ 5]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[ 6]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[ 7]];
+                end
+                4'd9: begin
+                    DEQUEUE_DATA[13:12] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[11:10] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[ 9: 8] <= buffer[r_offset[ 2]];
+                    DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[ 3]];
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[ 4]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[ 5]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[ 6]];
+                end
+                4'd10: begin
+                    DEQUEUE_DATA[11:10] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[ 9: 8] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[ 2]];
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[ 3]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[ 4]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[ 5]];
+                end
+                4'd11: begin
+                    DEQUEUE_DATA[ 9: 8] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[ 2]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[ 3]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[ 4]];
+                end
+                4'd12: begin
+                    DEQUEUE_DATA[ 7: 6] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[ 2]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[ 3]];
+                end
+                4'd13: begin
+                    DEQUEUE_DATA[ 5: 4] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[ 1]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[ 2]];
+                end
+                4'd14: begin
+                    DEQUEUE_DATA[ 3: 2] <= buffer[r_offset[ 0]];
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[ 1]];
+                end
+                4'd15: begin
+                    DEQUEUE_DATA[ 1: 0] <= buffer[r_offset[ 0]];
+                end
+            endcase
         end
     end
 
@@ -383,7 +585,7 @@ module T9990_BLIT_FIFO (
         if(!RESET_n || CLEAR) begin
             FREE_COUNT <= 0;
         end
-        else begin
+        else if(CLK_EN) begin
             case (CLRM)
                 T9990_REG::CLRM_2BPP:  FREE_COUNT <= 6'd32 - AVAIL_COUNT;
                 T9990_REG::CLRM_4BPP:  FREE_COUNT <= 6'd16 - AVAIL_COUNT;
