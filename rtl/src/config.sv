@@ -86,8 +86,8 @@ package CONFIG;
     localparam          ENABLE_RAM              = ENABLE;           // 拡張 RAM カートリッジを有効にするか(DISABLE/ENABLE)
     localparam          ENABLE_PSG              = ENABLE;           // PSG を有効にするか(DISABLE/ENABLE)
     localparam          ENABLE_SCC              = ENABLE;           // SCC を有効にするか(DISABLE/ENABLE)
-    localparam          ENABLE_V9990            = DISABLE;          // V9990 を有効にするか(DISABLE/ENABLE)
-    localparam          ENABLE_V9990_CMD        = DISABLE;          // V9990 の VDP コマンドを有効(V9990のVDPコマンドを有効にすると回路の規模が大きくなるので、他の大きな機能と同時使用はできない)
+    localparam          ENABLE_V9990            = ENABLE;           // V9990 を有効にするか(DISABLE/ENABLE)
+    localparam          ENABLE_V9990_CMD        = ENABLE;           // V9990 の VDP コマンドを有効(V9990のVDPコマンドを有効にすると回路の規模が大きくなるので、他の大きな機能と同時使用はできない)
 
 endpackage
 
