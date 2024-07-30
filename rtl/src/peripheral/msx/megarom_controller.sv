@@ -208,8 +208,8 @@ module MEGAROM_CONTROLLER #(
     /***************************************************************
      * アドレスデコード
      ***************************************************************/
-    wire cs1_n = (Bus.ADDR[15:14] != 2'b01) || Megarom.CS1_Mask;
-    wire cs2_n = (Bus.ADDR[15:14] != 2'b10) || Megarom.CS2_Mask;
+    wire cs1_n  =  Bus.ADDR[15] || ~Bus.ADDR[14] || Megarom.CS1_Mask;
+    wire cs2_n  = ~Bus.ADDR[15] ||  Bus.ADDR[14] || Megarom.CS2_Mask;
     wire cs12_n = (cs1_n && cs2_n);
 
     /***************************************************************
