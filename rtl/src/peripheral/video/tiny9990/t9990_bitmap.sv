@@ -80,6 +80,7 @@ module T9990_BITMAP (
     );
 
     logic [$bits(PRI_GEN)+$bits(PA_GEN)+$bits(CLR_GEN)-1:0] OUT;
+    wire dbl = REG.MCS ? REG.DCKM[1] : REG.DCKM[0];
 
     T9990_SHIFT_BUFFER #(
         .BIT_WIDTH($bits(OUT)),
@@ -89,7 +90,7 @@ module T9990_BITMAP (
         .CLK,
         .DCLK_EN,
         .DISABLE,
-        .OFFSET(REG.DCKM[0] ? SCX[4:0] : {1'b1, SCX[3:0]}),
+        .OFFSET(dbl ? SCX[4:0] : {1'b1, SCX[3:0]}),
         .IN({PRI_GEN, PA_GEN, CLR_GEN}),
         .OUT
     );
@@ -117,6 +118,8 @@ module TINY9990_BITMAP_GEN (
     output reg [0:0]        PRI,
     output reg [15:0]       CLR
 );
+
+    wire dbl = REG.MCS ? REG.DCKM[1] : REG.DCKM[0];
 
     /***************************************************************
      * アドレス計算
@@ -246,7 +249,7 @@ module TINY9990_BITMAP_GEN (
             w_state <= 0;
         end
         else if(MEM.ACK) begin
-            if(REG.DCKM[0]) begin
+            if(dbl) begin
                 if(REG.CLRM == T9990_REG::CLRM_2BPP) begin
                     W_ADDR <= w_state[0];
                     W_NUM <= w_state[1];
@@ -298,7 +301,7 @@ module TINY9990_BITMAP_GEN (
         else if(DISABLE) begin
         end
         else if(START) begin
-            if(REG.DCKM[0]) begin
+            if(dbl) begin
                 R_POS <= 5'd31;
             end
             else begin
@@ -307,7 +310,7 @@ module TINY9990_BITMAP_GEN (
             R_NUM <= 0;
         end
         else if(DCLK_EN) begin
-            if(REG.DCKM[0]) begin
+            if(dbl) begin
                 if(R_POS == 5'd31) begin
                     R_POS <= 0;
                     R_NUM <= !R_NUM;

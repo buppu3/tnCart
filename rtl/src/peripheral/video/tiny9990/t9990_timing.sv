@@ -293,7 +293,8 @@ module T9990_TIMING (
     wire [9:0]  V_DISP_DIS      = REG.HSCN ? (REG.C25M ? (V480_DISP_DIS      - 1'd1) : (V400_DISP_DIS      - 1'd1)) : (REG.MCS ? (V240_DISP_DIS      - 1'd1) : (V212_DISP_DIS      - 1'd1));   // VD inactive ライン(v_incタイミング用)
     wire [9:0]  V_DISP_LI_START = REG.HSCN ? (REG.C25M ? (V480_DISP_LI_START - 1'd1) : (V400_DISP_LI_START - 1'd1)) : (REG.MCS ? (V240_DISP_LI_START - 1'd1) : (V212_DISP_LI_START - 1'd1));   // ILカウンタ開始ライン(v_inc タイミング用)
 
-    wire [9:0]  H_BG_START      = REG.HSCN ? (REG.C25M ? (H648_BG_ACTIVE     - 2'd2) : (H640_BG_ACTIVE     - 2'd2)) : REG.MCS ? (REG.DCKM[1] ? (H768_BG_ACTIVE     - 2'd2) : (H384_BG_ACTIVE     - 2'd2)) : (REG.DCKM[0] ? (H512_BG_ACTIVE     - 2'd2) : (H256_BG_ACTIVE     - 2'd2));
+    wire [9:0]  H_BG_INIT       = REG.HSCN ? (REG.C25M ? (H648_BG_ACTIVE     - 2'd3) : (H640_BG_ACTIVE     - 2'd3)) : REG.MCS ? (REG.DCKM[1] ? (H768_BG_ACTIVE     - 3'd6) : (H384_BG_ACTIVE     - 3'd4)) : (REG.DCKM[0] ? (H512_BG_ACTIVE     - 2'd3) : (H256_BG_ACTIVE     - 2'd3));
+    wire [9:0]  H_BG_START      = REG.HSCN ? (REG.C25M ? (H648_BG_ACTIVE     - 2'd2) : (H640_BG_ACTIVE     - 2'd2)) : REG.MCS ? (REG.DCKM[1] ? (H768_BG_ACTIVE     - 3'd5) : (H384_BG_ACTIVE     - 2'd3)) : (REG.DCKM[0] ? (H512_BG_ACTIVE     - 2'd2) : (H256_BG_ACTIVE     - 2'd2));
     wire [9:0]  H_BG_ACTIVE     = REG.HSCN ? (REG.C25M ? (H648_BG_ACTIVE     - 1'd1) : (H640_BG_ACTIVE     - 1'd1)) : REG.MCS ? (REG.DCKM[1] ? (H768_BG_ACTIVE     - 1'd1) : (H384_BG_ACTIVE     - 1'd1)) : (REG.DCKM[0] ? (H512_BG_ACTIVE     - 1'd1) : (H256_BG_ACTIVE     - 1'd1));
     wire [9:0]  H_SPR_OUT_START = REG.HSCN ? (REG.C25M ? (H648_SPR_ACTIVE    - 2'd2) : (H640_SPR_ACTIVE    - 2'd2)) : REG.MCS ? (REG.DCKM[1] ? (H768_SPR_ACTIVE    - 2'd2) : (H384_SPR_ACTIVE    - 2'd2)) : (REG.DCKM[0] ? (H512_SPR_ACTIVE    - 2'd2) : (H256_SPR_ACTIVE    - 2'd2));
 
@@ -518,9 +519,9 @@ module T9990_TIMING (
     /***************************************************************
      * RAM タイミング
      ***************************************************************/
-    wire tbl_init = MEM_REQ && h_cnt == H_BG_START;
-    wire cnt_init = MEM_REQ && h_cnt == H_BG_START;
-    wire tbl_send = MEM_REQ;
+    wire tbl_init = DCLK_EN && (h_cnt == (H_BG_INIT));
+    wire cnt_init = DCLK_EN && (h_cnt == (H_BG_INIT));
+    wire tbl_send = MEM_REQ && (h_cnt != (H_BG_START));
     logic cnt_dec;
 
     wire ena_sp = (sp_cnt != 0) && REG.DISP && !REG.SPD && spr_v_ena;
@@ -619,15 +620,15 @@ module T9990_TIMING (
                     { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_8BPP }: bp_cnt <= 9'd129;  // 512dot 8bpp    512*8/32+1
                     { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_16BPP}: bp_cnt <= 9'd257;  // 512dot 16bpp   512*16/32+1
 
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV4, T9990_REG::CLRM_2BPP }: bp_cnt <= 9'd25;   // 384dot 2bpp    384*2/32+1
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV4, T9990_REG::CLRM_4BPP }: bp_cnt <= 9'd49;   // 384dot 4bpp    384*4/32+1
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV4, T9990_REG::CLRM_8BPP }: bp_cnt <= 9'd97;   // 384dot 8bpp    384*8/32+1
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV4, T9990_REG::CLRM_16BPP}: bp_cnt <= 9'd193;  // 384dot 16bpp   384*16/32+1
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_2BPP }: bp_cnt <= 9'd25;   // 384dot 2bpp    384*2/32+1
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_4BPP }: bp_cnt <= 9'd49;   // 384dot 4bpp    384*4/32+1
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_8BPP }: bp_cnt <= 9'd97;   // 384dot 8bpp    384*8/32+1
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_16BPP}: bp_cnt <= 9'd193;  // 384dot 16bpp   384*16/32+1
 
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_2BPP }: bp_cnt <= 9'd49;   // 768dot 2bpp    768*2/32+1
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_4BPP }: bp_cnt <= 9'd97;   // 768dot 4bpp    768*4/32+1
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_8BPP }: bp_cnt <= 9'd193;  // 768dot 8bpp    768*8/32+1
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_16BPP}: bp_cnt <= 9'd385;  // 768dot 16bpp   768*16/32+1
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV1, T9990_REG::CLRM_2BPP }: bp_cnt <= 9'd49;   // 768dot 2bpp    768*2/32+1
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV1, T9990_REG::CLRM_4BPP }: bp_cnt <= 9'd97;   // 768dot 4bpp    768*4/32+1
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV1, T9990_REG::CLRM_8BPP }: bp_cnt <= 9'd193;  // 768dot 8bpp    768*8/32+1
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV1, T9990_REG::CLRM_16BPP}: bp_cnt <= 9'd385;  // 768dot 16bpp   768*16/32+1
                 endcase
             end
         end
