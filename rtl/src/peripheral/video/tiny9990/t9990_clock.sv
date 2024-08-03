@@ -157,7 +157,7 @@ module T9990_CLOCK (
             RESO <= REG.C25M ? T9990::RESO_B6 : T9990::RESO_B5;
         end
         else if(REG.MCS) begin
-            RESO <= REG.DCKM == T9990_REG::DCKM_DIV2 ? T9990::RESO_B4 : T9990::RESO_B2;
+            RESO <= REG.DCKM == T9990_REG::DCKM_DIV1 ? T9990::RESO_B4 : T9990::RESO_B2;
         end
         else begin
             RESO <= REG.DCKM == T9990_REG::DCKM_DIV2 ? T9990::RESO_B3 : T9990::RESO_B1;

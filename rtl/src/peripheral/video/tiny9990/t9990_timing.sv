@@ -98,8 +98,8 @@ module T9990_TIMING (
     //  HSCN    C25M    MCS     DCKM    width   total   sync    erase   border  border  erase
     //  0       X       0       0       256     342     25      50      14      14      8
     //  0       X       0       1       512     684     50      100     28      28      16
-    //  0       X       1       0       384     456     34      62      0       0       10
-    //  0       X       1       1       768     912     68      124     0       0       20
+    //  0       X       1       1       384     456     34      62      0       0       10
+    //  0       X       1       2       768     912     68      124     0       0       20
     //  1       0       X       X       640     848     64      128     0       0       80
     //  1       1       X       X       640     800     96      112     0       0       48
 
@@ -274,14 +274,14 @@ module T9990_TIMING (
     localparam  V480_SPR_INACTIVE  = (V480_INACTIVE - 1);
     localparam  V480_DISP_LI_START = (V480_ACTIVE); 
 
-    wire [9:0]  H_RESET         = REG.HSCN ? (REG.C25M ? (H648_TOTAL         - 2'd2) : (H640_TOTAL         - 2'd2)) : REG.MCS ? (REG.DCKM[0] ? (H768_TOTAL         - 2'd2) : (H384_TOTAL         - 2'd2)) : (REG.DCKM[0] ? (H512_TOTAL         - 2'd2) : (H256_TOTAL         - 2'd2));
-    wire [9:0]  H_HR_ACTIVE     = REG.HSCN ? (REG.C25M ? (H648_ACTIVE        - 1'd1) : (H640_ACTIVE        - 1'd1)) : REG.MCS ? (REG.DCKM[0] ? (H768_ACTIVE        - 1'd1) : (H384_ACTIVE        - 1'd1)) : (REG.DCKM[0] ? (H512_ACTIVE        - 1'd1) : (H256_ACTIVE        - 1'd1));
-    wire [9:0]  H_HR_INACTIVE   = REG.HSCN ? (REG.C25M ? (H648_INACTIVE      - 1'd1) : (H640_INACTIVE      - 1'd1)) : REG.MCS ? (REG.DCKM[0] ? (H768_INACTIVE      - 1'd1) : (H384_INACTIVE      - 1'd1)) : (REG.DCKM[0] ? (H512_INACTIVE      - 1'd1) : (H256_INACTIVE      - 1'd1));
-    wire [9:0]  H_MUX_ACTIVE    = REG.HSCN ? (REG.C25M ? (H648_MUX_ACTIVE    - 1'd1) : (H640_MUX_ACTIVE    - 1'd1)) : REG.MCS ? (REG.DCKM[0] ? (H768_MUX_ACTIVE    - 1'd1) : (H384_MUX_ACTIVE    - 1'd1)) : (REG.DCKM[0] ? (H512_MUX_ACTIVE    - 1'd1) : (H256_MUX_ACTIVE    - 1'd1));
-    wire [9:0]  H_MUX_INACTIVE  = REG.HSCN ? (REG.C25M ? (H648_MUX_INACTIVE  - 1'd1) : (H640_MUX_INACTIVE  - 1'd1)) : REG.MCS ? (REG.DCKM[0] ? (H768_MUX_INACTIVE  - 1'd1) : (H384_MUX_INACTIVE  - 1'd1)) : (REG.DCKM[0] ? (H512_MUX_INACTIVE  - 1'd1) : (H256_MUX_INACTIVE  - 1'd1));
-    wire [9:0]  H_DISP_ENA      = REG.HSCN ? (REG.C25M ? (H648_DISP_ENA      - 1'd1) : (H640_DISP_ENA      - 1'd1)) : REG.MCS ? (REG.DCKM[0] ? (H768_DISP_ENA      - 1'd1) : (H384_DISP_ENA      - 1'd1)) : (REG.DCKM[0] ? (H512_DISP_ENA      - 1'd1) : (H256_DISP_ENA      - 1'd1));
-    wire [9:0]  H_DISP_DIS      = REG.HSCN ? (REG.C25M ? (H648_DISP_DIS      - 1'd1) : (H640_DISP_DIS      - 1'd1)) : REG.MCS ? (REG.DCKM[0] ? (H768_DISP_DIS      - 1'd1) : (H384_DISP_DIS      - 1'd1)) : (REG.DCKM[0] ? (H512_DISP_DIS      - 1'd1) : (H256_DISP_DIS      - 1'd1));
-    wire [9:0]  H_SYNC_PERIOD   = REG.HSCN ? (REG.C25M ? (H648_SYNC          - 1'd1) : (H640_SYNC          - 1'd1)) : REG.MCS ? (REG.DCKM[0] ? (H768_SYNC          - 1'd1) : (H384_SYNC          - 1'd1)) : (REG.DCKM[0] ? (H512_SYNC          - 1'd1) : (H256_SYNC          - 1'd1));    // HSYNC 期間(DCLK タイミング用)
+    wire [9:0]  H_RESET         = REG.HSCN ? (REG.C25M ? (H648_TOTAL         - 2'd2) : (H640_TOTAL         - 2'd2)) : REG.MCS ? (REG.DCKM[1] ? (H768_TOTAL         - 2'd2) : (H384_TOTAL         - 2'd2)) : (REG.DCKM[0] ? (H512_TOTAL         - 2'd2) : (H256_TOTAL         - 2'd2));
+    wire [9:0]  H_HR_ACTIVE     = REG.HSCN ? (REG.C25M ? (H648_ACTIVE        - 1'd1) : (H640_ACTIVE        - 1'd1)) : REG.MCS ? (REG.DCKM[1] ? (H768_ACTIVE        - 1'd1) : (H384_ACTIVE        - 1'd1)) : (REG.DCKM[0] ? (H512_ACTIVE        - 1'd1) : (H256_ACTIVE        - 1'd1));
+    wire [9:0]  H_HR_INACTIVE   = REG.HSCN ? (REG.C25M ? (H648_INACTIVE      - 1'd1) : (H640_INACTIVE      - 1'd1)) : REG.MCS ? (REG.DCKM[1] ? (H768_INACTIVE      - 1'd1) : (H384_INACTIVE      - 1'd1)) : (REG.DCKM[0] ? (H512_INACTIVE      - 1'd1) : (H256_INACTIVE      - 1'd1));
+    wire [9:0]  H_MUX_ACTIVE    = REG.HSCN ? (REG.C25M ? (H648_MUX_ACTIVE    - 1'd1) : (H640_MUX_ACTIVE    - 1'd1)) : REG.MCS ? (REG.DCKM[1] ? (H768_MUX_ACTIVE    - 1'd1) : (H384_MUX_ACTIVE    - 1'd1)) : (REG.DCKM[0] ? (H512_MUX_ACTIVE    - 1'd1) : (H256_MUX_ACTIVE    - 1'd1));
+    wire [9:0]  H_MUX_INACTIVE  = REG.HSCN ? (REG.C25M ? (H648_MUX_INACTIVE  - 1'd1) : (H640_MUX_INACTIVE  - 1'd1)) : REG.MCS ? (REG.DCKM[1] ? (H768_MUX_INACTIVE  - 1'd1) : (H384_MUX_INACTIVE  - 1'd1)) : (REG.DCKM[0] ? (H512_MUX_INACTIVE  - 1'd1) : (H256_MUX_INACTIVE  - 1'd1));
+    wire [9:0]  H_DISP_ENA      = REG.HSCN ? (REG.C25M ? (H648_DISP_ENA      - 1'd1) : (H640_DISP_ENA      - 1'd1)) : REG.MCS ? (REG.DCKM[1] ? (H768_DISP_ENA      - 1'd1) : (H384_DISP_ENA      - 1'd1)) : (REG.DCKM[0] ? (H512_DISP_ENA      - 1'd1) : (H256_DISP_ENA      - 1'd1));
+    wire [9:0]  H_DISP_DIS      = REG.HSCN ? (REG.C25M ? (H648_DISP_DIS      - 1'd1) : (H640_DISP_DIS      - 1'd1)) : REG.MCS ? (REG.DCKM[1] ? (H768_DISP_DIS      - 1'd1) : (H384_DISP_DIS      - 1'd1)) : (REG.DCKM[0] ? (H512_DISP_DIS      - 1'd1) : (H256_DISP_DIS      - 1'd1));
+    wire [9:0]  H_SYNC_PERIOD   = REG.HSCN ? (REG.C25M ? (H648_SYNC          - 1'd1) : (H640_SYNC          - 1'd1)) : REG.MCS ? (REG.DCKM[1] ? (H768_SYNC          - 1'd1) : (H384_SYNC          - 1'd1)) : (REG.DCKM[0] ? (H512_SYNC          - 1'd1) : (H256_SYNC          - 1'd1));    // HSYNC 期間(DCLK タイミング用)
 
     wire [9:0]  V_TOTAL         = REG.HSCN ? (REG.C25M ? (V480_TOTAL         - 1'd1) : (V400_TOTAL         - 1'd1)) : (REG.MCS ? (V240_TOTAL         - 1'd1) : (V212_TOTAL         - 1'd1));   // 縦総ライン数(v_incタイミング用)
     wire [9:0]  V_SYNC_PERIOD   = REG.HSCN ? (REG.C25M ? (V480_SYNC          - 1'd1) : (V400_SYNC          - 1'd1)) : (REG.MCS ? (V240_SYNC          - 1'd1) : (V212_SYNC          - 1'd1));   // VSYNC inactive ライン(v_incタイミング用)
@@ -293,9 +293,9 @@ module T9990_TIMING (
     wire [9:0]  V_DISP_DIS      = REG.HSCN ? (REG.C25M ? (V480_DISP_DIS      - 1'd1) : (V400_DISP_DIS      - 1'd1)) : (REG.MCS ? (V240_DISP_DIS      - 1'd1) : (V212_DISP_DIS      - 1'd1));   // VD inactive ライン(v_incタイミング用)
     wire [9:0]  V_DISP_LI_START = REG.HSCN ? (REG.C25M ? (V480_DISP_LI_START - 1'd1) : (V400_DISP_LI_START - 1'd1)) : (REG.MCS ? (V240_DISP_LI_START - 1'd1) : (V212_DISP_LI_START - 1'd1));   // ILカウンタ開始ライン(v_inc タイミング用)
 
-    wire [9:0]  H_BG_START      = REG.HSCN ? (REG.C25M ? (H648_BG_ACTIVE     - 2'd2) : (H640_BG_ACTIVE     - 2'd2)) : REG.MCS ? (REG.DCKM[0] ? (H768_BG_ACTIVE     - 2'd2) : (H384_BG_ACTIVE     - 2'd2)) : (REG.DCKM[0] ? (H512_BG_ACTIVE     - 2'd2) : (H256_BG_ACTIVE     - 2'd2));
-    wire [9:0]  H_BG_ACTIVE     = REG.HSCN ? (REG.C25M ? (H648_BG_ACTIVE     - 1'd1) : (H640_BG_ACTIVE     - 1'd1)) : REG.MCS ? (REG.DCKM[0] ? (H768_BG_ACTIVE     - 1'd1) : (H384_BG_ACTIVE     - 1'd1)) : (REG.DCKM[0] ? (H512_BG_ACTIVE     - 1'd1) : (H256_BG_ACTIVE     - 1'd1));
-    wire [9:0]  H_SPR_OUT_START = REG.HSCN ? (REG.C25M ? (H648_SPR_ACTIVE    - 2'd2) : (H640_SPR_ACTIVE    - 2'd2)) : REG.MCS ? (REG.DCKM[0] ? (H768_SPR_ACTIVE    - 2'd2) : (H384_SPR_ACTIVE    - 2'd2)) : (REG.DCKM[0] ? (H512_SPR_ACTIVE    - 2'd2) : (H256_SPR_ACTIVE    - 2'd2));
+    wire [9:0]  H_BG_START      = REG.HSCN ? (REG.C25M ? (H648_BG_ACTIVE     - 2'd2) : (H640_BG_ACTIVE     - 2'd2)) : REG.MCS ? (REG.DCKM[1] ? (H768_BG_ACTIVE     - 2'd2) : (H384_BG_ACTIVE     - 2'd2)) : (REG.DCKM[0] ? (H512_BG_ACTIVE     - 2'd2) : (H256_BG_ACTIVE     - 2'd2));
+    wire [9:0]  H_BG_ACTIVE     = REG.HSCN ? (REG.C25M ? (H648_BG_ACTIVE     - 1'd1) : (H640_BG_ACTIVE     - 1'd1)) : REG.MCS ? (REG.DCKM[1] ? (H768_BG_ACTIVE     - 1'd1) : (H384_BG_ACTIVE     - 1'd1)) : (REG.DCKM[0] ? (H512_BG_ACTIVE     - 1'd1) : (H256_BG_ACTIVE     - 1'd1));
+    wire [9:0]  H_SPR_OUT_START = REG.HSCN ? (REG.C25M ? (H648_SPR_ACTIVE    - 2'd2) : (H640_SPR_ACTIVE    - 2'd2)) : REG.MCS ? (REG.DCKM[1] ? (H768_SPR_ACTIVE    - 2'd2) : (H384_SPR_ACTIVE    - 2'd2)) : (REG.DCKM[0] ? (H512_SPR_ACTIVE    - 2'd2) : (H256_SPR_ACTIVE    - 2'd2));
 
     wire [9:0]  V_BG_ACTIVE     = REG.HSCN ? (REG.C25M ? (V480_BG_ACTIVE           ) : (V400_BG_ACTIVE           )) : (REG.MCS ? (V240_BG_ACTIVE           ) : (V212_BG_ACTIVE           ));   // BG 処理開始ライン
     wire [9:0]  V_SPR_ACTIVE    = REG.HSCN ? (REG.C25M ? (V480_SPR_ACTIVE          ) : (V400_SPR_ACTIVE          )) : (REG.MCS ? (V240_SPR_ACTIVE          ) : (V212_SPR_ACTIVE          ));   // スプライト処理開始ライン
@@ -947,7 +947,7 @@ module T9990_TIMING_TABLE (
         end
 
         // 2bpp 384dot
-        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV4 && REG.CLRM == T9990_REG::CLRM_2BPP) begin
+        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV2 && REG.CLRM == T9990_REG::CLRM_2BPP) begin
             case (addr)
                 4'd15:  OUT <= RAM_VC;
                 4'd14:  OUT <= RAM_VC;
@@ -969,7 +969,7 @@ module T9990_TIMING_TABLE (
         end
 
         // 4bpp 384dot
-        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV4 && REG.CLRM == T9990_REG::CLRM_4BPP) begin
+        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV2 && REG.CLRM == T9990_REG::CLRM_4BPP) begin
             case (addr)
                 4'd15:  OUT <= RAM_VC;
                 4'd14:  OUT <= RAM_VC;
@@ -991,7 +991,7 @@ module T9990_TIMING_TABLE (
         end
 
         // 8bpp 384dot
-        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV4 && REG.CLRM == T9990_REG::CLRM_8BPP) begin
+        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV2 && REG.CLRM == T9990_REG::CLRM_8BPP) begin
             case (addr)
                 4'd15:  OUT <= RAM_VC;
                 4'd14:  OUT <= RAM_VC;
@@ -1013,7 +1013,7 @@ module T9990_TIMING_TABLE (
         end
 
         // 16bpp 384dot
-        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV4 && REG.CLRM == T9990_REG::CLRM_16BPP) begin
+        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV2 && REG.CLRM == T9990_REG::CLRM_16BPP) begin
             case (addr)
                 4'd15:  OUT <= RAM_VC;
                 4'd14:  OUT <= RAM_VC;
@@ -1035,7 +1035,7 @@ module T9990_TIMING_TABLE (
         end
 
         // 2bpp 768dot
-        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV2 && REG.CLRM == T9990_REG::CLRM_2BPP) begin
+        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV1 && REG.CLRM == T9990_REG::CLRM_2BPP) begin
             case (addr)
                 4'd15:  OUT <= RAM_VC;
                 4'd14:  OUT <= RAM_VC;
@@ -1057,7 +1057,7 @@ module T9990_TIMING_TABLE (
         end
 
         // 4bpp 768dot
-        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV2 && REG.CLRM == T9990_REG::CLRM_4BPP) begin
+        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV1 && REG.CLRM == T9990_REG::CLRM_4BPP) begin
             case (addr)
                 4'd15:  OUT <= RAM_VC;
                 4'd14:  OUT <= RAM_VC;
@@ -1079,7 +1079,7 @@ module T9990_TIMING_TABLE (
         end
 
         // 8bpp 768dot
-        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV2 && REG.CLRM == T9990_REG::CLRM_8BPP) begin
+        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV1 && REG.CLRM == T9990_REG::CLRM_8BPP) begin
             case (addr)
                 4'd15:  OUT <= RAM_VC;
                 4'd14:  OUT <= RAM_VC;
@@ -1101,7 +1101,7 @@ module T9990_TIMING_TABLE (
         end
 
         // 16bpp 768dot
-        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV2 && REG.CLRM == T9990_REG::CLRM_16BPP) begin
+        else if(REG.MCS == T9990_REG::MCS_14MHZ && REG.DCKM == T9990_REG::DCKM_DIV1 && REG.CLRM == T9990_REG::CLRM_16BPP) begin
             case (addr)
                 4'd15:  OUT <= RAM_BP;
                 4'd14:  OUT <= RAM_VC;
