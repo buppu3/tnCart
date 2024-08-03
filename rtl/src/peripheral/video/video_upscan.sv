@@ -230,7 +230,7 @@ module VIDEO_UPSCAN #(
     wire out_h_inc = 1;
     wire out_h_rst = (out_h_cnt == H_TOTAL - 1'd1) && out_h_inc;
     wire out_v_inc = out_h_rst;
-    wire out_v_rst = (out_v_cnt == V_TOTAL - 1'd1) && out_v_inc;
+    wire out_v_rst = 0;     //(out_v_cnt == V_TOTAL - 1'd1) && out_v_inc;
 
     always_ff @(posedge DCLK or negedge RESET_n) begin
         if(!RESET_n)                              out_h_cnt <= 0;

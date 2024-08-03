@@ -59,7 +59,8 @@ endinterface
 module UMA #(
     parameter COUNT         = 2,
     parameter DIV           = 30,       // 3.58MHz の分周値
-    parameter DELAY         = 5         // 3.58MHz クロックエッジからメモリアクセスまでのディレイ
+    parameter DELAY         = 5,        // 3.58MHz クロックエッジからメモリアクセスまでのディレイ
+    parameter SYNC_CLK_EN   = 1         // CLK_EN で同期をとる
 ) (
     input   wire            RESET_n,
     input   wire            CLK,
@@ -106,12 +107,21 @@ module UMA #(
     localparam DIVCNT_10M_2 = (DIVCNT_TOP + DIV * 2 / 3);
 
     logic [$clog2(DIV)-1:0] mem_cnt;
+if(SYNC_CLK_EN) begin
+    // MSX の 3.58MHz に同期
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)                  mem_cnt <= 0;
+        else if(CLK_EN)               mem_cnt <= 0;
+        else if(mem_cnt != (DIV - 1)) mem_cnt <= mem_cnt + 1'd1;
+    end
+end
+else begin
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)                  mem_cnt <= 0;
         else if(mem_cnt == (DIV - 1)) mem_cnt <= 0;
-        else if(CLK_EN)               mem_cnt <= 0;
         else                          mem_cnt <= mem_cnt + 1'd1;
     end
+end
 
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)                                    Uma.CLK25M_EN <= 0;
