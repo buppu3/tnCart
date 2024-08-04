@@ -59,10 +59,18 @@ module T9990_PATTERN #(
     output wire [5:0]       PA,
     output wire [1:0]       PRI
 );
+    /***************************************************************
+     * P2 モードフラグ
+     ***************************************************************/
     wire P2 = REG.DSPM[0];
 
+    /***************************************************************
+     * 信号の生成
+     ***************************************************************/
     logic [$bits(PA)-1:0]  PA_GEN;
     logic [$bits(PRI)-1:0] PRI_GEN;
+
+    wire [10:0] x = P2 ? {SCX[10:5], 5'b00000} : {SCX[10:4], 4'b0000};
 
     TINY9990_PATTERN_GEN #(
         .IS_B(IS_B),
@@ -75,7 +83,8 @@ module T9990_PATTERN #(
         .DISABLE,
 
         .REG,
-        .X(SCX+HCNT),
+        .P2,
+        .X(x + HCNT),
         .Y(SCY+VCNT),
 
         .HCNT,
@@ -88,6 +97,9 @@ module T9990_PATTERN #(
         .PRI(PRI_GEN)
     );
 
+    /***************************************************************
+     * 水平方向シフト
+     ***************************************************************/
     logic [$bits(PRI_GEN)+$bits(PA_GEN)-1:0] OUT;
 
     T9990_SHIFT_BUFFER #(
@@ -119,6 +131,7 @@ module TINY9990_PATTERN_GEN #(
     input wire              DISABLE,
 
     T9990_REGISTER_IF.VDP   REG,
+    input wire              P2,
     input wire [10:0]       X,
     input wire [12:0]       Y,
 
@@ -131,7 +144,6 @@ module TINY9990_PATTERN_GEN #(
     output reg [5:0]        PA,
     output reg [1:0]        PRI
 );
-    wire P2 = REG.DSPM[0];
 
     enum logic [3:0] {
         STATE_NAME_0_1,

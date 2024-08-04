@@ -56,9 +56,20 @@ module T9990_BITMAP (
     output reg [0:0]        PRI,
     output reg [15:0]       CLR
 );
+    /***************************************************************
+     * 倍密度フラグ
+     ***************************************************************/
+    reg DBL;
+    always_ff @(posedge CLK) DBL <= REG.MCS ? REG.DCKM[1] : REG.DCKM[0];
+
+    /***************************************************************
+     * 信号の生成
+     ***************************************************************/
     logic [$bits(PA)-1:0] PA_GEN;
     logic [$bits(PRI)-1:0] PRI_GEN;
     logic [$bits(CLR)-1:0] CLR_GEN;
+
+    wire [10:0] x = DBL ? {SCX[10:5], 5'b00000} : {SCX[10:4], 4'b0000};
 
     TINY9990_BITMAP_GEN u_gen (
         .RESET_n,
@@ -67,8 +78,9 @@ module T9990_BITMAP (
         .DISABLE,
 
         .REG,
+        .DBL,
 
-        .X(SCX+HCNT),
+        .X(x + HCNT),
         .Y(SCY+VCNT),
         .START,
 
@@ -79,8 +91,10 @@ module T9990_BITMAP (
         .CLR(CLR_GEN)
     );
 
+    /***************************************************************
+     * 水平方向シフト
+     ***************************************************************/
     logic [$bits(PRI_GEN)+$bits(PA_GEN)+$bits(CLR_GEN)-1:0] OUT;
-    wire dbl = REG.MCS ? REG.DCKM[1] : REG.DCKM[0];
 
     T9990_SHIFT_BUFFER #(
         .BIT_WIDTH($bits(OUT)),
@@ -90,7 +104,7 @@ module T9990_BITMAP (
         .CLK,
         .DCLK_EN,
         .DISABLE,
-        .OFFSET(dbl ? SCX[4:0] : {1'b1, SCX[3:0]}),
+        .OFFSET(DBL ? SCX[4:0] : {1'b1, SCX[3:0]}),
         .IN({PRI_GEN, PA_GEN, CLR_GEN}),
         .OUT
     );
@@ -107,6 +121,7 @@ module TINY9990_BITMAP_GEN (
     input wire              DISABLE,
 
     T9990_REGISTER_IF.VDP   REG,
+    input wire              DBL,
 
     input wire [10:0]       X,
     input wire [12:0]       Y,
@@ -118,8 +133,6 @@ module TINY9990_BITMAP_GEN (
     output reg [0:0]        PRI,
     output reg [15:0]       CLR
 );
-
-    wire dbl = REG.MCS ? REG.DCKM[1] : REG.DCKM[0];
 
     /***************************************************************
      * アドレス計算
@@ -249,7 +262,7 @@ module TINY9990_BITMAP_GEN (
             w_state <= 0;
         end
         else if(MEM.ACK) begin
-            if(dbl) begin
+            if(DBL) begin
                 if(REG.CLRM == T9990_REG::CLRM_2BPP) begin
                     W_ADDR <= w_state[0];
                     W_NUM <= w_state[1];
@@ -301,7 +314,7 @@ module TINY9990_BITMAP_GEN (
         else if(DISABLE) begin
         end
         else if(START) begin
-            if(dbl) begin
+            if(DBL) begin
                 R_POS <= 5'd31;
             end
             else begin
@@ -310,7 +323,7 @@ module TINY9990_BITMAP_GEN (
             R_NUM <= 0;
         end
         else if(DCLK_EN) begin
-            if(dbl) begin
+            if(DBL) begin
                 if(R_POS == 5'd31) begin
                     R_POS <= 0;
                     R_NUM <= !R_NUM;
