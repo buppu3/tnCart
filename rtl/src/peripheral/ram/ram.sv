@@ -67,6 +67,16 @@ interface RAM_IF #(parameter ADDR_BIT_WIDTH=24);
                     input  ADDR, OE_n, WE_n, RFSH_n, DIN, DIN_SIZE,
                     output DOUT, ACK_n, TIMING
                 );
+
+    // ダミー接続
+    function automatic void connect_dummy();
+        ADDR = 0;
+        DIN = 0;
+        DIN_SIZE = 0;
+        OE_n = 1;
+        WE_n = 1;
+        RFSH_n = 1;
+    endfunction
 endinterface
 
 /***************************************************************

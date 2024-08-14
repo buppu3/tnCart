@@ -55,6 +55,14 @@ interface SPI_IF #(parameter MOSI_BIT_WIDTH = 8, MISO_BIT_WIDTH = 8, LEN_BIT_WID
                     input  MOSI, LEN, REQ, CS_n,
                     output MISO, BUSY
                 );
+
+    // ダミー接続
+    function automatic void connect_dummy();
+        MOSI = 0;
+        LEN = 0;
+        REQ = 0;
+        CS_n = 1;        
+    endfunction
 endinterface
 
 /***********************************************************************

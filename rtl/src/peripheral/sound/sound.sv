@@ -40,6 +40,11 @@ interface SOUND_IF #(parameter BIT_WIDTH=10);
     logic [BIT_WIDTH-1:0]   Signal;
     modport IN  ( input  Signal );
     modport OUT ( output Signal );
+
+    // ダミー出力
+    function automatic void connect_dummy();
+        Signal = 0;
+    endfunction
 endinterface
 
 /***********************************************************************

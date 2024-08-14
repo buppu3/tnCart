@@ -50,6 +50,11 @@ interface LED_IF;
 
     // デバイス側ポート
     modport DEVICE      (input  State);
+
+    // ダミー接続
+    function automatic void connect_dummy();
+        State = LED_STATE_OFF;
+    endfunction
 endinterface
 
 /***********************************************************************

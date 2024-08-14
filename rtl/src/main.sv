@@ -38,13 +38,13 @@ module MAIN (
     input   wire            CLK,
     BUS_IF.CARTRIDGE        Bus,                // BUS I/F
     RAM_IF.HOST             Ram,                // RAM I/F
-    RAM_IF.HOST             VideoRam,           // VRAM I/F
+    RAM_IF                  VideoRam,           // VRAM I/F
     UMA_IF.CLK              UmaClock,           // UMA クロック
-    SPI_IF.HOST             TF,                 // TF カード I/F
-    LED_IF.HOST             LedNextor,          // Nextor 用 LED
+    SPI_IF                  TF,                 // TF カード I/F
+    LED_IF                  LedNextor,          // Nextor 用 LED
     FLASH_IF.HOST           Flash,              // フラッシュメモリ
     LED_IF.HOST             LedBoot,            // Bootloader 用 LED
-    VIDEO_IF.OUT            Video,              // ビデオ出力
+    VIDEO_IF                Video,              // ビデオ出力
     SOUND_IF.OUT            SoundExternal,      // 外部サウンド出力
     SOUND_IF.OUT            SoundInternal       // カートリッジサウンド出力
 );
@@ -114,17 +114,9 @@ module MAIN (
         );
         end
     else begin
-        assign ExpBus[BUS_MEGAROM].DOUT = 0;
-        assign ExpBus[BUS_MEGAROM].BUSDIR_n = 1;
-        assign ExpBus[BUS_MEGAROM].INT_n = 1;
-        assign ExpBus[BUS_MEGAROM].WAIT_n = 1;
-        assign ExpRam[RAM_MEGAROM].ADDR = 0;
-        assign ExpRam[RAM_MEGAROM].DIN = 0;
-        assign ExpRam[RAM_MEGAROM].DIN_SIZE = 0;
-        assign ExpRam[RAM_MEGAROM].OE_n = 1;
-        assign ExpRam[RAM_MEGAROM].WE_n = 1;
-        assign ExpRam[RAM_MEGAROM].RFSH_n = 1;
-        assign Sound[SOUND_MEGAROM].Signal = 0;
+        always_comb ExpBus[BUS_MEGAROM].connect_dummy();
+        always_comb ExpRam[RAM_MEGAROM].connect_dummy();
+        always_comb Sound[SOUND_MEGAROM].connect_dummy();
     end
 
     /***************************************************************
@@ -142,17 +134,9 @@ module MAIN (
         );
     end
     else begin
-        assign ExpBus[BUS_FM].DOUT = 0;
-        assign ExpBus[BUS_FM].BUSDIR_n = 1;
-        assign ExpBus[BUS_FM].INT_n = 1;
-        assign ExpBus[BUS_FM].WAIT_n = 1;
-        assign ExpRam[RAM_FM].ADDR = 0;
-        assign ExpRam[RAM_FM].DIN = 0;
-        assign ExpRam[RAM_FM].DIN_SIZE = 0;
-        assign ExpRam[RAM_FM].OE_n = 1;
-        assign ExpRam[RAM_FM].WE_n = 1;
-        assign ExpRam[RAM_FM].RFSH_n = 1;
-        assign Sound[SOUND_FM].Signal = 0;
+        always_comb ExpBus[BUS_FM].connect_dummy();
+        always_comb ExpRam[RAM_FM].connect_dummy();
+        always_comb Sound[SOUND_FM].connect_dummy();
     end
 
     /***************************************************************
@@ -171,21 +155,10 @@ module MAIN (
         );
     end
     else begin
-        assign ExpBus[BUS_NEXTOR].DOUT = 0;
-        assign ExpBus[BUS_NEXTOR].BUSDIR_n = 1;
-        assign ExpBus[BUS_NEXTOR].INT_n = 1;
-        assign ExpBus[BUS_NEXTOR].WAIT_n = 1;
-        assign ExpRam[RAM_NEXTOR].ADDR = 0;
-        assign ExpRam[RAM_NEXTOR].DIN = 0;
-        assign ExpRam[RAM_NEXTOR].DIN_SIZE = 0;
-        assign ExpRam[RAM_NEXTOR].OE_n = 1;
-        assign ExpRam[RAM_NEXTOR].WE_n = 1;
-        assign ExpRam[RAM_NEXTOR].RFSH_n = 1;
-        assign LedNextor.State = LedNextor.LED_STATE_OFF;
-        assign TF.MOSI = 0;
-        assign TF.LEN = 0;
-        assign TF.REQ = 0;
-        assign TF.CS_n = 1;        
+        always_comb ExpBus[BUS_NEXTOR].connect_dummy();
+        always_comb ExpRam[RAM_NEXTOR].connect_dummy();
+        always_comb LedNextor.connect_dummy();
+        always_comb TF.connect_dummy();
     end
 
     /***************************************************************
@@ -202,16 +175,8 @@ module MAIN (
         );
     end
     else begin
-        assign ExpBus[BUS_RAM].DOUT = 0;
-        assign ExpBus[BUS_RAM].BUSDIR_n = 1;
-        assign ExpBus[BUS_RAM].INT_n = 1;
-        assign ExpBus[BUS_RAM].WAIT_n = 1;
-        assign ExpRam[RAM_RAM].ADDR = 0;
-        assign ExpRam[RAM_RAM].DIN = 0;
-        assign ExpRam[RAM_RAM].DIN_SIZE = 0;
-        assign ExpRam[RAM_RAM].OE_n = 1;
-        assign ExpRam[RAM_RAM].WE_n = 1;
-        assign ExpRam[RAM_RAM].RFSH_n = 1;
+        always_comb ExpBus[BUS_RAM].connect_dummy();
+        always_comb ExpRam[RAM_RAM].connect_dummy();
     end
 
     /***************************************************************
@@ -226,11 +191,8 @@ module MAIN (
         );
     end
     else begin
-        assign ExpBus[BUS_PSG].DOUT = 0;
-        assign ExpBus[BUS_PSG].BUSDIR_n = 1;
-        assign ExpBus[BUS_PSG].INT_n = 1;
-        assign ExpBus[BUS_PSG].WAIT_n = 1;
-        assign Sound[SOUND_PSG].Signal = 0;
+        always_comb ExpBus[BUS_PSG].connect_dummy();
+        always_comb Sound[SOUND_PSG].connect_dummy();
     end
 
     /***************************************************************
@@ -247,23 +209,9 @@ module MAIN (
         );
     end
     else begin
-        assign ExpBus[BUS_V9990].DOUT = 0;
-        assign ExpBus[BUS_V9990].BUSDIR_n = 1;
-        assign ExpBus[BUS_V9990].INT_n = 1;
-        assign ExpBus[BUS_V9990].WAIT_n = 1;
-        assign Video.R = 0;
-        assign Video.G = 0;
-        assign Video.B = 0;
-        assign Video.HS_n = 1;
-        assign Video.VS_n = 1;
-        assign Video.RESOLUTION = VIDEO::RESOLUTION_720_480;
-        assign Video.DCLK = ExpBus[BUS_V9990].CLK_14M;
-        assign VideoRam.ADDR = 0;
-        assign VideoRam.OE_n = 1;
-        assign VideoRam.WE_n = 1;
-        assign VideoRam.RFSH_n = 1;
-        assign VideoRam.DIN = 0;
-        assign VideoRam.DIN_SIZE = 0;
+        always_comb ExpBus[BUS_V9990].connect_dummy();
+        always_comb Video.connect_dummy();
+        always_comb VideoRam.connect_dummy();
     end
 
     /***************************************************************
@@ -316,7 +264,7 @@ module MAIN (
         );
     end
     else begin
-        assign AttOutExt[SOUND_EXT_MEGAROM].Signal = 0;
+        always_comb AttOutExt[SOUND_EXT_MEGAROM].connect_dummy();
     end
 
     if(CONFIG::ENABLE_FM) begin
@@ -331,7 +279,7 @@ module MAIN (
         );
     end
     else begin
-        assign AttOutExt[SOUND_EXT_FM].Signal = 0;
+        always_comb AttOutExt[SOUND_EXT_FM].connect_dummy();
     end
 
     if(CONFIG::ENABLE_PSG) begin
@@ -346,7 +294,7 @@ module MAIN (
         );
     end
     else begin
-        assign AttOutExt[SOUND_EXT_PSG].Signal = 0;
+        always_comb AttOutExt[SOUND_EXT_PSG].connect_dummy();
     end
 
     SOUND_MIXER #(
@@ -378,7 +326,7 @@ module MAIN (
         );
     end
     else begin
-        assign AttOutInt[SOUND_INT_MEGAROM].Signal = 0;
+        always_comb AttOutInt[SOUND_INT_MEGAROM].connect_dummy();
     end
 
     if(CONFIG::ENABLE_FM) begin
@@ -393,7 +341,7 @@ module MAIN (
         );
     end
     else begin
-        assign AttOutInt[SOUND_INT_FM].Signal = 0;
+        always_comb AttOutInt[SOUND_INT_FM].connect_dummy();
     end
 
     SOUND_MIXER #(

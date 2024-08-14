@@ -76,6 +76,13 @@ interface BUS_IF;
                     input  CLK_EN, CLK_21M, CLK_EN_21M, CLK_14M
                 );
 
+    // ダミー接続
+    function automatic void connect_dummy();
+        DOUT = 0;
+        BUSDIR_n = 1;
+        INT_n = 1;
+        WAIT_n = 1;
+    endfunction
 endinterface
 
 /***************************************************************

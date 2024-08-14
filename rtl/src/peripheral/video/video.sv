@@ -55,6 +55,17 @@ interface VIDEO_IF;
     logic       DCLK;
     modport IN  ( input  RESOLUTION, R, G, B, HS_n, VS_n, DCLK );
     modport OUT ( output RESOLUTION, R, G, B, HS_n, VS_n, DCLK );
+
+    // ダミー出力
+    function automatic void connect_dummy();
+        R = 0;
+        G = 0;
+        B = 0;
+        HS_n = 1;
+        VS_n = 1;
+        RESOLUTION = VIDEO::RESOLUTION_720_480;
+        DCLK = 0;
+    endfunction
 endinterface
 
 `default_nettype wire
