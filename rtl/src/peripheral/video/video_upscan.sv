@@ -34,7 +34,7 @@
 `default_nettype none
 
 `define UPSCAN_USE_DPB
-`define RATIO_1_125
+//`define RATIO_1_125
 
 /***********************************************************************
  * アップスキャンモジュール

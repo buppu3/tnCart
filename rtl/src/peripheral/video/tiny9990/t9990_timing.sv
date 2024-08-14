@@ -172,11 +172,11 @@ module T9990_TIMING (
     localparam  H768_MUX_ACTIVE   = (H768_ACTIVE - COLOR_DECODE_DELAY);
     localparam  H768_MUX_INACTIVE = (H768_INACTIVE - COLOR_DECODE_DELAY);
 
-    localparam  H640_LEFT_ERASE   = 128;
+    localparam  H640_LEFT_ERASE   = 144;
     localparam  H640_LEFT_BORDER  = 0;
     localparam  H640_WIDTH        = 640;
     localparam  H640_RIGHT_BORDER = 0;
-    localparam  H640_RIGHT_ERASE  = 80;
+    localparam  H640_RIGHT_ERASE  = 64;
     localparam  H640_SYNC         = 64;
     localparam  H640_TOTAL        = (H640_LEFT_ERASE + H640_LEFT_BORDER + H640_WIDTH + H640_RIGHT_BORDER + H640_RIGHT_ERASE);
     localparam  H640_ACTIVE       = (H640_LEFT_ERASE + H640_LEFT_BORDER);
@@ -188,11 +188,11 @@ module T9990_TIMING (
     localparam  H640_MUX_ACTIVE   = (H640_ACTIVE - COLOR_DECODE_DELAY);
     localparam  H640_MUX_INACTIVE = (H640_INACTIVE - COLOR_DECODE_DELAY);
 
-    localparam  H648_LEFT_ERASE   = 112;
+    localparam  H648_LEFT_ERASE   = 144;
     localparam  H648_LEFT_BORDER  = 0;
     localparam  H648_WIDTH        = 640;
     localparam  H648_RIGHT_BORDER = 0;
-    localparam  H648_RIGHT_ERASE  = 48;
+    localparam  H648_RIGHT_ERASE  = 16;
     localparam  H648_SYNC         = 96;
     localparam  H648_TOTAL        = (H648_LEFT_ERASE + H648_LEFT_BORDER + H648_WIDTH + H648_RIGHT_BORDER + H648_RIGHT_ERASE);
     localparam  H648_ACTIVE       = (H648_LEFT_ERASE + H648_LEFT_BORDER);
