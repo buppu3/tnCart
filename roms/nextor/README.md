@@ -1,7 +1,7 @@
 # NEXTOR カーネルロムイメージ
 
 Nextor を使用する場合は、Gowin Programmer で EEPROM の 100000h へカーネル ROM を書いてください。
-公式(https://github.com/Konamiman/Nextor/releases)で配布されている "Nextor-2.1.2.MegaFlashSDSCC.1-slot.ROM" を使用してください。
+カーネル ROM ファイルは Nextor 公式( https://github.com/Konamiman/Nextor/releases )で配布されている "Nextor-2.1.2.MegaFlashSDSCC.1-slot.ROM" を使用してください。
 ファイルの拡張子を全て小文字で bin へ変更しないと Gowin Programmer が正常に動作しませんので注意してください。
 
 When using Nextor, you must write the ROM file to address 100000h using "Gowin Programmer".
