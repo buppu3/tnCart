@@ -245,7 +245,7 @@ module TNCART_BOARD_REV1_TOP (
         assign CART_DATA_SIG = 8'bZZZZ_ZZZZ;
     end
     else begin
-`ifndef HOGE
+        // リセット信号処理
         reg reset_n = 0;
         assign RESET_n = reset_n;
         always_ff @(posedge CLK_BASE or negedge CLK_BASE_READY or negedge sdram_ready) begin
@@ -253,9 +253,8 @@ module TNCART_BOARD_REV1_TOP (
             else if(!sdram_ready) reset_n <= 0;     // SDRAM 準備中ならリセット
             else reset_n <= 1; 
         end
-`else
-        assign RESET_n = CLK_BASE_READY && sdram_ready;
-`endif
+
+        // バス信号処理
         BOARD_REV1_BUS u_bus (
             .RESET_n,
             .CLK,

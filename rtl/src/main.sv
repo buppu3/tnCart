@@ -224,7 +224,7 @@ module MAIN (
         else if(!BOOT_n) SYS_RESET_n <= 0;
         else             SYS_RESET_n <= 1;
     end
-    //assign SYS_RESET_n = RESET_n && BOOT_n;
+
     BOOTLOADER #(
         .XFER_SRC_ADDR  (CONFIG::FLASH_ADDR_BIOS),
         .XFER_DST_ADDR  (CONFIG::RAM_ADDR_BIOS),
