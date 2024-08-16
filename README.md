@@ -3,7 +3,7 @@
 TangNano20K を搭載した MSX 用カートリッジ
 
 ## カートリッジ基板
-基板は WonderTang のピンアサインとほぼ同じで、バッファ IC は2電源タイプに変更してます。
+回路は WonderTang V1.01c のピンアサインとほぼ同じで、バッファ IC は2電源タイプに変更してます。
 また、信号の衝突を防ぐために INT 信号はオープンコレクタに変更してあります。
 
 <img alt="基板イメージ" src="https://github.com/buppu3/tnCart/blob/main/pics/tnCart_rev1_3d.png?raw=true" width="40%" /><img alt="スロットに装着したカートリッジ基板" src="https://github.com/buppu3/tnCart/blob/main/pics/tnCart_rev1_mounted.png?raw=true" width="40%" />
@@ -15,7 +15,7 @@ TangNano20K を搭載した MSX 用カートリッジ
 - PSG 音源の 3.5mmフォンジャック出力
 - メガロムエミュレーション
 - SCC 音源
-- V9990 の P1/BP6 モード(256x212dot)
+- V9990 エミュレーション(「msx-samurai」,「MSXgl V9990サンプルの一部」,「TINY野郎氏のテックデモ」がそれなりに動く程度)
 
 ## 既知の不具合
 - V9990 の割り込み
