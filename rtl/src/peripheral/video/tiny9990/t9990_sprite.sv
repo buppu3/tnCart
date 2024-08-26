@@ -126,9 +126,9 @@ module T9990_SPRITE #(
     wire [8:0] spr_offset_y = VCNT - spr_signed_y;
     wire spr_y_flag = (spr_offset_y[8:4] == 0);
 
-    wire [8:0] cur_signed_y = {MEM.DOUT[16], MEM.DOUT[31:24]};
+    wire [8:0] cur_signed_y = {MEM.DOUT[16], MEM.DOUT[7:0]};
     wire [8:0] cur_offset_y = VCNT - cur_signed_y;
-    wire cur_y_flag = (cur_offset_y[8:5] == 0);
+    reg cur_y_flag;
 
 `ifdef SPR_PAT_USE_DPB
     reg [3:0]   spr_pat_r_addr;
@@ -307,16 +307,12 @@ module T9990_SPRITE #(
             spr_atr_w_en <= 1;
         end
         else if(MEM.ACK && state == STATE_CUR_ATR_L) begin
-            spr_atr_w_data[15:0] <= {MEM.DOUT[7:0], MEM.DOUT[23:16]};
-            spr_atr_w_en <= 0;
-        end
-        else if(MEM.ACK && state == STATE_CUR_ATR_L) begin
-            spr_atr_w_data[15:0] <= {MEM.DOUT[7:0], MEM.DOUT[23:16]};
+            spr_atr_w_data[15:0] <= {MEM.DOUT[23:16], MEM.DOUT[7:0]};
             spr_atr_w_en <= 0;
         end
         else if(MEM.ACK && state == STATE_CUR_ATR_H) begin
             spr_atr_w_addr <= fetch_index[3:0];
-            spr_atr_w_data[31:16] <= cur_y_flag ? {MEM.DOUT[7:0], MEM.DOUT[23:16]} : 16'b0001_0000_0000_0000;
+            spr_atr_w_data[31:16] <= cur_y_flag ? {MEM.DOUT[23:16], MEM.DOUT[7:0]} : {MEM.DOUT[23:21], 1'b1, MEM.DOUT[19:16], MEM.DOUT[7:0]};
             spr_atr_w_en <= 1;
         end
         else begin
@@ -466,8 +462,9 @@ module T9990_SPRITE #(
                 // アトリビュート(下位)
                 STATE_CUR_ATR_L: begin
 `ifndef SPR_ATR_USE_DPB
-                    atr_buff[fetch_index][15:0] <= {MEM.DOUT[7:0], MEM.DOUT[23:16]};
+                    atr_buff[fetch_index][15:0] <= {MEM.DOUT[23:16], MEM.DOUT[7:0]};
 `endif
+                    cur_y_flag <= (cur_offset_y[8:5] == 0);
                     fetch_visible_count <= fetch_visible_count + 1'd1;
                     state <= STATE_CUR_ATR_H;
                 end
@@ -475,13 +472,13 @@ module T9990_SPRITE #(
                 // アトリビュート(上位)
                 STATE_CUR_ATR_H: begin
 `ifndef SPR_ATR_USE_DPB
-                    atr_buff[fetch_index][31:16] <= cur_y_flag ? {MEM.DOUT[7:0], MEM.DOUT[23:16]} : 16'b0001_0000_0000_0000;
+                    atr_buff[fetch_index][31:16] <= cur_y_flag ? {MEM.DOUT[23:16], MEM.DOUT[7:0]} : {MEM.DOUT[23:21], 1'b1, MEM.DOUT[19:16], MEM.DOUT[7:0]};
 `endif
                     fetch_index <= fetch_index + 1'd1;
 
                     // 2枚をカウント
                     fetch_remain <= fetch_remain - 1'd1;
-                    if(fetch_remain == 0) state <= STATE_SPR_PAT_START;
+                    if(fetch_remain == 0) state <= STATE_CUR_PAT_START;
                     else                  state <= STATE_CUR_ATR_L;
                 end
 
@@ -769,7 +766,7 @@ module T9990_SPRITE #(
 `else
             // PALETTE ADDRESS を出力
             if(cur_flg[ 0])      PA <= cur_pa[ 0];      //  1番目のカーソルを表示
-            else if(cur_flg[ 1]) PA <= spr_pa[ 1];      //  2番目のカーソルを表示
+            else if(cur_flg[ 1]) PA <= cur_pa[ 1];      //  2番目のカーソルを表示
             else                 PA <= 0;               // 表示するカーソルが無い
 
             // EOR を出力
