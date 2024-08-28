@@ -46,7 +46,7 @@ module VIDEO_UPSCAN #(
     parameter [9:0] H_DISP  = 10'd720,
     parameter [9:0] V_TOTAL = 10'd525,
     parameter [9:0] V_SYNC  = 10'd2,
-    parameter RESOLUTION    = VIDEO::RESOLUTION_720_480,
+    parameter VIDEO::RESOLUTION_t RESOLUTION = VIDEO::RESOLUTION_720_480,
     parameter ROW_COUNT     = 3     // 2=ダブルバッファ / 3=トリプルバッファ (出力側HSYNCと入力側HSYNCが完全に同期できない場合はトリプルバッファを使う)
 ) (
     input wire      RESET_n,
