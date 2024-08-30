@@ -17,6 +17,14 @@ TangNano20K を搭載した MSX 用カートリッジ
 - SCC 音源
 - V9990 エミュレーション(「msx-samurai」,「MSXgl V9990サンプルの一部」,「TINY野郎氏のテックデモ」がそれなりに動く程度)
 
+https://github.com/user-attachments/assets/6ccc81ad-7539-472d-90ff-44e20a4ad2ab
+
+https://github.com/user-attachments/assets/eceabaee-c464-4074-b1bb-01007c4406e5
+
+https://github.com/user-attachments/assets/5c7b5b81-0413-4705-99fa-486552f4d58d
+
+https://github.com/user-attachments/assets/f6615e37-0041-4baa-8b7d-7cd3aba46d73
+
 ## 既知の不具合
 - V9990 の VDPコマンド割り込み
 - V9990 のビットマップモード時の右端表示異常
