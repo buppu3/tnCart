@@ -31,6 +31,9 @@ https://github.com/user-attachments/assets/f6615e37-0041-4baa-8b7d-7cd3aba46d73
 - V9990 の B4モードのアップスキャン処理
 - V9990 の P1/P2 モード時の LMMV コマンド
 - バスの状態によっては WS2812 が点灯してしまう
+- 1chip MSX で FM 音源が認識されない
+- 1chip MSX で Nextor の仮想 FD の動作がおかしい
+- V9990 の VSYNC ジッタ(3.58MhzのMSXバスクロックと 27Mhz の同期がとれないので 0~1 ラインのブレが出てしまう。GC533の最新ファームウェアでキャプチャできないのはコレが原因)
 
 ## 今後の予定
 - PAC エミュレーション
