@@ -52,9 +52,10 @@ module MAIN (
      * サウンド信号格納用
      ***************************************************************/
     localparam SOUND_MEGAROM = 0;
-    localparam SOUND_FM      = 1;
-    localparam SOUND_PSG     = 2;
-    localparam SOUND_COUNT   = 3;
+    localparam SOUND_FM_INT  = 1;
+    localparam SOUND_FM_EXT  = 2;
+    localparam SOUND_PSG     = 3;
+    localparam SOUND_COUNT   = 4;
     SOUND_IF Sound[0:SOUND_COUNT-1]();
 
     /***************************************************************
@@ -123,20 +124,25 @@ module MAIN (
      * FM 音源カートリッジ
      ***************************************************************/
     if(CONFIG::ENABLE_FM) begin
+        wire FM_Sound_Enable;
         CARTRIDGE_FM #(
+            .MIRROR         (1),
             .RAM_ADDR       (CONFIG::RAM_ADDR_BIOS_FM)
         ) u_fm (
             .RESET_n        (SYS_RESET_n),
             .CLK,
             .Bus            (ExpBus[BUS_FM]),
             .Ram            (ExpRam[RAM_FM]),
-            .Sound          (Sound[SOUND_FM])
+            .Sound          (Sound[SOUND_FM_EXT]),
+            .Output_En      (FM_Sound_Enable)
         );
+        assign Sound[SOUND_FM_INT].Signal = FM_Sound_Enable ? Sound[SOUND_FM_EXT].Signal : 0;
     end
     else begin
         always_comb ExpBus[BUS_FM].connect_dummy();
         always_comb ExpRam[RAM_FM].connect_dummy();
-        always_comb Sound[SOUND_FM].connect_dummy();
+        always_comb Sound[SOUND_FM_EXT].connect_dummy();
+        always_comb Sound[SOUND_FM_INT].connect_dummy();
     end
 
     /***************************************************************
@@ -274,7 +280,7 @@ module MAIN (
         ) u_att_ext_fm (
             .RESET_n,
             .CLK,
-            .IN(Sound[SOUND_FM]),
+            .IN(Sound[SOUND_FM_EXT]),
             .OUT(AttOutExt[SOUND_EXT_FM])
         );
     end
@@ -336,7 +342,7 @@ module MAIN (
         ) u_att_int_fm (
             .RESET_n,
             .CLK,
-            .IN(Sound[SOUND_FM]),
+            .IN(Sound[SOUND_FM_INT]),
             .OUT(AttOutInt[SOUND_INT_FM])
         );
     end

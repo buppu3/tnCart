@@ -37,13 +37,15 @@
  * FM 音源カードリッジ
  ***************************************************************/
 module CARTRIDGE_FM #(
-    parameter               RAM_ADDR = 0
+    parameter               RAM_ADDR = 0,
+    parameter               MIRROR = 0
 ) (
     input   wire            RESET_n,
     input   wire            CLK,
     BUS_IF.CARTRIDGE        Bus,
     RAM_IF.HOST             Ram,
-    SOUND_IF.OUT            Sound
+    SOUND_IF.OUT            Sound,
+    output  wire            Output_En
 );
     localparam [7:0]    IO_BASE_ADDR = 8'h7C;
     localparam [15:0]   MIO_BASE_ADDR = 16'h7FF4;
@@ -144,6 +146,15 @@ module CARTRIDGE_FM #(
      * i/o bus switch register ライト(7FF6h の bit0 が 1 で I/O ポートを有効化)
      ***************************************************************/
     reg [7:0] iosw_reg;
+    wire ena_io;
+    if(MIRROR) begin
+        assign ena_io = 1;
+        assign Output_En = iosw_reg[0];
+    end
+    else begin
+        assign ena_io = iosw_reg[0];
+        assign Output_En = 1;
+    end
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n || !ExtBus[0].RESET_n) begin
             iosw_reg <= 8'h00;
@@ -187,7 +198,7 @@ if(CONFIG::ENABLE_FM == CONFIG::ENABLE_IKAOPLL) begin
     /***************************************************************
      * IKA OPLL
      ***************************************************************/
-    wire cs_io_n = ((ExtBus[0].ADDR[7:1] != IO_BASE_ADDR[7:1]) || ExtBus[0].IORQ_n) || !iosw_reg[0];                // 7Ch~7Dh
+    wire cs_io_n = ((ExtBus[0].ADDR[7:1] != IO_BASE_ADDR[7:1]) || ExtBus[0].IORQ_n) || !ena_io;                // 7Ch~7Dh
     wire cs_mem_opll_n = (ExtBus[0].ADDR[15:1] != MIO_BASE_ADDR[15:1]) || ExtBus[0].MERQ_n || ExtBus[0].SLTSL_n;    // 7FF4h~7FF5h
 
     wire dac_stb;
@@ -257,7 +268,7 @@ else if(CONFIG::ENABLE_FM == CONFIG::ENABLE_VM2413) begin
      ***************************************************************/
     wire unsigned [9:0]           ro;
     wire unsigned [$bits(ro)-1:0] mo;
-    wire cs_io_n = ((ExtBus[0].ADDR[7:1] != IO_BASE_ADDR[7:1]) || ExtBus[0].IORQ_n) || !iosw_reg[0];                // 7Ch~7Dh
+    wire cs_io_n = ((ExtBus[0].ADDR[7:1] != IO_BASE_ADDR[7:1]) || ExtBus[0].IORQ_n) || !ena_io;                // 7Ch~7Dh
     wire cs_mem_opll_n = (ExtBus[0].ADDR[15:1] != MIO_BASE_ADDR[15:1]) || ExtBus[0].MERQ_n || ExtBus[0].SLTSL_n;    // 7FF4h~7FF5h
     opll u_vm2413 (
         .xin        (ExtBus[0].CLK_21M),
