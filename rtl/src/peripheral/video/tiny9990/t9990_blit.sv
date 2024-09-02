@@ -266,6 +266,7 @@ module T9990_BLIT (
             P2_VDP_TO_CPU.REQ <= 0;
             STATUS.TR <= 0;
             STATUS.CE <= 0;
+            STATUS.CE_intr <= 0;
             state <= STATE_IDLE;
             FIFO_CLEAR <= 0;
             CMD_MEM.OE_n <= 1;
@@ -282,6 +283,7 @@ module T9990_BLIT (
             P2_CPU_TO_VDP.REQ <= 0;
             P2_VDP_TO_CPU.REQ <= 0;
             STATUS.TR <= 0;
+            STATUS.CE_intr <= 0;
         end
 
         //
@@ -290,6 +292,7 @@ module T9990_BLIT (
         else if(state == STATE_STOP) begin
             if(!P2_CPU_TO_VDP.ACK && !P2_VDP_TO_CPU.ACK) begin
                 STATUS.CE <= 0;
+                STATUS.CE_intr <= 0;
                 state <= STATE_IDLE;
             end
         end
@@ -298,6 +301,8 @@ module T9990_BLIT (
         // アイドル
         //
         else if(state == STATE_IDLE) begin
+            STATUS.CE_intr <= 0;
+
             if(START) begin
                 FIFO_CLEAR <= 1;
 
@@ -1237,36 +1242,42 @@ module T9990_BLIT (
 
         else if(state == STATE_COMPLETE) begin
             STATUS.CE <= 0;
+            STATUS.CE_intr <= 1;
             state <= STATE_IDLE;
         end
 
         else if(state == STATE_LINE) begin
             FIFO_CLEAR <= 0;
             STATUS.CE <= 0;
+            STATUS.CE_intr <= 1;
             state <= STATE_IDLE;
         end
 
         else if(state == STATE_SEARCH) begin
             FIFO_CLEAR <= 0;
             STATUS.CE <= 0;
+            STATUS.CE_intr <= 1;
             state <= STATE_IDLE;
         end
 
         else if(state == STATE_POINT) begin
             FIFO_CLEAR <= 0;
             STATUS.CE <= 0;
+            STATUS.CE_intr <= 1;
             state <= STATE_IDLE;
         end
 
         else if(state == STATE_PSET) begin
             FIFO_CLEAR <= 0;
             STATUS.CE <= 0;
+            STATUS.CE_intr <= 1;
             state <= STATE_IDLE;
         end
 
         else if(state == STATE_ADVANCE) begin
             FIFO_CLEAR <= 0;
             STATUS.CE <= 0;
+            STATUS.CE_intr <= 1;
             state <= STATE_IDLE;
         end
     end

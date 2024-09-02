@@ -145,11 +145,12 @@ interface T9990_STATUS_IF;
     logic           BD;
     logic           EO;
     logic           CE;
+    logic           CE_intr;
     logic           HI;
     logic           VI;
     logic [10:0]    BX;
-    modport CPU ( input     TR, VR, HR, BD, EO, CE, HI, VI, BX  );
-    modport CMD ( output    TR, BD, CE, BX );
+    modport CPU ( input     TR, VR, HR, BD, EO, CE, CE_intr, HI, VI, BX  );
+    modport CMD ( output    TR, BD, CE, CE_intr, BX );
     modport TIM ( output    VR, HR, EO, HI, VI );
 endinterface
 
@@ -890,7 +891,7 @@ module T9990_PORT (
             VI_save <= CD_IN[0] ? 0 : VI_save;
         end
         else begin
-            CE_save <= CE_save | STATUS.CE;
+            CE_save <= CE_save | STATUS.CE_intr;
             HI_save <= HI_save | STATUS.HI;
             VI_save <= VI_save | STATUS.VI;
         end
