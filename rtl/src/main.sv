@@ -127,7 +127,8 @@ module MAIN (
         wire FM_Sound_Enable;
         CARTRIDGE_FM #(
             .MIRROR         (1),
-            .RAM_ADDR       (CONFIG::RAM_ADDR_BIOS_FM)
+            .RAM_ADDR_BIOS  (CONFIG::RAM_ADDR_BIOS_FM),
+            .RAM_ADDR_PAC   (CONFIG::RAM_ADDR_PAC)
         ) u_fm (
             .RESET_n        (SYS_RESET_n),
             .CLK,

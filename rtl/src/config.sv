@@ -54,12 +54,28 @@ package CONFIG;
 
     /***************************************************************
      * RAM
+     *  00_0000 +-------------------+
+     *          | MEM MAPPER(4MB)   |
+     *  40_0000 +-------------------+
+     *          | MEGA ROM(3MB)     |
+     *  70_0000 +-------------------+
+     *          | NEXTOR(128KB)     |
+     *  72_0000 +-------------------+
+     *          | FM-BIOS(16KB)     |
+     *  72_4000 +-------------------+
+     *          | (360KB)           |
+     *  77_E000 +-------------------+
+     *          | PAC(8KB)          |
+     *  78_0000 +-------------------+
+     *          | VRAM(512KB)       |
+     *  80_0000 +-------------------+
      ***************************************************************/
     localparam [23:0]   RAM_ADDR_RAM            = 24'h00_0000;
     localparam [23:0]   RAM_ADDR_MEGAROM        = 24'h40_0000;
     localparam [23:0]   RAM_ADDR_BIOS           = 24'h70_0000;
     localparam [23:0]   RAM_ADDR_BIOS_NEXTOR    = RAM_ADDR_BIOS;
     localparam [23:0]   RAM_ADDR_BIOS_FM        = (RAM_ADDR_BIOS_NEXTOR + FLASH_SIZE_BIOS_NEXTOR);
+    localparam [23:0]   RAM_ADDR_PAC            = 24'h77_E000;
     localparam [23:0]   RAM_ADDR_VRAM           = 24'h78_0000;
 
     /***************************************************************

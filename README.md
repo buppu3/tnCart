@@ -29,7 +29,7 @@ https://github.com/user-attachments/assets/f6615e37-0041-4baa-8b7d-7cd3aba46d73
 [Issues](https://github.com/buppu3/tnCart/issues)へ移動しました
 
 ## 今後の予定
-- PAC エミュレーション
+- PAC データの FLASH へ保持
 - V9990 の VDP コマンド(LINE,SRCH等)
 - V9990 のカーソル EOR 処理
 - V9990 とアップスキャンのインターレース対応
@@ -52,4 +52,4 @@ https://github.com/user-attachments/assets/f6615e37-0041-4baa-8b7d-7cd3aba46d73
 - ~~V9990 機能を有効にする際は、config.sv の ENABLE_V9990, ENABLE_V9990_CMD を 1 に、ENABLE_FM, ENABLE_PSG, ENABLE_SCC 等を 0 に変更してから論理合成してください。全ての機能を有効にした状態では回路の規模が大きくなるため、TangNano20K では合成できません。~~
 - 現在のバージョンは TangNano20K にギリギリ収まるサイズに最適化したので ENABLE_V9990, ENABLE_V9990_CMD, ENABLE_FM, ENABLE_PSG, ENABLE_SCC はすべて ENABLE になっています。
 - V9990 の映像は 720x480ドット(ピクセルクロック 27MHz) の DVI 信号で出力されます。接続するモニターやビデオキャプチャー機器によっては正常に動作しない可能性があります。
-- V9990 の VRAM アクセス方法は実物とかなり違います。実チップは別々の VRAM アドレスを 8bit でアクセスできるバスを2つ持っていますが、TangNano20k ではそれを実装するのが難しいので 32bit 単位で VRAM を操作することで V9990 とほぼ同等のメモリ帯域(3MB/secくらい?)を実現しています。TangNano20k の CLS 使用量が大きくなってしまうのは、たぶんこれが原因です。
+- V9990 の VRAM アクセス方法は実物とかなり違います。実チップは別々の VRAM アドレスを 8bit でアクセスできるバスを2つ持っていますが、TangNano20k ではそれを実装するのが難しいので 32bit 単位で VRAM を操作することで V9990 とほぼ同等のメモリ帯域(BMLL転送で 3MB/sec 位?)を実現しています。TangNano20k の CLS 使用量が大きくなってしまうのは、たぶんこれが原因です。

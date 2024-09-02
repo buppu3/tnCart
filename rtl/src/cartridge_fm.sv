@@ -37,7 +37,8 @@
  * FM 音源カードリッジ
  ***************************************************************/
 module CARTRIDGE_FM #(
-    parameter               RAM_ADDR = 0,
+    parameter               RAM_ADDR_BIOS = 0,
+    parameter               RAM_ADDR_PAC = 0,
     parameter               MIRROR = 0
 ) (
     input   wire            RESET_n,
@@ -49,40 +50,19 @@ module CARTRIDGE_FM #(
 );
     localparam [7:0]    IO_BASE_ADDR = 8'h7C;
     localparam [15:0]   MIO_BASE_ADDR = 16'h7FF4;
-    localparam [15:0]   SRAM_ADDR = 16'h4000;
-    localparam [15:0]   SRAM_BANK_ADDR = 16'h5FFE;
-
-    /***************************************************************
-     * ROM の設定
-     ***************************************************************/
-    MEGAROM_IF Megarom();
-    assign Megarom.MemoryTopAddr   = RAM_ADDR;             // 割り当て RAM アドレス
-    assign Megarom.BankRegAddrMask = 16'h0000;             // バンクレジスタアドレスマスク
-    assign Megarom.BankRegAddr[0]  = 16'hFFFF;             // バンク#0 レジスタアドレス
-    assign Megarom.BankRegAddr[1]  = 16'hFFFF;             // バンク#1 レジスタアドレス
-    assign Megarom.BankRegAddr[2]  = 16'hFFFF;             // バンク#2 レジスタアドレス
-    assign Megarom.BankRegAddr[3]  = 16'hFFFF;             // バンク#3 レジスタアドレス
-    assign Megarom.BankRegMask     = 8'h00;                // バンクレジスタマスク
-    assign Megarom.BankRegInit[0]  = 8'h00;                // バンク#0 初期値
-    assign Megarom.BankRegInit[1]  = 8'h00;                // バンク#1 初期値
-    assign Megarom.BankRegInit[2]  = 8'h00;                // バンク#2 初期値
-    assign Megarom.BankRegInit[3]  = 8'h00;                // バンク#3 初期値
-    assign Megarom.WriteProtect    = 1;                    // 書き込み禁止
-    assign Megarom.is_16k_bank     = 1;                    // バンクサイズ 16KB
-    assign Megarom.CS1_Mask        = 0;                    // 4000h~7FFFh 有効
-    assign Megarom.CS2_Mask        = 1;                    // 8000h=BFFFh 無効
 
     /***************************************************************
      * メガロムコントローラ
      ***************************************************************/
     BUS_IF ExtBus[0:0]();
-    MEGAROM_CONTROLLER #(
+    PACROM_CONTROLLER #(
+        .RAM_ADDR_BIOS(RAM_ADDR_BIOS),
+        .RAM_ADDR_PAC(RAM_ADDR_PAC),
         .COUNT(1),
         .USE_FF(0)
     ) u_rom (
         .RESET_n,
         .CLK,
-        .Megarom,
         .Bus,
         .Ram,
         .ExtBus
@@ -115,32 +95,6 @@ module CARTRIDGE_FM #(
      * アドレスデコード(7FF6h)
      ***************************************************************/
     wire cs_mem_iosw_n = (ExtBus[0].ADDR[15:2] != MIO_BASE_ADDR[15:2]) || (ExtBus[0].ADDR[1:0] != 2'b10);
-    wire cs_mem_sram_n = (ExtBus[0].ADDR[15:13] != SRAM_ADDR[15:13]) || (sram_bank_reg[0] != 8'h4D) || (sram_bank_reg[1] != 8'h69);
-    wire cs_mem_sram_bank_n = (ExtBus[0].ADDR[15:1] != SRAM_BANK_ADDR[15:1]);
-
-    /***************************************************************
-     * sram enable register ライト(5FFEh~5FFFh)
-     ***************************************************************/
-    reg [7:0] sram_bank_reg[0:1];
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n || !ExtBus[0].RESET_n) begin
-            sram_bank_reg[0] <= 8'h00;
-            sram_bank_reg[1] <= 8'h00;
-        end
-        else if(det_wr_mem && !cs_mem_sram_bank_n) begin
-            sram_bank_reg[ExtBus[0].ADDR[0]] <= ExtBus[0].DIN;
-        end
-    end
-
-    /***************************************************************
-     * sram data ライト(4000h~5FFFh)
-     ***************************************************************/
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n || !ExtBus[0].RESET_n) begin
-        end
-        else if(det_wr_mem && !cs_mem_sram_n) begin
-        end
-    end
 
     /***************************************************************
      * i/o bus switch register ライト(7FF6h の bit0 が 1 で I/O ポートを有効化)
@@ -181,11 +135,6 @@ module CARTRIDGE_FM #(
         else if(!cs_mem_iosw_n) begin
             ExtBus[0].BUSDIR_n <= 0;
             ExtBus[0].DOUT <= iosw_reg;
-        end
-        // SRAM DATA(4000h~5FFFh)
-        else if(!cs_mem_sram_n) begin
-            ExtBus[0].BUSDIR_n <= 0;
-            ExtBus[0].DOUT <= 0;
         end
         // NO DATA AREA
         else begin
