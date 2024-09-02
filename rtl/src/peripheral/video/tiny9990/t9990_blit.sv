@@ -174,9 +174,9 @@ module T9990_BLIT (
 
     // P1 モード検出
     reg P1;
-    always_ff @(posedge CLK) begin
-        P1 <= REG.DSPM == T9990_REG::DSPM_P1;
-    end
+    //always_ff @(posedge CLK) begin
+    //    P1 <= REG.DSPM == T9990_REG::DSPM_P1;
+    //end
 
     // ENQUEUE 可能か？
     reg ena_enqueue;
@@ -312,10 +312,17 @@ module T9990_BLIT (
                 if(REG.DSPM[1]) begin
                     // bitmap mode
                     XIMM <= REG.XIMM;
+                    P1 <= 0;
+                end
+                else if(REG.DSPM[0]) begin
+                    // P2 mode
+                    XIMM <= T9990_REG::XIMM_512;
+                    P1 <= 0;
                 end
                 else begin
-                    // P1/P2 mode
-                    XIMM <= T9990_REG::XIMM_1024;
+                    // P1 mode
+                    XIMM <= T9990_REG::XIMM_256;
+                    P1 <= 1;
                 end
 
                 // SRC_CLRM
