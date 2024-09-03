@@ -43,7 +43,20 @@ package CONFIG;
     localparam ENABLE_IKAOPLL   = 2;            // 機能の有効(IKAOPLL)
 
     /***************************************************************
-     * フラッシュ
+     * フラッシュメモリマップ
+     *  00_0000 +-------------------+
+     *          | bit stream(1MB)   |
+     *  10_0000 +-------------------+
+     *          | NEXTOR(128KB)     |
+     *  12_0000 +-------------------+
+     *          | FM-BIOS(16KB)     |
+     *  12_4000 +-------------------+
+     *          | (816KB)           |
+     *  1F_0000 +-------------------+
+     *          | PAC(64KB)         | (予定)
+     *  20_0000 +-------------------+
+     *          | MEGA ROM (2MB)    | (FLASHからMEGAROMをブートするときに使う予定)
+     *  40_0000 +-------------------+
      ***************************************************************/
     localparam [23:0]   FLASH_ADDR_MEGAROM      = 24'h20_0000;
     localparam [23:0]   FLASH_SIZE_MEGAROM      = 24'h20_0000;
@@ -51,9 +64,11 @@ package CONFIG;
     localparam [23:0]   FLASH_SIZE_BIOS         = (FLASH_SIZE_BIOS_NEXTOR + FLASH_SIZE_BIOS_FM);
     localparam [23:0]   FLASH_SIZE_BIOS_NEXTOR  = 24'h02_0000;
     localparam [23:0]   FLASH_SIZE_BIOS_FM      = 24'h00_4000;
+    localparam [23:0]   FLASH_ADDR_PAC          = 24'h1F_0000;
+    localparam [23:0]   FLASH_SIZE_PAC          = 24'h01_0000;
 
     /***************************************************************
-     * RAM
+     * SD-RAM メモリマップ
      *  00_0000 +-------------------+
      *          | MEM MAPPER(4MB)   |
      *  40_0000 +-------------------+
@@ -104,6 +119,7 @@ package CONFIG;
     localparam          ENABLE_SCC              = ENABLE;           // SCC を有効にするか(DISABLE/ENABLE)
     localparam          ENABLE_V9990            = ENABLE;           // V9990 を有効にするか(DISABLE/ENABLE)
     localparam          ENABLE_V9990_CMD        = ENABLE;           // V9990 の VDP コマンドを有効(V9990のVDPコマンドを有効にすると回路の規模が大きくなるので、他の大きな機能と同時使用はできない)
+    //localparam        ENABLE_PAC_WRITE        = ENABLE;           // PAC データを FLASH に保存するか(DISABLE/ENABLE)
 
 endpackage
 
