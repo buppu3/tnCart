@@ -50,18 +50,18 @@ module CARTRIDGE_NEXTOR #(
     /***************************************************************
      * NEXTOR KERNEL ROM
      ***************************************************************/
-    MEGAROM_IF Megarom();
+    MEGAROM_IF #(.BANK_COUNT(2)) Megarom();
     assign Megarom.MemoryTopAddr     = RAM_ADDR;             // 割り当て RAM アドレス
     assign Megarom.BankRegAddrMask   = 16'hF800;             // バンクレジスタアドレスマスク
     assign Megarom.BankRegAddr[0]    = 16'h6000;             // バンク#0 レジスタアドレス
     assign Megarom.BankRegAddr[1]    = 16'h6800;             // バンク#1 レジスタアドレス
-    assign Megarom.BankRegAddr[2]    = 16'h7000;             // バンク#2 レジスタアドレス
-    assign Megarom.BankRegAddr[3]    = 16'h7800;             // バンク#3 レジスタアドレス
+//  assign Megarom.BankRegAddr[2]    = 16'h7000;             // バンク#2 レジスタアドレス
+//  assign Megarom.BankRegAddr[3]    = 16'h7800;             // バンク#3 レジスタアドレス
     assign Megarom.BankRegMask       = 8'hFF;                // バンクレジスタマスク
     assign Megarom.BankRegInit[0]    = 8'h00;                // バンク#0 初期値
     assign Megarom.BankRegInit[1]    = 8'h00;                // バンク#1 初期値
-    assign Megarom.BankRegInit[2]    = 8'h00;                // バンク#2 初期値
-    assign Megarom.BankRegInit[3]    = 8'h00;                // バンク#3 初期値
+//  assign Megarom.BankRegInit[2]    = 8'h00;                // バンク#2 初期値
+//  assign Megarom.BankRegInit[3]    = 8'h00;                // バンク#3 初期値
     assign Megarom.WriteProtect      = 1;                    // 書き込み禁止
     assign Megarom.is_16k_bank       = 0;                    // バンクサイズ 8KB
     assign Megarom.CS1_Mask          = 0;                    // 4000h~7FFFh 有効

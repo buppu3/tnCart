@@ -254,9 +254,33 @@ module MEGAROM_CONTROLLER #(
     /***************************************************************
      * address
      ***************************************************************/
-    wire [23:0] addr_16 = Megarom.MemoryTopAddr + { 2'h0, Megarom.BankReg[Bus.ADDR[15]], Bus.ADDR[13:0] };
-    wire [23:0] addr_8  = Megarom.MemoryTopAddr + { 3'h0, Megarom.BankReg[{Bus.ADDR[15],Bus.ADDR[13]}], Bus.ADDR[12:0] };
+    wire [ 7:0] bank_16;
+    wire [ 7:0] bank_8;
+    wire [23:0] addr_16 = Megarom.MemoryTopAddr + { 2'h0, bank_16, Bus.ADDR[13:0] };
+    wire [23:0] addr_8  = Megarom.MemoryTopAddr + { 3'h0, bank_8 , Bus.ADDR[12:0] };
     wire [23:0] addr = Megarom.is_16k_bank ? addr_16 : addr_8;
+
+    if(Megarom.BANK_COUNT >= 4) begin
+        assign bank_16 = Megarom.BankReg[Bus.ADDR[15]];
+        assign bank_8  = Megarom.BankReg[{Bus.ADDR[15],Bus.ADDR[13]}];
+    end
+    else if(Megarom.BANK_COUNT >= 3) begin
+        assign bank_16 = Megarom.BankReg[Bus.ADDR[15]];
+        assign bank_8  = {Bus.ADDR[15],Bus.ADDR[13]} == 2'b11 ? 8'h00 : Megarom.BankReg[{Bus.ADDR[15],Bus.ADDR[13]}];
+    end
+    else if(Megarom.BANK_COUNT >= 2) begin
+        assign bank_16 = Megarom.BankReg[Bus.ADDR[15]];
+        assign bank_8  = Megarom.BankReg[Bus.ADDR[13]];
+    end
+    else if(Megarom.BANK_COUNT >= 1) begin
+        assign bank_16 = Bus.ADDR[15] ? 8'h00 : Megarom.BankReg[0];
+        assign bank_8  = Bus.ADDR[13] ? 8'h00 : Megarom.BankReg[0];
+    end
+    else begin
+        assign bank_16 = 8'h00;
+        assign bank_8  = 8'h00;
+    end
+
 
     /***************************************************************
      * memory r/w
