@@ -115,10 +115,9 @@ module TNCART_BOARD_REV1_TOP (
     logic CLK_TMDS_P;
     logic CLK_TMDS_READY;
     logic CLK_21M;
-    logic CLK_14M;
     BOARD_REV1_CLOCK u_clk (
         .RESET_n        (1'b1),
-        .CLK_27M,
+        .CLK_IN(CART_CLOCK),
         .CLK_BASE,
         .CLK_BASE_READY,
         .CLK_MEM,
@@ -127,8 +126,7 @@ module TNCART_BOARD_REV1_TOP (
         .CLK_TMDS_S,
         .CLK_TMDS_P,
         .CLK_TMDS_READY,
-        .CLK_21M,
-        .CLK_14M
+        .CLK_21M
     );
 
     /***************************************************************
@@ -168,7 +166,6 @@ module TNCART_BOARD_REV1_TOP (
                 .RESET_n,
                 .CLK,
                 .CLK_21M,
-                .CLK_14M,
                 .Bus(BusMsx)
             );
             BUS_IF BusDummy();
@@ -176,7 +173,6 @@ module TNCART_BOARD_REV1_TOP (
                 .RESET_n,
                 .CLK,
                 .CLK_21M,
-                .CLK_14M,
                 .CART_BUSDIR_n,
                 .CART_INT_n,
                 .CART_WAIT_n,
@@ -200,7 +196,6 @@ module TNCART_BOARD_REV1_TOP (
                 .RESET_n,
                 .CLK,
                 .CLK_21M,
-                .CLK_14M,
                 .CART_BUSDIR_n,
                 .CART_INT_n,
                 .CART_WAIT_n,
@@ -232,7 +227,6 @@ module TNCART_BOARD_REV1_TOP (
             .RESET_n,
             .CLK,
             .CLK_21M,
-            .CLK_14M,
             .Bus
         );
         assign CART_BUSDIR_n = 1;
@@ -259,7 +253,6 @@ module TNCART_BOARD_REV1_TOP (
             .RESET_n,
             .CLK,
             .CLK_21M,
-            .CLK_14M,
             .CART_BUSDIR_n,
             .CART_INT_n,
             .CART_WAIT_n,

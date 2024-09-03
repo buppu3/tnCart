@@ -59,21 +59,20 @@ interface BUS_IF;
     // その他
     logic           CLK_EN;         // 3.58MHz クロックエッジ
     logic           CLK_21M;
-    logic           CLK_EN_21M;     // 3.58MHz クロックエッジ
-    logic           CLK_14M;
+    logic           CLK_EN_21M;     // 21MHz クロックエッジ
 
     // MSX 側ポート
     modport MSX(
                     output ADDR, DIN, RFSH_n, RD_n, WR_n, MERQ_n, IORQ_n, CS1_n, CS2_n, CS12_n, M1_n, SLTSL_n, RESET_n, CLK,
                     input  DOUT, BUSDIR_n, INT_n, WAIT_n,
-                    output CLK_EN, CLK_21M, CLK_EN_21M, CLK_14M
+                    output CLK_EN, CLK_21M, CLK_EN_21M
                 );
 
     // カートリッジ側ポート
     modport CARTRIDGE(
                     input  ADDR, DIN, RFSH_n, RD_n, WR_n, MERQ_n, IORQ_n, CS1_n, CS2_n, CS12_n, M1_n, SLTSL_n, RESET_n, CLK,
                     output DOUT, BUSDIR_n, INT_n, WAIT_n,
-                    input  CLK_EN, CLK_21M, CLK_EN_21M, CLK_14M
+                    input  CLK_EN, CLK_21M, CLK_EN_21M
                 );
 
     // ダミー接続
