@@ -186,7 +186,7 @@ module VIDEO_UPSCAN #(
         else                                 IN_START <= 0;              // VSYNC
     end
 
-    always_ff @(posedge DCLK or negedge RESET_n) begin
+    always_ff @(posedge IN.DCLK or negedge RESET_n) begin
         if(!RESET_n)   IN_EN <= 0;
         else case (in_reso)
 `ifdef RATIO_1_125
