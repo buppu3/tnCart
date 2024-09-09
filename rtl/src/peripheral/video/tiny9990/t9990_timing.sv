@@ -610,25 +610,25 @@ module T9990_TIMING (
                 pb_cnt <= 0;
                 case ({REG.MCS, REG.DCKM, REG.CLRM})
                     default:                                                              bp_cnt <= 0;       // 未定義
-                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV4, T9990_REG::CLRM_2BPP }: bp_cnt <= 9'd17;   // 256dot 2bpp    256*2/32+1
-                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV4, T9990_REG::CLRM_4BPP }: bp_cnt <= 9'd33;   // 256dot 4bpp    256*4/32+1
-                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV4, T9990_REG::CLRM_8BPP }: bp_cnt <= 9'd65;   // 256dot 8bpp    256*8/32+1
-                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV4, T9990_REG::CLRM_16BPP}: bp_cnt <= 9'd129;  // 256dot 16bpp   256*16/32+1
+                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV4, T9990_REG::CLRM_2BPP }: bp_cnt <= 9'd17;   // 256dot 2bpp    (256+16)* 2/32
+                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV4, T9990_REG::CLRM_4BPP }: bp_cnt <= 9'd34;   // 256dot 4bpp    (256+16)* 4/32
+                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV4, T9990_REG::CLRM_8BPP }: bp_cnt <= 9'd68;   // 256dot 8bpp    (256+16)* 8/32
+                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV4, T9990_REG::CLRM_16BPP}: bp_cnt <= 9'd136;  // 256dot 16bpp   (256+16)*16/32
 
-                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_2BPP }: bp_cnt <= 9'd33;   // 512dot 2bpp    512*2/32+1
-                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_4BPP }: bp_cnt <= 9'd65;   // 512dot 4bpp    512*4/32+1
-                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_8BPP }: bp_cnt <= 9'd129;  // 512dot 8bpp    512*8/32+1
-                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_16BPP}: bp_cnt <= 9'd257;  // 512dot 16bpp   512*16/32+1
+                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_2BPP }: bp_cnt <= 9'd34;   // 512dot 2bpp    (512+32)* 2/32
+                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_4BPP }: bp_cnt <= 9'd68;   // 512dot 4bpp    (512+32)* 4/32
+                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_8BPP }: bp_cnt <= 9'd136;  // 512dot 8bpp    (512+32)* 8/32
+                    { T9990_REG::MCS_21MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_16BPP}: bp_cnt <= 9'd272;  // 512dot 16bpp   (512+32)*16/32
 
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_2BPP }: bp_cnt <= 9'd25;   // 384dot 2bpp    384*2/32+1
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_4BPP }: bp_cnt <= 9'd49;   // 384dot 4bpp    384*4/32+1
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_8BPP }: bp_cnt <= 9'd97;   // 384dot 8bpp    384*8/32+1
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_16BPP}: bp_cnt <= 9'd193;  // 384dot 16bpp   384*16/32+1
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_2BPP }: bp_cnt <= 9'd25;   // 384dot 2bpp    (384+16)* 2/32
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_4BPP }: bp_cnt <= 9'd50;   // 384dot 4bpp    (384+16)* 4/32
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_8BPP }: bp_cnt <= 9'd100;  // 384dot 8bpp    (384+16)* 8/32
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV2, T9990_REG::CLRM_16BPP}: bp_cnt <= 9'd200;  // 384dot 16bpp   (384+16)*16/32
 
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV1, T9990_REG::CLRM_2BPP }: bp_cnt <= 9'd49;   // 768dot 2bpp    768*2/32+1
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV1, T9990_REG::CLRM_4BPP }: bp_cnt <= 9'd97;   // 768dot 4bpp    768*4/32+1
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV1, T9990_REG::CLRM_8BPP }: bp_cnt <= 9'd193;  // 768dot 8bpp    768*8/32+1
-                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV1, T9990_REG::CLRM_16BPP}: bp_cnt <= 9'd385;  // 768dot 16bpp   768*16/32+1
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV1, T9990_REG::CLRM_2BPP }: bp_cnt <= 9'd50;   // 768dot 2bpp    (768+32)* 2/32
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV1, T9990_REG::CLRM_4BPP }: bp_cnt <= 9'd100;  // 768dot 4bpp    (768+32)* 4/32
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV1, T9990_REG::CLRM_8BPP }: bp_cnt <= 9'd200;  // 768dot 8bpp    (768+32)* 8/32
+                    { T9990_REG::MCS_14MHZ, T9990_REG::DCKM_DIV1, T9990_REG::CLRM_16BPP}: bp_cnt <= 9'd400;  // 768dot 16bpp   (768+32)*16/32
                 endcase
             end
         end
