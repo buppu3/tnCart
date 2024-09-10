@@ -482,7 +482,7 @@ module T9990_PORT (
         else if(det_r && MODE == 4'h5)                               CD_OUT <= p5_cd_data;      // P#5 read 
         else if(det_r && MODE == 4'h6)                               CD_OUT <= p6_cd_data;      // P#6 read
         else if(det_r && MODE == 4'h3 && port4_regnum[5:0] == 6'd53) CD_OUT <= STATUS.BX[7:0];  // R#53 read
-        else if(det_r && MODE == 4'h3 && port4_regnum[5:0] == 6'd54) CD_OUT <= {5 'b00000, STATUS.BX[2:0]}; // R#54 read
+        else if(det_r && MODE == 4'h3 && port4_regnum[5:0] == 6'd54) CD_OUT <= {5 'b00000, STATUS.BX[10:8]}; // R#54 read
         else if(det_r && MODE == 4'h3)                               CD_OUT <= vdp_reg[port4_regnum[5:0]];     // R#n read
 /*
         else if(det_r && MODE == 4'h3 && port4_regnum[5:0] == 6'd 6) CD_OUT <= vdp_reg[ 6];     // R#6 read

@@ -33,6 +33,13 @@
 
 `default_nettype none
 
+// POINT, PSET, ADVANCE, LINE, SEARCH のテストはまだ
+`define ENABLE_POINT
+`define ENABLE_PSET
+`define ENABLE_ADVANCE
+`define ENABLE_LINE
+`define ENABLE_SRCH
+
 /***************************************************************
  * VDP コマンド
  ***************************************************************/
@@ -50,9 +57,11 @@ module T9990_BLIT (
     // CONTROL
     input wire                  START          // 開始
 );
+
+`ifndef ENABLE_SRCH
     assign STATUS.BD = 0;
     assign STATUS.BX = 0;
-
+`endif
 
     reg src_is_cpu;
     reg src_is_linear;
@@ -64,10 +73,40 @@ module T9990_BLIT (
     reg dst_is_linear;
     reg dst_is_xy;
 
-    reg req_dst_vram;
-    reg src_enable;
-    reg [5:0] decode_count;
-    reg [31:0] decode_data;
+    // CHAR 用ワーク構造体
+    typedef struct {
+        reg [5:0] decode_count;
+        reg [31:0] decode_data;
+    } char_work_t;
+
+    // LINE 用ワーク構造体
+    typedef struct {
+        reg [11:0]   cnt;       // ループ回数
+        reg [11+1:0] sum;       // DDA 用
+    } line_work_t;
+
+    // SEARCH 用ワーク構造体
+    typedef struct {
+        reg clr_neq;            // 色データ不一致
+        reg edge_left;          // 左端検出
+        reg edge_right;         // 右端検出
+    } srch_work_t;
+wire srch_clr_neq = work.srch.clr_neq;
+wire srch_edge_left = work.srch.edge_left;
+wire srch_edge_right = work.srch.edge_left;
+
+    // LINE / SEARCH 用ワーク
+    union {
+        char_work_t char;
+        line_work_t line;
+        srch_work_t srch;
+    } work;
+
+    reg is_line;                // LINE コマンド実行中
+    reg is_srch;                // SEARCH コマンド実行中
+    reg is_point;               // POINT コマンド実行中
+    reg req_dst_vram;           // DST 読み出し要求
+    reg src_enable;             // SRC 読み出し許可
 
     reg [1:0]  XIMM;
     reg [1:0]  SRC_CLRM;
@@ -142,6 +181,7 @@ module T9990_BLIT (
     T9990_BLIT_CALC_COUNT u_src_cnt (
         .CLK,
         .CPU_MODE(src_is_cpu),
+        .IS_POINT(is_point || is_srch),
         .CLRM(SRC_CLRM),
         .DIX(SRC_DIX),
         .OFFSET(SRC_X[3:0]),
@@ -153,6 +193,7 @@ module T9990_BLIT (
     T9990_BLIT_CALC_COUNT u_dst_cnt (
         .CLK,
         .CPU_MODE(dst_is_cpu),
+        .IS_POINT(is_point || is_srch),
         .CLRM(DST_CLRM),
         .DIX(DST_DIX),
         .OFFSET(DST_X[3:0]),
@@ -174,9 +215,6 @@ module T9990_BLIT (
 
     // P1 モード検出
     reg P1;
-    //always_ff @(posedge CLK) begin
-    //    P1 <= REG.DSPM == T9990_REG::DSPM_P1;
-    //end
 
     // ENQUEUE 可能か？
     reg ena_enqueue;
@@ -205,10 +243,14 @@ module T9990_BLIT (
         STATE_IDLE,
         STATE_STOP,
         STATE_LINE,
+        STATE_LINE_LOOP,
+        STATE_LINE_CHECK,
+        STATE_LINE_NEXT_MI,
+        STATE_LINE_NEXT_MJ,
         STATE_SEARCH,
-        STATE_POINT,
-        STATE_PSET,
-        STATE_ADVANCE,
+        STATE_SEARCH_LOOP,
+        STATE_SEARCH_CHECK,
+        STATE_SEARCH_NEXT,
         STATE_SETUP,
         STATE_SETUP2,
         STATE_SETUP3,
@@ -219,14 +261,7 @@ module T9990_BLIT (
         STATE_SRC_READ_P1_ODD_VRAM_WAIT_BUSY,
         STATE_SRC_READ_VRAM_WAIT_ACK,
         STATE_SRC_READ_VRAM_WAIT_BUSY,
-        //STATE_SRC_READ_VRAM_CONV_2I,
-        //STATE_SRC_READ_VRAM_CONV_4I,
-        //STATE_SRC_READ_VRAM_CONV_8I,
-        //STATE_SRC_READ_VRAM_CONV_16I,
         STATE_SRC_READ_VRAM_CONV_2N,
-        //STATE_SRC_READ_VRAM_CONV_4N,
-        //STATE_SRC_READ_VRAM_CONV_8N,
-        //STATE_SRC_READ_VRAM_CONV_16N,
         STATE_SRC_READ_VRAM_CONV_8C,
         STATE_SRC_READ_CPU_WAIT_ACK,
         STATE_SRC_READ_CPU_WAIT_BUSY,
@@ -259,6 +294,22 @@ module T9990_BLIT (
         STATE_DST_WRITE_CPU_WAIT_BUSY,
         STATE_COMPLETE
     } state;
+
+    reg src_nx_over;
+    reg dst_nx_over;
+    reg src_change_x;
+    reg dst_change_x;
+    reg src_change_y;
+    reg dst_change_y;
+
+    always_ff @(posedge CLK) begin
+        src_nx_over <= SRC_NX <= SRC_POS_COUNT;
+        dst_nx_over <= DST_NX <= DST_POS_COUNT;
+        src_change_x <= !(is_srch || is_line);
+        dst_change_x <= !(is_srch || is_line);
+        src_change_y <= !(is_srch || is_line) && SRC_NX <= SRC_POS_COUNT;
+        dst_change_y <= !(is_srch || is_line) && DST_NX <= DST_POS_COUNT;
+    end
 
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n) begin
@@ -310,8 +361,8 @@ module T9990_BLIT (
 
                 src_enable <= 1;
 
-                decode_data <= 0;
-                decode_count <= 0;
+                work.char.decode_data <= 0;
+                work.char.decode_count <= 0;
 
                 //
                 if(REG.DSPM[1]) begin
@@ -366,6 +417,13 @@ module T9990_BLIT (
                     DST_NX <= REG.NA;
                     DST_NY <= 1'd1;
                 end
+                else if(REG.OP == T9990_REG::CMD_POINT || REG.OP == T9990_REG::CMD_PSET || REG.OP == T9990_REG::CMD_ADVN) begin
+                    // 転送ドット数
+                    SRC_NX <= 1;
+                    SRC_NY <= 1;
+                    DST_NX <= 1;
+                    DST_NY <= 1;
+                end
                 else begin
                     // 転送ドット数
                     SRC_NX <= REG.NX == 0 ? 12'd2048 : REG.NX;
@@ -409,12 +467,16 @@ module T9990_BLIT (
                 //
                 src_is_cpu <= (REG.OP == T9990_REG::CMD_LMMC) || (REG.OP == T9990_REG::CMD_CMMC);
                 src_is_rom <= (REG.OP == T9990_REG::CMD_CMMK);
-                src_is_vdp <= (REG.OP == T9990_REG::CMD_LMMV);
+                src_is_vdp <= (REG.OP == T9990_REG::CMD_LMMV) || (REG.OP == T9990_REG::CMD_LINE) || (REG.OP == T9990_REG::CMD_PSET) || (REG.OP == T9990_REG::CMD_ADVN);
                 src_is_char <= (REG.OP == T9990_REG::CMD_CMMC) || (REG.OP == T9990_REG::CMD_CMMK) || (REG.OP == T9990_REG::CMD_CMMM);
-                dst_is_cpu <= (REG.OP == T9990_REG::CMD_LMCM);
-                src_is_xy <= (REG.OP == T9990_REG::CMD_LMCM) || (REG.OP == T9990_REG::CMD_LMMM) || (REG.OP == T9990_REG::CMD_BMLX);
-                dst_is_xy <= (REG.OP == T9990_REG::CMD_LMMC) || (REG.OP == T9990_REG::CMD_LMMV) || (REG.OP == T9990_REG::CMD_LMMM) ||
-                             (REG.OP == T9990_REG::CMD_CMMC) || (REG.OP == T9990_REG::CMD_CMMK) || (REG.OP == T9990_REG::CMD_CMMM) || (REG.OP == T9990_REG::CMD_BMXL);
+                dst_is_cpu <= (REG.OP == T9990_REG::CMD_LMCM) || (REG.OP == T9990_REG::CMD_POINT);
+                src_is_xy <= (REG.OP == T9990_REG::CMD_LMCM) || (REG.OP == T9990_REG::CMD_LMMM) || (REG.OP == T9990_REG::CMD_BMLX) || (REG.OP == T9990_REG::CMD_SRCH) || (REG.OP == T9990_REG::CMD_POINT);
+                dst_is_xy <= (REG.OP == T9990_REG::CMD_LMMC) || (REG.OP == T9990_REG::CMD_LMMV) || (REG.OP == T9990_REG::CMD_LMMM) || (REG.OP == T9990_REG::CMD_LINE) || (REG.OP == T9990_REG::CMD_PSET) || (REG.OP == T9990_REG::CMD_CMMC) || (REG.OP == T9990_REG::CMD_CMMK) || (REG.OP == T9990_REG::CMD_CMMM) || (REG.OP == T9990_REG::CMD_BMXL);
+
+                //
+                is_line <= (REG.OP == T9990_REG::CMD_LINE);
+                is_srch <= (REG.OP == T9990_REG::CMD_SRCH);
+                is_point <= (REG.OP == T9990_REG::CMD_POINT);
 
                 // state
                 case (REG.OP)
@@ -428,11 +490,21 @@ module T9990_BLIT (
                     T9990_REG::CMD_BMXL:    state <= STATE_SETUP;
                     T9990_REG::CMD_BMLX:    state <= STATE_SETUP;
                     T9990_REG::CMD_BMLL:    state <= STATE_SETUP;
+`ifdef ENABLE_LINE
                     T9990_REG::CMD_LINE:    state <= STATE_LINE;
+`endif
+`ifdef ENABLE_SRCH
                     T9990_REG::CMD_SRCH:    state <= STATE_SEARCH;
-                    T9990_REG::CMD_POINT:   state <= STATE_POINT;
-                    T9990_REG::CMD_PSET:    state <= STATE_PSET;
-                    T9990_REG::CMD_ADVN:    state <= STATE_ADVANCE;
+`endif
+`ifdef ENABLE_POINT
+                    T9990_REG::CMD_POINT:   state <= STATE_SETUP;
+`endif
+`ifdef ENABLE_PSET
+                    T9990_REG::CMD_PSET:    state <= STATE_SETUP;
+`endif
+`ifdef ENABLE_ADVANCE
+                    T9990_REG::CMD_ADVN:    state <= STATE_SETUP;
+`endif
                     default:                state <= STATE_STOP;
                 endcase
             end
@@ -474,7 +546,7 @@ module T9990_BLIT (
             ENQUEUE_COUNT <= SRC_OUT_COUNT;
 
             // キャラクタデータが残ってるならデコード
-            if(decode_count != 0) begin
+            if(src_is_rom && work.char.decode_count != 0) begin
                 state <= STATE_SRC_DECODE;
             end
 
@@ -521,8 +593,8 @@ module T9990_BLIT (
 
                 // ROM
                 else if(src_is_rom) begin
-                    decode_data <= 0;
-                    decode_count <= 6'd32;
+                    work.char.decode_data <= 0;
+                    work.char.decode_count <= 6'd32;
                     state <= STATE_SRC_IN;  // ToDo: 漢字 ROM から読み出す
                 end
 
@@ -664,12 +736,12 @@ module T9990_BLIT (
         //
         else if(state == STATE_SRC_READ_VRAM_CONV_8C) begin
             case (SRC_X[1:0])
-                2'd0:   decode_data <= ENQUEUE_DATA;
-                2'd1:   decode_data <= {ENQUEUE_DATA[23:0],  8'b0};
-                2'd2:   decode_data <= {ENQUEUE_DATA[15:0], 16'b0};
-                2'd3:   decode_data <= {ENQUEUE_DATA[ 7:0], 24'b0};
+                2'd0:   work.char.decode_data <= ENQUEUE_DATA;
+                2'd1:   work.char.decode_data <= {ENQUEUE_DATA[23:0],  8'b0};
+                2'd2:   work.char.decode_data <= {ENQUEUE_DATA[15:0], 16'b0};
+                2'd3:   work.char.decode_data <= {ENQUEUE_DATA[ 7:0], 24'b0};
             endcase
-            decode_count <= {SRC_OUT_COUNT[2:0], 3'b000};
+            work.char.decode_count <= {SRC_OUT_COUNT[2:0], 3'b000};
             state <= STATE_SRC_DECODE;
         end
 
@@ -690,8 +762,8 @@ module T9990_BLIT (
         else if(state == STATE_SRC_READ_CPU_WAIT_BUSY) begin
             if(!P2_CPU_TO_VDP.ACK) begin
                 if(src_is_char) begin
-                    decode_data <= {P2_CPU_TO_VDP.DATA, 24'b0};
-                    decode_count <= 6'd8;
+                    work.char.decode_data <= {P2_CPU_TO_VDP.DATA, 24'b0};
+                    work.char.decode_count <= 6'd8;
                     state <= STATE_SRC_DECODE;
                 end
                 else if(SRC_CLRM == T9990_REG::CLRM_16BPP) begin
@@ -734,57 +806,57 @@ module T9990_BLIT (
         // キャラクタデータをデコード
         //
         else if(state == STATE_SRC_DECODE) begin
-            decode_count <= decode_count - 1'd1;
+            work.char.decode_count <= work.char.decode_count - 1'd1;
 
             if(DST_CLRM == T9990_REG::CLRM_2BPP) begin
                 ENQUEUE_DATA <= {
-                                    decode_data[31] ? REG.FC[15:14] : REG.BC[15:14],
-                                    decode_data[30] ? REG.FC[13:12] : REG.BC[13:12],
-                                    decode_data[29] ? REG.FC[11:10] : REG.BC[11:10],
-                                    decode_data[28] ? REG.FC[ 9: 8] : REG.BC[ 9: 8],
-                                    decode_data[27] ? REG.FC[ 7: 6] : REG.BC[ 7: 6],
-                                    decode_data[26] ? REG.FC[ 5: 4] : REG.BC[ 5: 4],
-                                    decode_data[25] ? REG.FC[ 3: 2] : REG.BC[ 3: 2],
-                                    decode_data[24] ? REG.FC[ 1: 0] : REG.BC[ 1: 0],
-                                    decode_data[23] ? REG.FC[15:14] : REG.BC[15:14],
-                                    decode_data[22] ? REG.FC[13:12] : REG.BC[13:12],
-                                    decode_data[21] ? REG.FC[11:10] : REG.BC[11:10],
-                                    decode_data[20] ? REG.FC[ 9: 8] : REG.BC[ 9: 8],
-                                    decode_data[19] ? REG.FC[ 7: 6] : REG.BC[ 7: 6],
-                                    decode_data[18] ? REG.FC[ 5: 4] : REG.BC[ 5: 4],
-                                    decode_data[17] ? REG.FC[ 3: 2] : REG.BC[ 3: 2],
-                                    decode_data[16] ? REG.FC[ 1: 0] : REG.BC[ 1: 0]
+                                    work.char.decode_data[31] ? REG.FC[15:14] : REG.BC[15:14],
+                                    work.char.decode_data[30] ? REG.FC[13:12] : REG.BC[13:12],
+                                    work.char.decode_data[29] ? REG.FC[11:10] : REG.BC[11:10],
+                                    work.char.decode_data[28] ? REG.FC[ 9: 8] : REG.BC[ 9: 8],
+                                    work.char.decode_data[27] ? REG.FC[ 7: 6] : REG.BC[ 7: 6],
+                                    work.char.decode_data[26] ? REG.FC[ 5: 4] : REG.BC[ 5: 4],
+                                    work.char.decode_data[25] ? REG.FC[ 3: 2] : REG.BC[ 3: 2],
+                                    work.char.decode_data[24] ? REG.FC[ 1: 0] : REG.BC[ 1: 0],
+                                    work.char.decode_data[23] ? REG.FC[15:14] : REG.BC[15:14],
+                                    work.char.decode_data[22] ? REG.FC[13:12] : REG.BC[13:12],
+                                    work.char.decode_data[21] ? REG.FC[11:10] : REG.BC[11:10],
+                                    work.char.decode_data[20] ? REG.FC[ 9: 8] : REG.BC[ 9: 8],
+                                    work.char.decode_data[19] ? REG.FC[ 7: 6] : REG.BC[ 7: 6],
+                                    work.char.decode_data[18] ? REG.FC[ 5: 4] : REG.BC[ 5: 4],
+                                    work.char.decode_data[17] ? REG.FC[ 3: 2] : REG.BC[ 3: 2],
+                                    work.char.decode_data[16] ? REG.FC[ 1: 0] : REG.BC[ 1: 0]
                                 };
-                decode_data <= {decode_data[15:0], decode_data[31:16]};
+                work.char.decode_data <= {work.char.decode_data[15:0], work.char.decode_data[31:16]};
             end
             else if(DST_CLRM == T9990_REG::CLRM_4BPP) begin
                 ENQUEUE_DATA <= {
-                                    decode_data[31] ? REG.FC[15:12] : REG.BC[15:12],
-                                    decode_data[30] ? REG.FC[11: 8] : REG.BC[11: 8],
-                                    decode_data[29] ? REG.FC[ 7: 4] : REG.BC[ 7: 4],
-                                    decode_data[28] ? REG.FC[ 3: 0] : REG.BC[ 3: 0],
-                                    decode_data[27] ? REG.FC[15:12] : REG.BC[15:12],
-                                    decode_data[26] ? REG.FC[11: 8] : REG.BC[11: 8],
-                                    decode_data[25] ? REG.FC[ 7: 4] : REG.BC[ 7: 4],
-                                    decode_data[24] ? REG.FC[ 3: 0] : REG.BC[ 3: 0]
+                                    work.char.decode_data[31] ? REG.FC[15:12] : REG.BC[15:12],
+                                    work.char.decode_data[30] ? REG.FC[11: 8] : REG.BC[11: 8],
+                                    work.char.decode_data[29] ? REG.FC[ 7: 4] : REG.BC[ 7: 4],
+                                    work.char.decode_data[28] ? REG.FC[ 3: 0] : REG.BC[ 3: 0],
+                                    work.char.decode_data[27] ? REG.FC[15:12] : REG.BC[15:12],
+                                    work.char.decode_data[26] ? REG.FC[11: 8] : REG.BC[11: 8],
+                                    work.char.decode_data[25] ? REG.FC[ 7: 4] : REG.BC[ 7: 4],
+                                    work.char.decode_data[24] ? REG.FC[ 3: 0] : REG.BC[ 3: 0]
                                 };
-                decode_data <= {decode_data[23:0], decode_data[31:24]};
+                work.char.decode_data <= {work.char.decode_data[23:0], work.char.decode_data[31:24]};
             end
             else if(DST_CLRM == T9990_REG::CLRM_8BPP) begin
                 ENQUEUE_DATA <= {
-                                    decode_data[31] ? REG.FC[15: 8] : REG.BC[15: 8],
-                                    decode_data[30] ? REG.FC[ 7: 0] : REG.BC[ 7: 0],
-                                    decode_data[29] ? REG.FC[15: 8] : REG.BC[15: 8],
-                                    decode_data[28] ? REG.FC[ 7: 0] : REG.BC[ 7: 0]
+                                    work.char.decode_data[31] ? REG.FC[15: 8] : REG.BC[15: 8],
+                                    work.char.decode_data[30] ? REG.FC[ 7: 0] : REG.BC[ 7: 0],
+                                    work.char.decode_data[29] ? REG.FC[15: 8] : REG.BC[15: 8],
+                                    work.char.decode_data[28] ? REG.FC[ 7: 0] : REG.BC[ 7: 0]
                                 };
-                decode_data <= {decode_data[27:0], decode_data[31:28]};
+                work.char.decode_data <= {work.char.decode_data[27:0], work.char.decode_data[31:28]};
             end
             else begin
                 ENQUEUE_DATA <= {
-                                    decode_data[31] ? REG.FC[15: 0] : REG.BC[15: 0],
-                                    decode_data[30] ? REG.FC[15: 0] : REG.BC[15: 0]
+                                    work.char.decode_data[31] ? REG.FC[15: 0] : REG.BC[15: 0],
+                                    work.char.decode_data[30] ? REG.FC[15: 0] : REG.BC[15: 0]
                                 };
-                decode_data <= {decode_data[29:0], decode_data[31:30]};
+                work.char.decode_data <= {work.char.decode_data[29:0], work.char.decode_data[31:30]};
             end
 
             case (DST_CLRM)
@@ -819,24 +891,33 @@ module T9990_BLIT (
         else if(state == STATE_SRC_ENQUEUE_DONE) begin
             ENQUEUE <= 0;
 
+            // 残り回数
             if(src_is_linear) begin
-                // 隣へ移動
-                SRC_X <= SRC_X + SRC_POS_COUNT;
                 SRC_NX <= SRC_NX - SRC_POS_COUNT;
             end
-            else if(SRC_NX <= SRC_POS_COUNT) begin
+            else if(src_nx_over) begin
                 // SRC_NY が 1->0 で転送元入力を禁止
                 if(SRC_NY == 1'd1) src_enable <= 0;
 
-                // 次の行の準備
-                SRC_X <= REG.SX;
-                SRC_Y <= REG.DIY ? (SRC_Y - 1'd1) : (SRC_Y + 1'd1);
                 SRC_NX <= REG.NX == 0 ? 12'd2048 : REG.NX;
                 SRC_NY <= SRC_NY - 1'd1;
             end
             else begin
-                // 隣へ移動
                 SRC_NX <= SRC_NX - SRC_POS_COUNT;
+            end
+
+            // 座標更新
+            if(src_is_linear) begin
+                // 隣へ移動
+                SRC_X <= SRC_X + SRC_POS_COUNT;
+            end
+            else if(src_change_y) begin
+                // 次の行の準備
+                SRC_X <= REG.SX;
+                SRC_Y <= REG.DIY ? (SRC_Y - 1'd1) : (SRC_Y + 1'd1);
+            end
+            else if(src_change_x) begin
+                // 隣へ移動
                 SRC_X <= SRC_DIX ? (SRC_X - SRC_POS_COUNT) : (SRC_X + SRC_POS_COUNT);
             end
 
@@ -1102,7 +1183,7 @@ module T9990_BLIT (
                 CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
                 state <= STATE_DST_WRITE_VRAM_WAIT_ACK;
             end
-            else begin
+            else if(dst_is_cpu) begin
                 P2_VDP_TO_CPU.REQ <= 1;
                 STATUS.TR <= 1;
                 if(DST_CLRM == T9990_REG::CLRM_16BPP) begin
@@ -1113,6 +1194,9 @@ module T9990_BLIT (
                     P2_VDP_TO_CPU.DATA <= WRT_DATA[31:24];
                     state <= STATE_DST_WRITE_CPU_WAIT_ACK;
                 end
+            end
+            else begin
+                state <= STATE_DST_WRITE_CPU_WAIT_BUSY;
             end
         end
 
@@ -1203,9 +1287,8 @@ module T9990_BLIT (
         //
         else if((state == STATE_DST_WRITE_P1_ODD_VRAM_WAIT_BUSY) || (state == STATE_DST_WRITE_VRAM_WAIT_BUSY) || (state == STATE_DST_WRITE_CPU_WAIT_BUSY)) begin
             if(!CMD_MEM.BUSY && !P2_VDP_TO_CPU.ACK) begin
+                // 残り回数
                 if(dst_is_linear) begin
-                    // 隣に移動
-                    DST_X <= DST_X + DST_POS_COUNT;
                     DST_NX <= DST_NX - DST_POS_COUNT;
 
                     // 終わり?
@@ -1216,10 +1299,7 @@ module T9990_BLIT (
                         state <= STATE_SRC_IN;
                     end
                 end
-                else if(DST_NX <= DST_POS_COUNT) begin
-                    // 次の行の準備
-                    DST_X <= REG.DX;
-                    DST_Y <= REG.DIY ? (DST_Y - 1'd1) : (DST_Y + 1'd1);
+                else if(dst_nx_over) begin
                     DST_NX <= REG.NX == 0 ? 12'd2048 : REG.NX;
                     DST_NY <= DST_NY - 1'd1;
 
@@ -1232,54 +1312,219 @@ module T9990_BLIT (
                     end
                 end
                 else begin
-                    // 隣に移動
                     DST_NX <= DST_NX - DST_POS_COUNT;
-                    DST_X <= DST_DIX ? (DST_X - DST_POS_COUNT) : (DST_X + DST_POS_COUNT);
                     state <= STATE_SRC_IN;
+                end
+
+                // 座標更新
+                if(dst_is_linear) begin
+                    DST_X <= DST_X + DST_POS_COUNT;
+                end
+                else if(dst_change_y) begin
+                    DST_X <= REG.DX;
+                    DST_Y <= REG.DIY ? (DST_Y - 1'd1) : (DST_Y + 1'd1);
+                end
+                else if(dst_change_x) begin
+                    DST_X <= DST_DIX ? (DST_X - DST_POS_COUNT) : (DST_X + DST_POS_COUNT);
                 end
             end
         end
 
         else if(state == STATE_COMPLETE) begin
-            STATUS.CE <= 0;
-            STATUS.CE_intr <= 1;
-            state <= STATE_IDLE;
+`ifdef ENABLE_LINE
+            if(is_line) begin
+                state <= STATE_LINE_LOOP;
+            end
+            else
+`endif
+`ifdef ENABLE_SRCH
+            if(is_srch) begin
+                state <= STATE_SEARCH_LOOP;
+            end
+            else
+`endif
+            begin
+                //
+                // ToDo:PSET と ADVANCE の座標更新
+                //
+                STATUS.CE <= 0;
+                STATUS.CE_intr <= 1;
+                state <= STATE_IDLE;
+            end
         end
 
+`ifdef ENABLE_LINE
+        //
+        // LINE
+        //
         else if(state == STATE_LINE) begin
-            FIFO_CLEAR <= 0;
-            STATUS.CE <= 0;
-            STATUS.CE_intr <= 1;
-            state <= STATE_IDLE;
-        end
+            //
+            work.line.cnt <= REG.MJ;
+            work.line.sum <= REG.MJ - 1'd1;
+            SRC_DIX <= 0;
+            DST_DIX <= 0;
 
+            // PSET 実行
+            SRC_X <= DST_X;
+            SRC_Y <= DST_Y;
+            SRC_NX <= 1;
+            SRC_NY <= 1;
+            DST_NX <= 1;
+            DST_NY <= 1;
+            src_enable <= 1;
+            state <= STATE_SETUP;
+        end
+        else if(state == STATE_LINE_LOOP) begin
+            work.line.sum <= work.line.sum - REG.MI;
+            state <= STATE_LINE_CHECK;
+        end
+        else if(state == STATE_LINE_CHECK) begin
+            // 終わりチェック
+            work.line.cnt <= work.line.cnt - 1'd1;
+            if(work.line.cnt == 1'd1) begin
+                is_line <= 0;
+                state <= STATE_COMPLETE;
+            end
+            else if(work.line.sum[$bits(work.line.sum)-1]) begin
+                state <= STATE_LINE_NEXT_MI;
+            end
+            else begin
+                state <= STATE_LINE_NEXT_MJ;
+            end
+        end
+        else if(state == STATE_LINE_NEXT_MI) begin
+            work.line.sum <= work.line.sum + REG.MJ;
+
+            // マイナー軸移動
+            if(REG.MAJ) begin
+                DST_X <= REG.DIX ? (DST_X - 1'd1) : (DST_X + 1'd1);
+            end
+            else begin
+                DST_Y <= REG.DIY ? (DST_Y - 1'd1) : (DST_Y + 1'd1);
+            end
+            state <= STATE_LINE_NEXT_MJ;
+        end
+        else if(state == STATE_LINE_NEXT_MJ) begin
+            // メジャー軸移動
+            if(REG.MAJ) begin
+                DST_Y <= REG.DIY ? (DST_Y - 1'd1) : (DST_Y + 1'd1);
+            end
+            else begin
+                DST_X <= REG.DIX ? (DST_X - 1'd1) : (DST_X + 1'd1);
+            end
+
+            // PSET 実行
+            SRC_X <= DST_X;
+            SRC_Y <= DST_Y;
+            SRC_NX <= 1;
+            SRC_NY <= 1;
+            DST_NX <= 1;
+            DST_NY <= 1;
+            src_enable <= 1;
+            state <= STATE_SETUP;
+        end
+`endif
+`ifdef ENABLE_SRCH
+        //
+        // SEARCH
+        //
         else if(state == STATE_SEARCH) begin
-            FIFO_CLEAR <= 0;
-            STATUS.CE <= 0;
-            STATUS.CE_intr <= 1;
-            state <= STATE_IDLE;
-        end
+            // フラグクリア
+            STATUS.BD <= 0;
+            SRC_DIX <= 0;
+            DST_DIX <= 0;
 
-        else if(state == STATE_POINT) begin
-            FIFO_CLEAR <= 0;
-            STATUS.CE <= 0;
-            STATUS.CE_intr <= 1;
-            state <= STATE_IDLE;
+            // POINT 実行
+            DST_X <= SRC_X;
+            DST_Y <= SRC_Y;
+            SRC_NX <= 1;
+            SRC_NY <= 1;
+            DST_NX <= 1;
+            DST_NY <= 1;
+            src_enable <= 1;
+            state <= STATE_SETUP;
         end
+        else if(state == STATE_SEARCH_LOOP) begin
+            // ピクセルを比較
+            work.srch.clr_neq <= ((SRC_DATA ^ {REG.FC,REG.FC}) & BIT_MASK) != 32'd0;
+/*
+            case(DST_CLRM)
+                T9990_REG::CLRM_2BPP:   work.srch.clr_neq <= (WRT_DATA[15:14] ^ REG.FC[15:14]) != 2'b00;
+                T9990_REG::CLRM_4BPP:   work.srch.clr_neq <= (WRT_DATA[15:12] ^ REG.FC[15:12]) != 4'b0000;
+                T9990_REG::CLRM_8BPP:   work.srch.clr_neq <= (WRT_DATA[15: 8] ^ REG.FC[15: 8]) != 8'b0000_0000;
+                default:                work.srch.clr_neq <= (WRT_DATA[15: 0] ^ REG.FC[15: 0]) != 16'b0000_0000_0000_0000;
+            endcase
+*/
+            // 画面左端検出
+            case(XIMM)
+                T9990_REG::XIMM_256:    work.srch.edge_left <= SRC_X[ 7:0] == 0;
+                T9990_REG::XIMM_512:    work.srch.edge_left <= SRC_X[ 8:0] == 0;
+                T9990_REG::XIMM_1024:   work.srch.edge_left <= SRC_X[ 9:0] == 0;
+                default:                work.srch.edge_left <= SRC_X[10:0] == 0;
+            endcase
+            // 画面右端検出
+            case(XIMM)
+                T9990_REG::XIMM_256:    work.srch.edge_right <= SRC_X[ 7:0] ==  8'b1111_1111;
+                T9990_REG::XIMM_512:    work.srch.edge_right <= SRC_X[ 8:0] ==  9'b1_1111_1111;
+                T9990_REG::XIMM_1024:   work.srch.edge_right <= SRC_X[ 9:0] == 10'b11_1111_1111;
+                default:                work.srch.edge_right <= SRC_X[10:0] == 11'b111_1111_1111;
+            endcase
 
-        else if(state == STATE_PSET) begin
-            FIFO_CLEAR <= 0;
-            STATUS.CE <= 0;
-            STATUS.CE_intr <= 1;
-            state <= STATE_IDLE;
+            state <= STATE_SEARCH_CHECK;
         end
+        else if(state == STATE_SEARCH_CHECK) begin
+            // ピクセルデータチェック
+            if(REG.NEQ == work.srch.clr_neq) begin
+                // 完了
+                STATUS.BD <= 1;
+                STATUS.BX <= SRC_X[10:0];
+                is_srch <= 0;
+                state <= STATE_COMPLETE;
+            end
+            else begin
+                state <= STATE_SEARCH_NEXT;
+            end
+        end
+        else if(state == STATE_SEARCH_NEXT) begin
+            SRC_NX <= 1;
+            SRC_NY <= 1;
+            DST_NX <= 1;
+            DST_NY <= 1;
+            src_enable <= 1;
 
-        else if(state == STATE_ADVANCE) begin
-            FIFO_CLEAR <= 0;
-            STATUS.CE <= 0;
-            STATUS.CE_intr <= 1;
-            state <= STATE_IDLE;
+            // 隣へ移動
+            if(REG.DIX) begin
+                // 左端チェック
+                if(work.srch.edge_left) begin
+                    // 左端で終了
+                    is_srch <= 0;
+                    state <= STATE_COMPLETE;
+                end
+                else begin
+                    // 左へ移動
+                    SRC_X[10:0] <= SRC_X[10:0] - 1'd1;
+                    DST_X[10:0] <= SRC_X[10:0] - 1'd1;
+                    // POINT 実行
+                    state <= STATE_SETUP;
+                end
+            end
+            else begin
+                // 右端チェック
+                if(work.srch.edge_right) begin
+                    // 右端で終了
+                    is_srch <= 0;
+                    state <= STATE_COMPLETE;
+                end
+                else begin
+                    // 右へ移動
+                    SRC_X[10:0] <= SRC_X[10:0] + 1'd1;
+                    DST_X[10:0] <= SRC_X[10:0] + 1'd1;
+                    // POINT 実行
+                    state <= STATE_SETUP;
+                end
+            end
         end
+`endif
     end
 endmodule
 
@@ -1289,6 +1534,7 @@ endmodule
 module T9990_BLIT_CALC_COUNT (
     input wire          CLK,
     input wire          CPU_MODE,
+    input wire          IS_POINT,
     input wire [1:0]    CLRM,
     input wire          DIX,
     input wire [3:0]    OFFSET,
@@ -1321,7 +1567,7 @@ module T9990_BLIT_CALC_COUNT (
 
     // 2クロック目
     always_ff @(posedge CLK) begin
-        COUNT <= count > remain ? remain : count;
+        COUNT <= IS_POINT ? 5'd1 : (count > remain ? remain : count);
     end
 endmodule
 
