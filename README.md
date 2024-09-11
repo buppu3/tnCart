@@ -41,12 +41,12 @@ https://github.com/user-attachments/assets/f6615e37-0041-4baa-8b7d-7cd3aba46d73
 - V9990 の漢字ROM
 - HDMI による音声出力(ライセンス的に難しい)
 
-## インストール方法
+## FPGA ビットストリーム、BIOS イメージのインストール方法
 ### ファイルのダウンロード
 下記の3ファイルをダウンロードしてください。拡張子の .rom は .bin へリネームして保存してください。
 
-- [tnCart_board_rev1.fs](https://github.com/buppu3/tnCart/blob/main/rtl/impl/pnr/tnCart_board_rev1.fs)
-- [fmbios.rom](https://github.com/buppu3/tnCart/blob/main/roms/fmbios/bin/fmbios.rom)
+- [tnCart_board_rev1.fs](https://github.com/buppu3/tnCart/raw/main/rtl/impl/pnr/tnCart_board_rev1.fs)
+- [fmbios.rom](https://github.com/buppu3/tnCart/raw/main/roms/fmbios/bin/fmbios.rom)
 - Nextor 公式( https://github.com/Konamiman/Nextor/releases )で配布されている "Nextor-2.1.2.MegaFlashSDSCC.1-slot.ROM"
 
 ### フラッシュ書き込みの準備(Windows)
@@ -55,7 +55,7 @@ tnCart カートリッジを MSX へ差し込まずに USB-C コネクタを使�
 - GUI 版 GowinProgrammer を使用する場合は、tnCart と PC を接続後に GowinProgrammer を起動してください。
 - programmer_cli.exe を使用する場合は、programmer_cli.exe があるディレクトリにカレントディレクトリを変更してください。
 
-### ビットストリームの書き込み
+### FPGA ビットストリームの書き込み
 "exFlash Erase,Program thru GAO-Bridge" で 0x000000~ に書き込みます。
 ~~~Shell
 programmer_cli -d GW2AR-18C -r 36 -f download\tnCart_board_rev1.fs
@@ -74,8 +74,62 @@ programmer_cli -d GW2AR-18C -r 38 --spiaddr 0x120000 -f \download\fmbios.bin
 ~~~
 
 ### 起動
-すべてのファイルの書き込みが完了したら、USB-C ケーブルを外し、MSX のカートリッジスロットへ差し込んでください。
-カートリッジを挿入後、MSX の電源を入れてください(tnCart を使うと MSX の起動が 1秒程遅くなります)。
+すべてのイメージの書き込みが完了したら、USB-C ケーブルを外し、tnCart を MSX のカートリッジスロットへ差し込んでください。
+カートリッジを挿入後、MSX の電源を入れてください(tnCart を MSX に接続すると MSX の起動が 1秒程遅くなります)。
+
+## メガロムエミュレータの使い方
+メガロムエミュレータを利用する時は、tncrom コマンドを使用して ROM イメージを tnCart のメモリに転送する必要があります。
+
+### tncrom のダウンロード
+[tncrom.com](https://github.com/buppu3/tnCart/raw/main/tools/tncrom/bin/TNCROM.COM)をダウンロードし、Nextor をセットアップしたストレージにコピーしてください。
+
+### ROM イメージ転送
+Nextor を起動し、tncrom を実行してください。
+~~~Shell
+tncrom -T [ROMタイプ識別子] -R -O [イメージファイルのパス]
+~~~
+
+- -R オプションを指定するとROMイメージを転送後に MSX にリセットをかけます。
+- -O オプションを指定するとリセットでメガロムエミュレータを無効にします(-O が未指定時は MSX の電源を OFF にするまでメガロムエミュレータが有効)。
+- -T オプションで ROM のタイプを指定します。
+
+ROMタイプに指定できる識別子は下記の通りです。
+| ROMタイプ識別子 | ROMタイプ |
+| --- | --- |
+| 32K | 32KB ROM |
+| 16K | 16KB ROM(ページ1) |
+| 16K2 | 16KB ROM(ページ2) |
+| ASCII16 | メガロム ASCII 16KB バンク |
+| ASCII8 | メガロム ASCII 8KB バンク |
+| KONAMI | メガロム コナミ 9KB バンク(SCC音源有効) |
+| KONAMI_WO_SCC | メガロム コナミ 9KB バンク(SCC音源無効) |
+| R-TYPE | メガロム R-TYPE |
+
+### コマンドラインの例
+激突ペナントレース
+~~~Shell
+tncrom -T KONAMI -R -O GEKIPENA.ROM
+~~~
+
+R-TYPE
+~~~Shell
+tncrom -T R-TYPE -R -O R-TYPE.ROM
+~~~
+
+msx-samurai
+~~~Shell
+tncrom -T ASCII16 -R -O SAMURAI.ROM
+~~~
+
+MSXgl V9990 sample
+~~~Shell
+tncrom -T 32K -R -O S_V9990.ROM
+~~~
+
+TINY野郎氏の V9990 テックデモ
+~~~Shell
+tncrom -T ASCII16K -R -O DEMO9990.ROM
+~~~
 
 ## 機能のカスタマイズ
 機能の設定、メモリ配置は config.sv で変更できます。ファイルを変更後、GowinSynthesis でビットストリームを合成してください。合成時、機能の有無でタイミング制約ファイル(sdcファイル)がエラーになりますので、適宜修正してください。
