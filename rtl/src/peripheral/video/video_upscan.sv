@@ -40,6 +40,7 @@
  * アップスキャンモジュール
  ***********************************************************************/
 module VIDEO_UPSCAN #(
+    parameter ENABLE_SCANLINE = 0,
     parameter [9:0] H_TOTAL = 10'd855,
     parameter [9:0] H_SYNC  = 10'd62,
     parameter [9:0] H_ERASE = 10'd69,
@@ -83,6 +84,23 @@ module VIDEO_UPSCAN #(
     logic   OUT_EN;
     logic   OUT_START;
     logic [$clog2(ROW_COUNT)-1:0]  OUT_LINE;
+    logic [7:0] out_r;
+    logic [7:0] out_g;
+    logic [7:0] out_b;
+
+    if(ENABLE_SCANLINE) begin
+        assign OUT.R = out_line_toggle ? {1'b0, out_r[7:1]} : out_r;
+        assign OUT.G = out_line_toggle ? {1'b0, out_g[7:1]} : out_g;
+        assign OUT.B = out_line_toggle ? {1'b0, out_b[7:1]} : out_b;
+    end
+    else begin
+        assign OUT.R = (out_line_toggle && IN.INTERLACE) ? {1'b0, out_r[7:1]} : out_r;
+        assign OUT.G = (out_line_toggle && IN.INTERLACE) ? {1'b0, out_g[7:1]} : out_g;
+        assign OUT.B = (out_line_toggle && IN.INTERLACE) ? {1'b0, out_b[7:1]} : out_b;
+    end
+    assign OUT.HSCAN = 1;
+    assign OUT.INTERLACE = 0;
+    assign OUT.FIELD = 0;
 
     VIDEO_UPSCAN_STRETCH_BUFFER #(
         .ROW_COUNT(ROW_COUNT)
@@ -101,7 +119,7 @@ module VIDEO_UPSCAN #(
         .OUT_EN,
         .OUT_START,
         .OUT_LINE,
-        .OUT(OUT.R)
+        .OUT(out_r)
     );
 
     VIDEO_UPSCAN_STRETCH_BUFFER #(
@@ -121,7 +139,7 @@ module VIDEO_UPSCAN #(
         .OUT_EN,
         .OUT_START,
         .OUT_LINE,
-        .OUT(OUT.G)
+        .OUT(out_g)
     );
 
     VIDEO_UPSCAN_STRETCH_BUFFER #(
@@ -141,7 +159,7 @@ module VIDEO_UPSCAN #(
         .OUT_EN,
         .OUT_START,
         .OUT_LINE,
-        .OUT(OUT.B)
+        .OUT(out_b)
     );
 
     /***************************************************************
@@ -248,13 +266,13 @@ module VIDEO_UPSCAN #(
 
     always_ff @(posedge DCLK or negedge RESET_n) begin
         if(!RESET_n)                              out_line_toggle <= 0;
-        else if(out_prev_in_vs_n && !out_in_vs_n) out_line_toggle <= 0;             // IN.VSYNC
+        else if(out_prev_in_vs_n && !out_in_vs_n) out_line_toggle <= IN.FIELD;         // IN.VSYNC
         else if(out_h_rst)                        out_line_toggle <= !out_line_toggle; // OUT.HSYNC
     end
 
     always_ff @(posedge DCLK or negedge RESET_n) begin
         if(!RESET_n)                              out_line_cnt <= 0;
-        else if(out_prev_in_vs_n && !out_in_vs_n) out_line_cnt <= 0;                // IN.VSYNC
+        else if(out_prev_in_vs_n && !out_in_vs_n) out_line_cnt <= IN.FIELD ? (ROW_COUNT-1) : 0;                // IN.VSYNC
         else if(out_h_rst && out_line_toggle) begin                                 // OUT.HSYNC
             if(out_line_cnt == ROW_COUNT - 1)     out_line_cnt <= 0;
             else                                  out_line_cnt <= out_line_cnt + 1'd1;

@@ -85,6 +85,7 @@ module T9990 (
     output wire         Ys,                 // Ys
     output wire         DCLK_EN,            // ドットクロックエッジ
     output wire [2:0]   RESO,               // 解像度
+    output wire         HSCN,               // HSCN
     output wire         IL,                 // インターレースモード
     output wire         EO                  // 奇数/偶数
 );
@@ -605,6 +606,7 @@ module T9990 (
     assign B = OUT[ 4: 0];
     assign EO = STATUS.EO;
     assign IL = REG.ILM && REG.EO && !REG.HSCN;
+    assign HSCN = REG.HSCN;
 
 endmodule
 

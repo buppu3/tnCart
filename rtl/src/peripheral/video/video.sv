@@ -53,8 +53,11 @@ interface VIDEO_IF;
     logic       HS_n;
     logic       VS_n;
     logic       DCLK;
-    modport IN  ( input  RESOLUTION, R, G, B, HS_n, VS_n, DCLK );
-    modport OUT ( output RESOLUTION, R, G, B, HS_n, VS_n, DCLK );
+    logic       HSCAN;      // 0=normal / 1=400,480ラインモード
+    logic       INTERLACE;  // 0=normal / 1=縦方向を2倍
+    logic       FIELD;      // 0=1st field / 1=2nd field
+    modport IN  ( input  RESOLUTION, R, G, B, HS_n, VS_n, DCLK, HSCAN, INTERLACE, FIELD );
+    modport OUT ( output RESOLUTION, R, G, B, HS_n, VS_n, DCLK, HSCAN, INTERLACE, FIELD );
 
     // ダミー出力
     function automatic void connect_dummy();

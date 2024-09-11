@@ -442,7 +442,9 @@ module TNCART_BOARD_REV1_TOP (
      ***************************************************************/
     VIDEO_IF Video();
     VIDEO_IF VideoTmds();
-    VIDEO_UPSCAN u_upscan (
+    VIDEO_UPSCAN #(
+        .ENABLE_SCANLINE(CONFIG::ENABLE_SCANLINE)
+    ) u_upscan (
         .RESET_n,
         .DCLK(CLK_TMDS_P),
         .IN(Video),
