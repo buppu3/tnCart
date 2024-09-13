@@ -32,6 +32,7 @@
 //
 
 `default_nettype none
+//`define T9990_PATTERN_BUFFER_USE_DPB
 
 /***************************************************************
  * P1/P2 画面生成
@@ -173,23 +174,23 @@ module TINY9990_PATTERN_GEN #(
 
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n) begin
-            pat_0_buff <= 0;
-            pat_1_buff <= 0;
-            pat_2_buff <= 0;
-            pat_3_buff <= 0;
+            //pat_0_buff <= 0;
+            //pat_1_buff <= 0;
+            //pat_2_buff <= 0;
+            //pat_3_buff <= 0;
 
-            pat_0_addr <= 0;
-            pat_1_addr <= 0;
-            pat_2_addr <= 0;
-            pat_3_addr <= 0;
+            //pat_0_addr <= 0;
+            //pat_1_addr <= 0;
+            //pat_2_addr <= 0;
+            //pat_3_addr <= 0;
         end
         else if(DISABLE) begin
         end
         else if(START) begin
-            pat_0_buff <= 0;
-            pat_1_buff <= 0;
-            pat_2_buff <= 0;
-            pat_3_buff <= 0;
+            //pat_0_buff <= 0;
+            //pat_1_buff <= 0;
+            //pat_2_buff <= 0;
+            //pat_3_buff <= 0;
         end
         else if(MEM.ACK) begin
             case (state)
@@ -288,17 +289,52 @@ module TINY9990_PATTERN_GEN #(
     /***************************************************************
      * ドット出力
      ***************************************************************/
+`ifdef T9990_PATTERN_BUFFER_USE_DPB
+    wire [127:0] pattern_out;
+    wire [127:0] pattern_in = START                          ? 0 :
+                              ( P2 && HCNT[4:0] == 5'b11111) ? { pat_0_buff, pat_1_buff, pat_2_buff, pat_3_buff } :
+                              (!P2 && HCNT[3:0] == 4'b1111)  ? { pat_0_buff, pat_1_buff, pat_2_buff, pat_3_buff } :
+                                                               { pattern_out[123:0], 4'b0000};
+    wire pattern_wen = !RESET_n ? 0 :
+                       DISABLE  ? 0 :
+                       START    ? 1 :
+                       DCLK_EN  ? 1 :
+                                  0;
+
+    T9990_PATTERN_BUFFER u_buff (
+        .CLK,
+        .WEN(pattern_wen),
+        .IN(pattern_in),
+        .OUT(pattern_out)
+    );
+
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)                           PA <= 0;
+        else if(!DISABLE && !START && DCLK_EN) PA <= {
+                                                        (IS_B ? REG.PLT[3:2] : REG.PLT[1:0]),   // ToDo: P2モードの時に X 座標でパレットを変える(PAとPBを交互に動作)
+                                                        pattern_out[127:124]
+                                                    };
+    end
+
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)                           PRI <= 2'b01;
+        else if(!DISABLE && !START && DCLK_EN) PRI <= {
+                                                        (HCNT[9:6] > (REG.PRX == 0 ? 4'd4 : REG.PRX)) || (VCNT[8:6] > (REG.PRY == 0 ? 3'd4 : REG.PRY)) ^ IS_B,
+                                                        (pattern_out[127:124] == 0)
+                                                    };
+    end
+`else
     logic [127:0] pattern;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n) begin
-            pattern <= 0;
-            PA <= 0;
-            PRI <= 2'b01;
+            //pattern <= 0;
+            //PA <= 0;
+            //PRI <= 2'b01;
         end
         else if(DISABLE) begin
         end
         else if(START) begin
-            pattern <= 0;
+            //pattern <= 0;
         end
         else if(DCLK_EN) begin
             // 出力
@@ -318,6 +354,267 @@ module TINY9990_PATTERN_GEN #(
             end
         end
     end
+`endif
 endmodule
+
+`ifdef T9990_PATTERN_BUFFER_USE_DPB
+
+module T9990_PATTERN_BUFFER (
+    input wire          CLK,
+    input wire          WEN,
+    input wire [127:0]  IN,
+    output wire [127:0] OUT
+);
+
+    DPB dpb_inst_0 (
+        .DOA(),
+        .DOB(OUT[15:0]),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(1'b0),
+        .WREA(WEN),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(1'b0),
+        .WREB(1'b0),
+        .BLKSELA({1'b0,1'b0,1'b0}),
+        .BLKSELB({1'b0,1'b0,1'b0}),
+        .ADA({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIA(IN[15:0]),
+        .ADB({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIB(16'd0)
+    );
+
+    defparam dpb_inst_0.READ_MODE0 = 1'b0;
+    defparam dpb_inst_0.READ_MODE1 = 1'b0;
+    defparam dpb_inst_0.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_0.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_0.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_0.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_0.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_0.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_0.RESET_MODE = "SYNC";
+
+    DPB dpb_inst_1 (
+        .DOA(),
+        .DOB(OUT[31:16]),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(1'b0),
+        .WREA(WEN),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(1'b0),
+        .WREB(1'b0),
+        .BLKSELA({1'b0,1'b0,1'b0}),
+        .BLKSELB({1'b0,1'b0,1'b0}),
+        .ADA({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIA(IN[31:16]),
+        .ADB({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIB(16'd0)
+    );
+
+    defparam dpb_inst_1.READ_MODE0 = 1'b0;
+    defparam dpb_inst_1.READ_MODE1 = 1'b0;
+    defparam dpb_inst_1.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_1.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_1.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_1.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_1.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_1.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_1.RESET_MODE = "SYNC";
+
+    DPB dpb_inst_2 (
+        .DOA(),
+        .DOB(OUT[47:32]),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(1'b0),
+        .WREA(WEN),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(1'b0),
+        .WREB(1'b0),
+        .BLKSELA({1'b0,1'b0,1'b0}),
+        .BLKSELB({1'b0,1'b0,1'b0}),
+        .ADA({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIA(IN[47:32]),
+        .ADB({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIB(16'd0)
+    );
+
+    defparam dpb_inst_2.READ_MODE0 = 1'b0;
+    defparam dpb_inst_2.READ_MODE1 = 1'b0;
+    defparam dpb_inst_2.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_2.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_2.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_2.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_2.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_2.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_2.RESET_MODE = "SYNC";
+
+    DPB dpb_inst_3 (
+        .DOA(),
+        .DOB(OUT[63:48]),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(1'b0),
+        .WREA(WEN),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(1'b0),
+        .WREB(1'b0),
+        .BLKSELA({1'b0,1'b0,1'b0}),
+        .BLKSELB({1'b0,1'b0,1'b0}),
+        .ADA({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIA(IN[63:48]),
+        .ADB({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIB(16'd0)
+    );
+
+    defparam dpb_inst_3.READ_MODE0 = 1'b0;
+    defparam dpb_inst_3.READ_MODE1 = 1'b0;
+    defparam dpb_inst_3.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_3.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_3.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_3.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_3.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_3.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_3.RESET_MODE = "SYNC";
+
+    DPB dpb_inst_4 (
+        .DOA(),
+        .DOB(OUT[79:64]),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(1'b0),
+        .WREA(WEN),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(1'b0),
+        .WREB(1'b0),
+        .BLKSELA({1'b0,1'b0,1'b0}),
+        .BLKSELB({1'b0,1'b0,1'b0}),
+        .ADA({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIA(IN[79:64]),
+        .ADB({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIB(16'd0)
+    );
+
+    defparam dpb_inst_4.READ_MODE0 = 1'b0;
+    defparam dpb_inst_4.READ_MODE1 = 1'b0;
+    defparam dpb_inst_4.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_4.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_4.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_4.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_4.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_4.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_4.RESET_MODE = "SYNC";
+
+    DPB dpb_inst_5 (
+        .DOA(),
+        .DOB(OUT[95:80]),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(1'b0),
+        .WREA(WEN),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(1'b0),
+        .WREB(1'b0),
+        .BLKSELA({1'b0,1'b0,1'b0}),
+        .BLKSELB({1'b0,1'b0,1'b0}),
+        .ADA({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIA(IN[95:80]),
+        .ADB({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIB(16'd0)
+    );
+
+    defparam dpb_inst_5.READ_MODE0 = 1'b0;
+    defparam dpb_inst_5.READ_MODE1 = 1'b0;
+    defparam dpb_inst_5.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_5.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_5.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_5.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_5.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_5.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_5.RESET_MODE = "SYNC";
+
+    DPB dpb_inst_6 (
+        .DOA(),
+        .DOB(OUT[111:96]),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(1'b0),
+        .WREA(WEN),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(1'b0),
+        .WREB(1'b0),
+        .BLKSELA({1'b0,1'b0,1'b0}),
+        .BLKSELB({1'b0,1'b0,1'b0}),
+        .ADA({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIA(IN[111:96]),
+        .ADB({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIB(16'd0)
+    );
+
+    defparam dpb_inst_6.READ_MODE0 = 1'b0;
+    defparam dpb_inst_6.READ_MODE1 = 1'b0;
+    defparam dpb_inst_6.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_6.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_6.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_6.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_6.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_6.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_6.RESET_MODE = "SYNC";
+
+    DPB dpb_inst_7 (
+        .DOA(),
+        .DOB(OUT[127:112]),
+        .CLKA(CLK),
+        .OCEA(1'b1),
+        .CEA(1'b1),
+        .RESETA(1'b0),
+        .WREA(WEN),
+        .CLKB(CLK),
+        .OCEB(1'b1),
+        .CEB(1'b1),
+        .RESETB(1'b0),
+        .WREB(1'b0),
+        .BLKSELA({1'b0,1'b0,1'b0}),
+        .BLKSELB({1'b0,1'b0,1'b0}),
+        .ADA({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIA(IN[127:112]),
+        .ADB({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b1,1'b1}),
+        .DIB(16'd0)
+    );
+
+    defparam dpb_inst_7.READ_MODE0 = 1'b0;
+    defparam dpb_inst_7.READ_MODE1 = 1'b0;
+    defparam dpb_inst_7.WRITE_MODE0 = 2'b00;
+    defparam dpb_inst_7.WRITE_MODE1 = 2'b00;
+    defparam dpb_inst_7.BIT_WIDTH_0 = 16;
+    defparam dpb_inst_7.BIT_WIDTH_1 = 16;
+    defparam dpb_inst_7.BLK_SEL_0 = 3'b000;
+    defparam dpb_inst_7.BLK_SEL_1 = 3'b000;
+    defparam dpb_inst_7.RESET_MODE = "SYNC";
+endmodule
+
+`endif
 
 `default_nettype wire

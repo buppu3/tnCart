@@ -372,7 +372,7 @@ module T9990_PORT (
      ***************************************************************/
     reg          srs_ff;            // P7.SRS
     reg          mcs_ff;            // P7.MCS
-    reg [7:0]    vdp_reg[0:63];     // R#0~#63
+    reg [7:0]    vdp_reg[0:52];     // R#0~#52
 
     assign REG.SRS  = srs_ff;
     assign REG.MCS  = mcs_ff;
@@ -483,7 +483,7 @@ module T9990_PORT (
         else if(det_r && MODE == 4'h6)                               CD_OUT <= p6_cd_data;      // P#6 read
         else if(det_r && MODE == 4'h3 && port4_regnum[5:0] == 6'd53) CD_OUT <= STATUS.BX[7:0];  // R#53 read
         else if(det_r && MODE == 4'h3 && port4_regnum[5:0] == 6'd54) CD_OUT <= {5 'b00000, STATUS.BX[10:8]}; // R#54 read
-        else if(det_r && MODE == 4'h3)                               CD_OUT <= vdp_reg[port4_regnum[5:0]];     // R#n read
+        else if(det_r && MODE == 4'h3 && port4_regnum[5:0] <= 6'd27) CD_OUT <= vdp_reg[port4_regnum[5:0]];     // R#n read
 /*
         else if(det_r && MODE == 4'h3 && port4_regnum[5:0] == 6'd 6) CD_OUT <= vdp_reg[ 6];     // R#6 read
         else if(det_r && MODE == 4'h3 && port4_regnum[5:0] == 6'd 7) CD_OUT <= vdp_reg[ 7];     // R#7 read
@@ -742,8 +742,8 @@ module T9990_PORT (
             vdp_reg[50] <= 0;
             vdp_reg[51] <= 0;
             vdp_reg[52] <= 0;
-            vdp_reg[53] <= 0;
-            vdp_reg[54] <= 0;
+            //vdp_reg[53] <= 0;
+            //vdp_reg[54] <= 0;
 `else
             vdp_reg[ 0] <= 0;
             vdp_reg[ 1] <= 0;
@@ -798,8 +798,8 @@ module T9990_PORT (
             vdp_reg[50] <= 0;
             vdp_reg[51] <= 0;
             vdp_reg[52] <= 0;
-            vdp_reg[53] <= 0;
-            vdp_reg[54] <= 0;
+            //vdp_reg[53] <= 0;
+            //vdp_reg[54] <= 0;
 `endif
         end
 
@@ -837,7 +837,7 @@ module T9990_PORT (
 
         // P#3 write
         else if( det_w && MODE == 4'h3) begin
-            vdp_reg[port4_regnum[5:0]] <= CD_IN;
+            if(port4_regnum[5:0] <= 6'd52) vdp_reg[port4_regnum[5:0]] <= CD_IN;
         end
     end
 
