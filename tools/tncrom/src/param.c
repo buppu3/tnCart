@@ -141,6 +141,13 @@ int parse_param(MAIN_PARAM_t *param, int argc, char *argv[])
                 break;
 
             //
+            // ROM イメージ転送しない
+            //
+            case 'N':
+                param->nofile_flag = 1;
+                break;
+
+            //
             // 設定ファイルを使用
             //
             case 'C':

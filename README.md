@@ -17,7 +17,7 @@ WonderTANG 対応版は [tnCartWonder](https://github.com/herraa1/tnCartWonder) 
 - FM 音源カートリッジ(拡張 BASIC は未対応)
 - PSG 音源の 3.5mmフォンジャック出力
 - メガロムエミュレーション
-- SCC 音源
+- SCC/SCC-I 音源
 - PAC 機能(まだデータ保持機能が実装されていませんので、電源を切るとデータは消えます)
 - V9990 エミュレーション(「[msx-samurai](https://github.com/albs-br/msx-samurai)」,「[MSXgl](https://github.com/aoineko-fr/MSXgl) V9990サンプルの一部」,「[TINY野郎氏のテックデモ](https://www.youtube.com/watch?v=I6kXyMaED0s)」がそれなりに動く程度)
 
@@ -92,6 +92,7 @@ tncrom -T [ROMタイプ識別子] -R -O [イメージファイルのパス]
 - -R オプションを指定するとROMイメージを転送後に MSX にリセットをかけます。
 - -O オプションを指定するとリセットでメガロムエミュレータを無効にします(-O が未指定時は MSX の電源を OFF にするまでメガロムエミュレータが有効)。
 - -T オプションで ROM のタイプを指定します。
+- -N オプションでイメージファイルの転送を行いません。
 
 ROMタイプに指定できる識別子は下記の通りです。
 | ROMタイプ識別子 | ROMタイプ |
@@ -101,8 +102,9 @@ ROMタイプに指定できる識別子は下記の通りです。
 | 16K2 | 16KB ROM(ページ2) |
 | ASCII16 | メガロム ASCII 16KB バンク |
 | ASCII8 | メガロム ASCII 8KB バンク |
-| KONAMI | メガロム コナミ 9KB バンク(SCC音源有効) |
-| KONAMI_WO_SCC | メガロム コナミ 9KB バンク(SCC音源無効) |
+| KONAMI | メガロム コナミ 8KB バンク(SCC音源有効) |
+| KONAMI_SCC_I | メガロム コナミ 8KB バンク(SCC-I有効) |
+| KONAMI_WO_SCC | メガロム コナミ 8KB バンク(SCC音源無効) |
 | R-TYPE | メガロム R-TYPE |
 
 ### コマンドラインの例
@@ -129,6 +131,17 @@ tncrom -T 32K -R -O S_V9990.ROM
 TINY野郎氏の V9990 テックデモ
 ~~~Shell
 tncrom -T ASCII16K -R -O DEMO9990.ROM
+~~~
+
+### SCC を有効にする
+SCC を有効にする
+~~~Shell
+tncrom -T KONAMI -N
+~~~
+
+SCC-I を有効にする
+~~~Shell
+tncrom -T KONAMI_SCC_I -N
 ~~~
 
 ## 機能のカスタマイズ

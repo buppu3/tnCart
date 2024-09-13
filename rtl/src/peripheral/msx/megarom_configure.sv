@@ -74,7 +74,8 @@ module MEGAROM_CONFIGURE #(
     input wire          RESET_n,
     BUS_IF.CARTRIDGE    Bus,
     MEGAROM_IF.HOST     Megarom,
-    output reg          SCC_ENA
+    output reg          SCC_ENA,
+    output reg          SCC_I_ENA
 );
     localparam [7:0]    KEY_0 = 8'hAB;
     localparam [7:0]    KEY_1 = 8'hCD;
@@ -109,6 +110,7 @@ module MEGAROM_CONFIGURE #(
     localparam [3:0]    BIT_FLAGS_CS1_MASK          = 3'h2;
     localparam [3:0]    BIT_FLAGS_CS2_MASK          = 3'h3;
     localparam [3:0]    BIT_FLAGS_SCC               = 3'h4; // 0 = SCC SOUND 無効 / 1= 有効
+    localparam [3:0]    BIT_FLAGS_SCC_I             = 3'h5; // 0 = SCC+ 無効 / 1= 有効
     localparam [3:0]    BIT_FLAGS_ENABLE_CONTINUOUS = 3'h6; // BIT_FLAGS_ENABLE ビットはハードウェアリセットの影響を受けない
     localparam [3:0]    BIT_FLAGS_ENABLE            = 3'h7; // ROM を有効にする
 
@@ -250,6 +252,7 @@ module MEGAROM_CONFIGURE #(
         Megarom.CS1_Mask        =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_CS1_MASK     ] || !ctrl_reg[ADDR_FLAGS][BIT_FLAGS_ENABLE];
         Megarom.CS2_Mask        =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_CS2_MASK     ] || !ctrl_reg[ADDR_FLAGS][BIT_FLAGS_ENABLE];
         SCC_ENA                 =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_SCC          ];
+        SCC_I_ENA               =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_SCC_I        ];
         Megarom.MemoryTopAddr   = RAM_ADDR[$bits(Megarom.MemoryTopAddr)-1:0];
     end
 

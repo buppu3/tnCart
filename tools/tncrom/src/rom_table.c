@@ -132,6 +132,22 @@ const ROM_ATTR_t ROM_ATTR_KONAMI = {
 };
 
 /***********************************************
+ * KONAMI SCC-I
+ ***********************************************/
+const ROM_ATTR_t ROM_ATTR_KONAMI_SCC_I = {
+    (uint8_t)(FLAG_SCC | FLAG_SCC_I),               // FLAGS
+    (uint8_t)0x3F,                                  // BANK VALUE MASK
+    (uint16_t)0xF800,                               // BANK REGISTER ADDRESS MASK
+    {
+        { (uint16_t)0x5000, 0, 0 },                 // BANK #0 REGISTER ADDRESS, INITIAL VALUE, RESERVED
+        { (uint16_t)0x7000, 1, 0 },                 // BANK #1 REGISTER ADDRESS, INITIAL VALUE, RESERVED
+        { (uint16_t)0x9000, 2, 0 },                 // BANK #2 REGISTER ADDRESS, INITIAL VALUE, RESERVED
+        { (uint16_t)0xB000, 3, 0 }                  // BANK #3 REGISTER ADDRESS, INITIAL VALUE, RESERVED
+    },
+    "KONAMI SCC-I"                                  // NAME
+};
+
+/***********************************************
  * KONAMI 8KB without SCC sound
  ***********************************************/
 const ROM_ATTR_t ROM_ATTR_KONAMI_wo_SCC = {
@@ -173,6 +189,7 @@ const KEYWORD_PARAM_t    rom_attr_table[] = {
     {   "ASCII16",       (void*)&ROM_ATTR_ASCII16      },
     {   "ASCII8",        (void*)&ROM_ATTR_ASCII8       },
     {   "KONAMI",        (void*)&ROM_ATTR_KONAMI       },
+    {   "KONAMI_SCC_I",  (void*)&ROM_ATTR_KONAMI_SCC_I },
     {   "KONAMI_WO_SCC", (void*)&ROM_ATTR_KONAMI_wo_SCC},
     {   "R-TYPE",        (void*)&ROM_ATTR_RTYPE        },
     {   NULL,            NULL                          }

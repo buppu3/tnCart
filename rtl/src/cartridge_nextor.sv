@@ -78,6 +78,8 @@ module CARTRIDGE_NEXTOR #(
         .RESET_n,
         .CLK,
         .Megarom,
+        .BankEnable(4'b1111),
+        .WriteProtect(4'b1111),
         .Bus,
         .Ram,
         .ExtBus

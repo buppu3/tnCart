@@ -57,6 +57,7 @@ typedef ROM_ATTR_t *ROM_ATTR_PTR_t;
 #define FLAG_CS1_MASK           (1<<2)
 #define FLAG_CS2_MASK           (1<<3)
 #define FLAG_SCC                (1<<4)
+#define FLAG_SCC_I              (1<<5)
 #define FLAG_ENABLE_CONTINUOUS  (1<<6)
 #define FLAG_ENABLE             (1<<7)
 

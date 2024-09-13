@@ -41,6 +41,7 @@ typedef struct {
     int         reset_flag;
     int         once_flag;
     int         help_flag;
+    int         nofile_flag;
     uint8_t     sltnum;
     char        rom_type[32];
     char        rom_file[256];

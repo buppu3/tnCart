@@ -42,6 +42,7 @@
                                 "  -R           reboot computer\n"\
                                 "  -O           valid until hardware reset\n"\
                                 "  -C           use configuration file\n"\
+                                "  -N           not transfer ROM file\n"\
                                 "  -S [slot]    set slot number\n"\
                                 "  -T [type]    set ROM type\n"
 #define MSG_UNKNOWN_ROM_TYPE    "unknown rom type(%s).\n"

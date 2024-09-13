@@ -45,7 +45,7 @@
 #include "param.h"
 #include "message.h"
 
-#define VERSION (2)
+#define VERSION (3)
 
 
 static MAIN_PARAM_t main_param;     // パラメータ
@@ -171,20 +171,28 @@ static int xfer_file(uint8_t sltnum, BDOS_FILE_t *file)
  ***********************************************/
 static int load_rom_image(uint8_t sltnum, ROM_ATTR_PTR_t rom_attr, char *path)
 {
-    int res;
+    int res = 0;
 
-    // ファイルを開く
-    if(0 != (res = bdos_fopen(&rom_file, path)))
+    if(path != NULL)
     {
-        printf(MSG_ERR_FILEOPEN, path);
-        return res;
+        // ファイルを開く
+        if(0 != (res = bdos_fopen(&rom_file, path)))
+        {
+            printf(MSG_ERR_FILEOPEN, path);
+            return res;
+        }
+
+        // ROM 書き込み許可
+        rom_attr_xfer(sltnum, &ROM_ATTR_ASCII16_WO_WP);
+
+        // ファイルを転送
+        res = xfer_file(sltnum, &rom_file);
+
+        // ファイルを閉じる
+        bdos_fclose(&rom_file);
     }
 
-    // ROM 書き込み許可
-    rom_attr_xfer(sltnum, &ROM_ATTR_ASCII16_WO_WP);
-
-    // ファイルを転送
-    if(0 != (res = xfer_file(sltnum, &rom_file)))
+    if(res != 0)
     {
         // 転送失敗時は誤動作防止のために ROM ヘッダを消去
         clear_rom(sltnum);
@@ -197,13 +205,17 @@ static int load_rom_image(uint8_t sltnum, ROM_ATTR_PTR_t rom_attr, char *path)
     {
         // ROM 属性設定
         rom_attr_xfer(sltnum, rom_attr);
+
+        // SCC-I モードレジスタ初期化
+        if(rom_attr->flags & FLAG_SCC_I)
+        {
+            wrtslt(sltnum, 0xBFFE, 0x00);
+        }
     }
 
     // バンクレジスタ初期設定
     init_bank_reg(sltnum, rom_attr);
 
-    // ファイルを閉じる
-    bdos_fclose(&rom_file);
     return res;
 }
 
@@ -370,7 +382,7 @@ int main(int argc, char *argv[])
     }
 
     // ファイルが指定されていない場合
-    if(main_param.rom_file[0] == '\0')
+    if(!main_param.nofile_flag && main_param.rom_file[0] == '\0')
     {
         output_usage();
         return 1;
@@ -425,7 +437,7 @@ int main(int argc, char *argv[])
         printf(MSG_HANDLER_ERROR);
         return 1;        
     }
-    int res = load_rom_image(main_param.sltnum, rom_attr, rom_file);
+    int res = load_rom_image(main_param.sltnum, rom_attr, main_param.nofile_flag ? NULL : rom_file);
     bdos_set_about_handler(0);
 
     if(res == 0)

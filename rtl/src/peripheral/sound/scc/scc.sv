@@ -43,6 +43,8 @@ module SCC (
     input wire          CLK,
     input wire          CLK_EN,
 
+    input wire          MODE_SCC_I,
+
     input wire          CS_n,
     input wire [7:0]    ADDR,
     input wire          WR_n,
@@ -69,9 +71,8 @@ module SCC (
     /***************************************************************
      * アドレスデコーダ
      ***************************************************************/
-    wire cs_reg_n = ADDR[7:5] != 3'b100;
-    wire cs_test_n = ADDR[7:5] != 3'b111;
-    wire cs_enable_n = cs_reg_n || (ADDR[3:0] != 4'b1111);
+    wire cs_test_n = ADDR[7:5] != (MODE_SCC_I ? 3'b110 : 3'b111);
+    wire cs_enable_n = ADDR != (MODE_SCC_I ? 8'hAF : 8'h8F);
 
     /***************************************************************
      * TEST レジスタ
@@ -111,6 +112,12 @@ module SCC (
     generate
         genvar chnum;
         for(chnum = 0; chnum < 5; chnum = chnum + 1) begin: ch
+            wire wr_freq_l = (ADDR[7:4] == (MODE_SCC_I ? 4'b1010 : 4'b1000)) && (ADDR[3:0] == chnum * 2 +  0);
+            wire wr_freq_h = (ADDR[7:4] == (MODE_SCC_I ? 4'b1010 : 4'b1000)) && (ADDR[3:0] == chnum * 2 +  1);
+            wire wr_vol    = (ADDR[7:4] == (MODE_SCC_I ? 4'b1010 : 4'b1000)) && (ADDR[3:0] == chnum     + 10);
+            wire wr_wave   = (ADDR[7:5] == (MODE_SCC_I ? chnum[2:0] : (chnum[2] ? 3'd3 : chnum[2:0])));
+            wire rd_wave   = (ADDR[7:5] == (MODE_SCC_I ? chnum[2:0] : (chnum[2] ? 3'd5 : chnum[2:0])));
+
             SCC_SIGNAL_GENERATOR u_gen (
                 .RESET_n,
                 .CLK,
@@ -120,11 +127,11 @@ module SCC (
                 .TEST_ADDR  (test_reg[5]),
                 .TEST_MEM   (chnum == 4 ? test_reg[7] : test_reg[6]),
                 .ADDR       (ADDR[4:0]),
-                .WR_FREQ_L_n(!det_wr || cs_reg_n || (ADDR[3:0] != (chnum * 2 +  0))),
-                .WR_FREQ_H_n(!det_wr || cs_reg_n || (ADDR[3:0] != (chnum * 2 +  1))),
-                .WR_VOL_n   (!det_wr || cs_reg_n || (ADDR[3:0] != (chnum     + 10))),
-                .WR_WAVE_n  (chnum < 4 ? (!det_wr || (ADDR[7:5] != chnum)) : (!det_wr || (ADDR[7:5] != 3))),
-                .RD_WAVE_n  (chnum < 4 ? (!det_rd || (ADDR[7:5] != chnum)) : (!det_rd || (ADDR[7:5] != 5))),
+                .WR_FREQ_L_n(!det_wr || !wr_freq_l),
+                .WR_FREQ_H_n(!det_wr || !wr_freq_h),
+                .WR_VOL_n   (!det_wr || !wr_vol),
+                .WR_WAVE_n  (!det_wr || !wr_wave),
+                .RD_WAVE_n  (!det_rd || !rd_wave),
                 .BUSDIR_n   (busdir_n[chnum]),
                 .DIN,
                 .DOUT       (dout[chnum]),

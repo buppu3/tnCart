@@ -76,6 +76,8 @@ module MEGAROM_CONTROLLER #(
     input   wire            RESET_n,
     input   wire            CLK,
     MEGAROM_IF.DEVICE       Megarom,
+    input wire [3:0]        BankEnable,
+    input wire [3:0]        WriteProtect,
     BUS_IF.CARTRIDGE        Bus,
     RAM_IF.HOST             Ram,
     BUS_IF.MSX              ExtBus[0:COUNT-1]
@@ -212,11 +214,16 @@ module MEGAROM_CONTROLLER #(
     wire cs12_n = (cs1_n && cs2_n);
 
     /***************************************************************
+     * バンク毎のライトプロテクト
+     ***************************************************************/
+    wire bank_write_protect = WriteProtect[{Bus.ADDR[15],Bus.ADDR[13]}];
+
+    /***************************************************************
      * memory read / write strobe
      ***************************************************************/
     wire wr_n = Bus.SLTSL_n || Bus.MERQ_n || Bus.WR_n;
     wire rd_n = Bus.SLTSL_n || Bus.MERQ_n || Bus.RD_n;
-    wire wr_mem_n  = cs12_n || wr_n || Megarom.WriteProtect;
+    wire wr_mem_n  = cs12_n || wr_n || Megarom.WriteProtect || bank_write_protect;
     wire rd_mem_n  = cs12_n || rd_n;
 
     /***************************************************************
@@ -243,7 +250,7 @@ module MEGAROM_CONTROLLER #(
                 else if(!Bus.RESET_n) begin
                     Megarom.BankReg[bank_num] <= Megarom.BankRegInit[bank_num];
                 end
-                else if(det_wr && ((Bus.ADDR & Megarom.BankRegAddrMask) == Megarom.BankRegAddr[bank_num])) begin
+                else if(det_wr && ((Bus.ADDR & Megarom.BankRegAddrMask) == Megarom.BankRegAddr[bank_num]) && BankEnable[bank_num]) begin
                     Megarom.BankReg[bank_num] <= Bus.DIN & Megarom.BankRegMask;
                 end
             end
