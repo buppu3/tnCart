@@ -110,6 +110,14 @@ uint8_t rdslt(uint8_t sltnum, uint16_t addr)
 }
 
 /***********************************************
+ * BANK#0 切り替え
+ ***********************************************/
+void set_bank0_reg(uint8_t sltnum, uint8_t num)
+{
+    wrtslt(sltnum, 0x6000, num);
+}
+
+/***********************************************
  * BANK#1 切り替え
  ***********************************************/
 void set_bank1_reg(uint8_t sltnum, uint8_t num)

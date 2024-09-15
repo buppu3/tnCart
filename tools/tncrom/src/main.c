@@ -45,7 +45,7 @@
 #include "param.h"
 #include "message.h"
 
-#define VERSION (3)
+#define VERSION (4)
 
 
 static MAIN_PARAM_t main_param;     // パラメータ
@@ -143,6 +143,10 @@ static int xfer_file(uint8_t sltnum, BDOS_FILE_t *file)
         return res;
     }
     
+    // バンク1のバンクレジスタを設定時にバンク0のデータが化けるので、Bank0を予め最終バンクに切り替え
+    uint8_t last_bank = ((size - (uint32_t)1) >> 14) & 255;
+    set_bank0_reg(sltnum, last_bank);
+
     while(size > (uint32_t)0)
     {
         printf(MSG_PROGRESS, bank);

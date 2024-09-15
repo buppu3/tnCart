@@ -66,6 +66,7 @@ void slot_select_p1(uint8_t sltnum);
 void slot_select_p2(uint8_t sltnum);
 void wrtslt(uint8_t sltnum, uint16_t addr, uint8_t data);
 uint8_t rdslt(uint8_t sltnum, uint16_t addr);
+void set_bank0_reg(uint8_t sltnum, uint8_t num);
 void set_bank1_reg(uint8_t sltnum, uint8_t num);
 void unlock_megarom_configure(uint8_t sltnum);
 void lock_megarom_configure(uint8_t sltnum);
