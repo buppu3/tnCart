@@ -45,7 +45,7 @@
 #include "param.h"
 #include "message.h"
 
-#define VERSION (5)
+#define VERSION (6)
 
 
 static MAIN_PARAM_t main_param;     // パラメータ
@@ -207,6 +207,10 @@ static int load_rom_image(uint8_t sltnum, ROM_ATTR_PTR_t rom_attr, char *path)
     }
     else
     {
+        // バンク切り替えなし ROM で正しくデータが読めるようにバンク 0 を戻す
+        rom_attr_xfer(sltnum, &ROM_ATTR_ASCII16);
+        set_bank0_reg(sltnum, 0);
+
         // ROM 属性設定
         rom_attr_xfer(sltnum, rom_attr);
 
