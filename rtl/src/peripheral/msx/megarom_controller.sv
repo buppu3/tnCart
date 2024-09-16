@@ -47,14 +47,15 @@ interface MEGAROM_IF #(parameter ADDR_BIT_WIDTH=24, BANK_COUNT = 4);
     logic [15:0]                BankRegAddr[0:BANK_COUNT-1];
     logic [7:0]                 BankRegMask;                    // バンクレジスタマスク
     logic [7:0]                 BankRegInit[0:BANK_COUNT-1];    // バンクレジスタ初期値
-    logic [7:0]                 BankReg[0:BANK_COUNT-1];        // バンクレジスタ
+    logic [7:0]                 BankReg[0:BANK_COUNT-1];        // バンクレジスタ(マスク値)
+    logic [7:0]                 BankRegRaw[0:BANK_COUNT-1];     // バンクレジスタ(ライト値)
 
     // ホスト側ポート
     modport HOST(
                     output MemoryTopAddr, WriteProtect, is_16k_bank, CS1_Mask, CS2_Mask,
 
                     output BankRegAddrMask, BankRegAddr, BankRegMask, BankRegInit,
-                    input  BankReg
+                    input  BankReg, BankRegRaw
                 );
 
     // メガロムコントローラ側ポート
@@ -62,7 +63,7 @@ interface MEGAROM_IF #(parameter ADDR_BIT_WIDTH=24, BANK_COUNT = 4);
                     input  MemoryTopAddr, WriteProtect, is_16k_bank, CS1_Mask, CS2_Mask,
 
                     input  BankRegAddrMask, BankRegAddr, BankRegMask, BankRegInit,
-                    inout  BankReg
+                    inout  BankReg, BankRegRaw
                 );
 endinterface
 
@@ -246,12 +247,15 @@ module MEGAROM_CONTROLLER #(
             always_ff @(posedge CLK or negedge RESET_n) begin
                 if(!RESET_n) begin
                     Megarom.BankReg[bank_num] <= 0;
+                    Megarom.BankRegRaw[bank_num] <= 0;
                 end
                 else if(!Bus.RESET_n) begin
                     Megarom.BankReg[bank_num] <= Megarom.BankRegInit[bank_num];
+                    Megarom.BankRegRaw[bank_num] <= Megarom.BankRegInit[bank_num];
                 end
                 else if(det_wr && ((Bus.ADDR & Megarom.BankRegAddrMask) == Megarom.BankRegAddr[bank_num]) && BankEnable[bank_num]) begin
                     Megarom.BankReg[bank_num] <= Bus.DIN & Megarom.BankRegMask;
+                    Megarom.BankRegRaw[bank_num] <= Bus.DIN;
                 end
             end
         end

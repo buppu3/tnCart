@@ -154,8 +154,8 @@ module CARTRIDGE_MEGAROM #(
         always_ff @(posedge CLK or negedge RESET_n) begin
             if(!RESET_n)                      scc_bank_n <= 1;
             else if(!ExtBus[BUS_SCC].RESET_n) scc_bank_n <= 1;
-            else if(scc_mode_scci)            scc_bank_n <= Megarom.BankReg[{ExtBus[BUS_SCC].ADDR[15], ExtBus[BUS_SCC].ADDR[13]}][7] != 1'b1;   
-            else                              scc_bank_n <= Megarom.BankReg[{ExtBus[BUS_SCC].ADDR[15], ExtBus[BUS_SCC].ADDR[13]}][5:0] != 6'b111111;
+            else if(scc_mode_scci)            scc_bank_n <= Megarom.BankRegRaw[{ExtBus[BUS_SCC].ADDR[15], ExtBus[BUS_SCC].ADDR[13]}][7] != 1'b1;   
+            else                              scc_bank_n <= Megarom.BankRegRaw[{ExtBus[BUS_SCC].ADDR[15], ExtBus[BUS_SCC].ADDR[13]}][5:0] != 6'b111111;
         end
 
         // address decoder

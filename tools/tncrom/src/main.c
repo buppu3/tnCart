@@ -45,7 +45,7 @@
 #include "param.h"
 #include "message.h"
 
-#define VERSION (4)
+#define VERSION (5)
 
 
 static MAIN_PARAM_t main_param;     // パラメータ
