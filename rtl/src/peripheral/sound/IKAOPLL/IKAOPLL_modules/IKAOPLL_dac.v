@@ -23,15 +23,17 @@ module IKAOPLL_dac (
 
     //sign+magnitude output with no zero-level fluctuation
     output  wire                o_IMP_NOFLUC_SIGN,
-    output  wire signed [7:0]   o_IMP_NOFLUC_MAG,
+    output  wire        [7:0]   o_IMP_NOFLUC_MAG,
 
     //signed output with zero-level fluctuation
     output  wire signed [8:0]   o_IMP_FLUC_SIGNED_MO,    
     output  wire signed [8:0]   o_IMP_FLUC_SIGNED_RO,
 
     //"accumulated" output
+    input   wire signed [4:0]   i_ACC_SIGNED_MOVOL,
+    input   wire signed [4:0]   i_ACC_SIGNED_ROVOL,
     output  reg                 o_ACC_SIGNED_STRB,
-    output  reg  signed [12:0]  o_ACC_SIGNED
+    output  reg  signed [15:0]  o_ACC_SIGNED
 );
 
 
@@ -117,12 +119,12 @@ assign  o_IMP_FLUC_SIGNED_RO = perc_dac_en ? dac_out : dac_zlv;
 
 
 ///////////////////////////////////////////////////////////
-//////  Accumulation DAC(13-bit signed)
+//////  Accumulation DAC(16-bit signed)
 ////
 
 reg         [2:0]   cyc0_dly;
 reg                 dac_acc_en;
-reg signed  [12:0]  dac_acc;
+reg signed  [16:0]  dac_acc;
 always @(posedge emuclk) if(!phi1ncen_n) begin
     cyc0_dly[0] <= i_CYCLE_00;
     cyc0_dly[2:1] <= cyc0_dly[1:0];
@@ -130,12 +132,15 @@ always @(posedge emuclk) if(!phi1ncen_n) begin
     dac_acc_en <= ~i_INHIBIT_FDBK;
     
     if(cyc0_dly[2]) begin
-        dac_acc <= 13'sd0;
-        o_ACC_SIGNED <= dac_acc;
+        dac_acc <= 17'sd0;
+
+             if(dac_acc >  17'sd32767) o_ACC_SIGNED <= 16'sd32767;
+        else if(dac_acc < -17'sd32768) o_ACC_SIGNED <= -16'sd32768;
+        else o_ACC_SIGNED <= dac_acc[15:0];
     end
     else begin if(dac_acc_en) begin
-        if(ro_ctrl_z) dac_acc <= dac_acc + ($signed(snddata_signmag[8] ? {1'b1, ~snddata_signmag[7:0]} : {1'b0, snddata_signmag[7:0]}) * 13'sd2);
-        else          dac_acc <= dac_acc + $signed(snddata_signmag[8] ? {1'b1, ~snddata_signmag[7:0]} : {1'b0, snddata_signmag[7:0]});
+        if(ro_ctrl_z) dac_acc <= dac_acc + ($signed(snddata_signmag[8] ? {1'b1, ~snddata_signmag[7:0]} : {1'b0, snddata_signmag[7:0]}) * i_ACC_SIGNED_ROVOL);
+        else          dac_acc <= dac_acc + ($signed(snddata_signmag[8] ? {1'b1, ~snddata_signmag[7:0]} : {1'b0, snddata_signmag[7:0]}) * i_ACC_SIGNED_MOVOL);
     end end
 end
 
@@ -147,6 +152,5 @@ always @(posedge emuclk) if(!phi1ncen_n) begin
     if(dac_acc_outcyc == 5'd1) o_ACC_SIGNED_STRB <= 1'b1;
     else if(dac_acc_outcyc == 5'd10) o_ACC_SIGNED_STRB <= 1'b0;
 end
-
 
 endmodule

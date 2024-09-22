@@ -96,17 +96,19 @@ package CONFIG;
     /***************************************************************
      * アッテネータ
      ***************************************************************/
-    localparam          ATT_EXT_PSG_MUL         = 4;
-    localparam          ATT_EXT_PSG_DIV         = 5;
+    // 3.5mm ジャック
+    localparam          ATT_EXT_PSG_MUL         = 1;
+    localparam          ATT_EXT_PSG_DIV         = 1;
     localparam          ATT_EXT_FM_MUL          = 1;
     localparam          ATT_EXT_FM_DIV          = 1;
-    localparam          ATT_EXT_MEGAROM_MUL     = 4;
-    localparam          ATT_EXT_MEGAROM_DIV     = 5;
+    localparam          ATT_EXT_MEGAROM_MUL     = 1;
+    localparam          ATT_EXT_MEGAROM_DIV     = 1;
 
-    localparam          ATT_INT_FM_MUL          = 1;
-    localparam          ATT_INT_FM_DIV          = 1;
-    localparam          ATT_INT_MEGAROM_MUL     = 4;
-    localparam          ATT_INT_MEGAROM_DIV     = 5;
+    // MSX 本体側
+    localparam          ATT_INT_FM_MUL          = 9;
+    localparam          ATT_INT_FM_DIV          = 4;
+    localparam          ATT_INT_MEGAROM_MUL     = 9;
+    localparam          ATT_INT_MEGAROM_DIV     = 4;
 
     /***************************************************************
      * 機能

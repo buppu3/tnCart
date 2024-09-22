@@ -35,15 +35,17 @@ module IKAOPLL #(
 
     //sign+magnitude output with no zero-level fluctuation
     output  wire                o_IMP_NOFLUC_SIGN,
-    output  wire signed [7:0]   o_IMP_NOFLUC_MAG,
+    output  wire        [7:0]   o_IMP_NOFLUC_MAG,
 
     //signed output with zero-level fluctuation
     output  wire signed [8:0]   o_IMP_FLUC_SIGNED_MO,    
     output  wire signed [8:0]   o_IMP_FLUC_SIGNED_RO,
 
     //"accumulated" output
+    input   wire signed [4:0]   i_ACC_SIGNED_MOVOL,
+    input   wire signed [4:0]   i_ACC_SIGNED_ROVOL,
     output  wire                o_ACC_SIGNED_STRB,
-    output  wire signed [12:0]  o_ACC_SIGNED
+    output  wire signed [15:0]  o_ACC_SIGNED
 );
 
 
@@ -375,6 +377,8 @@ IKAOPLL_dac u_DAC (
     .o_IMP_NOFLUC_MAG           (o_IMP_NOFLUC_MAG           ),
     .o_IMP_FLUC_SIGNED_MO       (o_IMP_FLUC_SIGNED_MO       ),
     .o_IMP_FLUC_SIGNED_RO       (o_IMP_FLUC_SIGNED_RO       ),
+    .i_ACC_SIGNED_MOVOL         (i_ACC_SIGNED_MOVOL         ),
+    .i_ACC_SIGNED_ROVOL         (i_ACC_SIGNED_ROVOL         ),
     .o_ACC_SIGNED_STRB          (o_ACC_SIGNED_STRB          ),
     .o_ACC_SIGNED               (o_ACC_SIGNED               )
 );

@@ -69,11 +69,11 @@ assign  o_D_OE = |{i_CS_n, ~i_WR_n, i_A0, ~i_RST_n};
 
 wire            addrreg_wrrq, datareg_wrrq;
 IKAOPLL_rw_synchronizer #(.FULLY_SYNCHRONOUS(FULLY_SYNCHRONOUS)) u_sync_addrreg(
-    .i_EMUCLK(emuclk), .i_phiM_PCEN_n(phiMpcen_n), .i_phi1_NCEN_n(phi1ncen_n),
+    .i_EMUCLK(emuclk), .i_phiM_PCEN_n(phiMpcen_n), .i_phi1_PCEN_n(phi1pcen_n), .i_phi1_NCEN_n(phi1ncen_n),
     .i_RST_n(i_RST_n), .i_IN(~|{i_CS_n, i_WR_n, i_A0}), .o_OUT(addrreg_wrrq)
 );
 IKAOPLL_rw_synchronizer #(.FULLY_SYNCHRONOUS(FULLY_SYNCHRONOUS)) u_sync_datareg(
-    .i_EMUCLK(emuclk), .i_phiM_PCEN_n(phiMpcen_n), .i_phi1_NCEN_n(phi1ncen_n),
+    .i_EMUCLK(emuclk), .i_phiM_PCEN_n(phiMpcen_n), .i_phi1_PCEN_n(phi1pcen_n), .i_phi1_NCEN_n(phi1ncen_n),
     .i_RST_n(i_RST_n), .i_IN(~|{i_CS_n, i_WR_n, ~i_A0}), .o_OUT(datareg_wrrq)
 );
 
@@ -468,6 +468,7 @@ module IKAOPLL_rw_synchronizer #(parameter FULLY_SYNCHRONOUS = 1) (
     //chip clock
     input   wire            i_EMUCLK,
     input   wire            i_phiM_PCEN_n,
+    input   wire            i_phi1_PCEN_n,
     input   wire            i_phi1_NCEN_n,
 
     input   wire            i_RST_n,
@@ -489,14 +490,9 @@ assign          o_OUT = inreg[2];
 always @(posedge i_EMUCLK) begin
     if(!i_RST_n) inreg <= 3'b000;
     else begin
-        if(!i_phiM_PCEN_n) begin
-            inreg[0] <= busrq_latched;
-            inreg[1] <= inreg[0];
-        end
-
-        if(!i_phi1_NCEN_n) begin
-            inreg[2] <= inreg[1];
-        end
+        if(!i_phiM_PCEN_n) inreg[0] <= busrq_latched;
+        if(!i_phi1_PCEN_n) inreg[1] <= inreg[0];
+        if(!i_phi1_NCEN_n) inreg[2] <= inreg[1];
     end
 end
 
@@ -515,13 +511,9 @@ always @(posedge i_EMUCLK) begin
                 2'b10: inreg[0] <= 1'b0;
                 2'b11: inreg[0] <= 1'b0;
             endcase
-
-            inreg[1] <= inreg[0];
         end
-
-        if(!i_phi1_NCEN_n) begin
-            inreg[2] <= inreg[1];
-        end
+        if(!i_phi1_PCEN_n) inreg[1] <= inreg[0];
+        if(!i_phi1_NCEN_n) inreg[2] <= inreg[1];
     end
 end
 

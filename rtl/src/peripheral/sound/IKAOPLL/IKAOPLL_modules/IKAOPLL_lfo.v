@@ -119,7 +119,7 @@ always @(posedge emuclk) if(!phi1ncen_n) begin
 end
 
 assign  amval_sr_000_000_0XX = ~|{amval_sr[6:0], ~amval_tff, ~i_CYCLE_00};
-assign  amval_sr_1XX_1X1_1XX = ~|{amval_sr[6:5], amval_sr[3], amval_sr[0], amval_tff, ~i_CYCLE_00};
+assign  amval_sr_1XX_1X1_1XX = ~|{~amval_sr[6:5], ~amval_sr[3], ~amval_sr[0], amval_tff, ~i_CYCLE_00};
 
 //AM value D-latch, latches data @ CYCLE_00, should sample data at positive edge
 always @(posedge emuclk) if(!phi1pcen_n) if(i_CYCLE_00) o_AMVAL <= amval_sr[6:3];

@@ -53,6 +53,7 @@ if(FULLY_SYNCHRONOUS == 0) begin : FULLY_SYNCHRONOUS_0_reset_syncchain
         ic_n_negedge <= ic_n_internal[0] & ~ic_n_internal[2];
     end
 
+    assign  ic_n_zzzz = ic_n_internal[1];
     assign  o_RST_n = ic_n_internal[2];
 end
 else begin : FULLY_SYNCHRONOUS_1_reset_syncchain
