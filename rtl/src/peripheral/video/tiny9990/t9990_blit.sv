@@ -289,11 +289,12 @@ wire srch_edge_right = work.srch.edge_left;
         STATE_DST_WRITE_CPU_H_WAIT_ACK,
         STATE_DST_WRITE_CPU_H_WAIT_BUSY,
         STATE_DST_WRITE_CPU_WAIT_ACK,
-        STATE_DST_WRITE_P1_ODD_VRAM_WAIT_BUSY,
-        STATE_DST_WRITE_VRAM_WAIT_BUSY,
-        STATE_DST_WRITE_CPU_WAIT_BUSY,
+        STATE_DST_WRITE_WAIT,
         STATE_COMPLETE
     } state;
+localparam STATE_DST_WRITE_P1_ODD_VRAM_WAIT_BUSY = STATE_DST_WRITE_WAIT;
+localparam STATE_DST_WRITE_VRAM_WAIT_BUSY        = STATE_DST_WRITE_WAIT;
+localparam STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
 
     reg src_nx_over;
     reg dst_nx_over;
@@ -309,6 +310,56 @@ wire srch_edge_right = work.srch.edge_left;
         dst_change_x <= !(is_srch || is_line);
         src_change_y <= !(is_srch || is_line) && SRC_NX <= SRC_POS_COUNT;
         dst_change_y <= !(is_srch || is_line) && DST_NX <= DST_POS_COUNT;
+    end
+
+    always_ff @(posedge CLK) begin
+        if(REG.DSPM[1]) begin
+            // bitmap mode
+            XIMM <= REG.XIMM;
+            P1 <= 0;
+        end
+        else if(REG.DSPM[0]) begin
+            // P2 mode
+            XIMM <= T9990_REG::XIMM_512;
+            P1 <= 0;
+        end
+        else begin
+            // P1 mode
+            XIMM <= T9990_REG::XIMM_256;
+            P1 <= 1;
+        end
+    end
+
+    always_ff @(posedge CLK) begin
+        // SRC_CLRM
+        if(REG.OP == T9990_REG::CMD_CMMM || REG.OP == T9990_REG::CMD_BMXL|| REG.OP == T9990_REG::CMD_BMLL) begin
+            // byte mode
+            SRC_CLRM <= T9990_REG::CLRM_8BPP;
+        end
+        else if(REG.DSPM[1]) begin
+            // bitmap mode
+            SRC_CLRM <= REG.CLRM;
+        end
+        else begin
+            // P1/P2 mode
+            SRC_CLRM <= T9990_REG::CLRM_4BPP;
+        end
+    end
+
+    always_ff @(posedge CLK) begin
+        // DST_CLRM
+        if(REG.OP == T9990_REG::CMD_BMLX || REG.OP == T9990_REG::CMD_BMLL) begin
+            // byte mode
+            DST_CLRM <= T9990_REG::CLRM_8BPP;
+        end
+        else if(REG.DSPM[1]) begin
+            // bitmap mode
+            DST_CLRM <= REG.CLRM;
+        end
+        else begin
+            // P1/P2 mode
+            DST_CLRM <= T9990_REG::CLRM_4BPP;
+        end
     end
 
     always_ff @(posedge CLK or negedge RESET_n) begin
@@ -363,51 +414,6 @@ wire srch_edge_right = work.srch.edge_left;
 
                 work.char.decode_data <= 0;
                 work.char.decode_count <= 0;
-
-                //
-                if(REG.DSPM[1]) begin
-                    // bitmap mode
-                    XIMM <= REG.XIMM;
-                    P1 <= 0;
-                end
-                else if(REG.DSPM[0]) begin
-                    // P2 mode
-                    XIMM <= T9990_REG::XIMM_512;
-                    P1 <= 0;
-                end
-                else begin
-                    // P1 mode
-                    XIMM <= T9990_REG::XIMM_256;
-                    P1 <= 1;
-                end
-
-                // SRC_CLRM
-                if(REG.OP == T9990_REG::CMD_CMMM || REG.OP == T9990_REG::CMD_BMXL|| REG.OP == T9990_REG::CMD_BMLL) begin
-                    // byte mode
-                    SRC_CLRM <= T9990_REG::CLRM_8BPP;
-                end
-                else if(REG.DSPM[1]) begin
-                    // bitmap mode
-                    SRC_CLRM <= REG.CLRM;
-                end
-                else begin
-                    // P1/P2 mode
-                    SRC_CLRM <= T9990_REG::CLRM_4BPP;
-                end
-
-                // DST_CLRM
-                if(REG.OP == T9990_REG::CMD_BMLX || REG.OP == T9990_REG::CMD_BMLL) begin
-                    // byte mode
-                    DST_CLRM <= T9990_REG::CLRM_8BPP;
-                end
-                else if(REG.DSPM[1]) begin
-                    // bitmap mode
-                    DST_CLRM <= REG.CLRM;
-                end
-                else begin
-                    // P1/P2 mode
-                    DST_CLRM <= T9990_REG::CLRM_4BPP;
-                end
 
                 // SRC_NX, SRC_NY, DST_NX, DST_NY
                 if(REG.OP == T9990_REG::CMD_BMLL) begin
@@ -1285,7 +1291,7 @@ wire srch_edge_right = work.srch.edge_left;
         //
         // VRAM 書き込み完了 or P2 がアイドル なら次へ
         //
-        else if((state == STATE_DST_WRITE_P1_ODD_VRAM_WAIT_BUSY) || (state == STATE_DST_WRITE_VRAM_WAIT_BUSY) || (state == STATE_DST_WRITE_CPU_WAIT_BUSY)) begin
+        else if(state == STATE_DST_WRITE_WAIT) begin
             if(!CMD_MEM.BUSY && !P2_VDP_TO_CPU.ACK) begin
                 // 残り回数
                 if(dst_is_linear) begin
@@ -1544,7 +1550,8 @@ module T9990_BLIT_CALC_COUNT (
     // 1クロック目
     reg [4:0] remain;
     always_ff @(posedge CLK) begin
-        remain <= (REMAIN[18:4] != 0) ? 5'd16 : REMAIN[3:0];
+        if(IS_POINT) remain <= 5'd1;
+        else         remain <= (REMAIN[18:4] != 0) ? 5'd16 : REMAIN[3:0];
     end
 
     reg [4:0] count;
@@ -1567,7 +1574,7 @@ module T9990_BLIT_CALC_COUNT (
 
     // 2クロック目
     always_ff @(posedge CLK) begin
-        COUNT <= IS_POINT ? 5'd1 : (count > remain ? remain : count);
+        COUNT <= count > remain ? remain : count;
     end
 endmodule
 
