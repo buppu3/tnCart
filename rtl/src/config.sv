@@ -122,6 +122,10 @@ package CONFIG;
     //localparam        ENABLE_PAC_WRITE        = ENABLE;           // PAC データを FLASH に保存するか(DISABLE/ENABLE)
     localparam          ENABLE_SCANLINE         = DISABLE;          // 200ラインモード時に走査線の隙間を空ける
 
+    /***************************************************************
+     * other
+     ***************************************************************/
+    localparam          SYNC_CPU_CLK            = 0;                // 動作クロックを CPU クロックと同期するか(0=同期/1=非同期)
 endpackage
 
 `default_nettype wire

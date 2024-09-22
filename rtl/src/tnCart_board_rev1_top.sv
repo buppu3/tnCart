@@ -117,7 +117,7 @@ module TNCART_BOARD_REV1_TOP (
     logic CLK_21M;
     BOARD_REV1_CLOCK u_clk (
         .RESET_n        (1'b1),
-        .CLK_IN(CART_CLOCK),
+        .CLK_IN(CONFIG::SYNC_CPU_CLK ? CART_CLOCK : CLK_27M),
         .CLK_BASE,
         .CLK_BASE_READY,
         .CLK_MEM,

@@ -121,6 +121,7 @@ module BOARD_REV1_CLOCK (
      ***************************************************************/
     wire CLK_MEM_LOCK;
     assign CLK_MEM_READY = RESET_n && CLK_MEM_LOCK;
+if(CONFIG::SYNC_CPU_CLK) begin
     rPLL u_pll_base (
         .CLKOUT(CLK_MEM),
         .LOCK(CLK_MEM_LOCK),
@@ -161,6 +162,49 @@ module BOARD_REV1_CLOCK (
     defparam u_pll_base.CLKOUTD_SRC = "CLKOUT";
     defparam u_pll_base.CLKOUTD3_SRC = "CLKOUT";
     defparam u_pll_base.DEVICE = "GW2AR-18C";
+end
+else begin
+    rPLL u_pll_base (
+        .CLKOUT(CLK_MEM),
+        .LOCK(CLK_MEM_LOCK),
+        .CLKOUTP(CLK_MEM_P),
+        .CLKOUTD(),
+        .CLKOUTD3(),
+        .RESET(!RESET_n),
+        .RESET_P(1'b0),
+        .CLKIN(CLK_IN),
+        .CLKFB(1'b0),
+        .FBDSEL({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0}),
+        .IDSEL({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0}),
+        .ODSEL({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0}),
+        .PSDA({1'b0,1'b0,1'b0,1'b0}),
+        .DUTYDA({1'b0,1'b0,1'b0,1'b0}),
+        .FDLY({1'b1,1'b1,1'b1,1'b1})
+    );
+
+    defparam u_pll_base.FCLKIN = "27";
+    defparam u_pll_base.DYN_IDIV_SEL = "false";
+    defparam u_pll_base.IDIV_SEL = 0;
+    defparam u_pll_base.DYN_FBDIV_SEL = "false";
+    defparam u_pll_base.FBDIV_SEL = 3;
+    defparam u_pll_base.DYN_ODIV_SEL = "false";
+    defparam u_pll_base.ODIV_SEL = 8;
+    defparam u_pll_base.PSDA_SEL = "1000";
+    defparam u_pll_base.DYN_DA_EN = "false";
+    defparam u_pll_base.DUTYDA_SEL = "1000";
+    defparam u_pll_base.CLKOUT_FT_DIR = 1'b1;
+    defparam u_pll_base.CLKOUTP_FT_DIR = 1'b1;
+    defparam u_pll_base.CLKOUT_DLY_STEP = 0;
+    defparam u_pll_base.CLKOUTP_DLY_STEP = 0;
+    defparam u_pll_base.CLKFB_SEL = "internal";
+    defparam u_pll_base.CLKOUT_BYPASS = "false";
+    defparam u_pll_base.CLKOUTP_BYPASS = "false";
+    defparam u_pll_base.CLKOUTD_BYPASS = "false";
+    defparam u_pll_base.DYN_SDIV_SEL = 2;
+    defparam u_pll_base.CLKOUTD_SRC = "CLKOUT";
+    defparam u_pll_base.CLKOUTD3_SRC = "CLKOUT";
+    defparam u_pll_base.DEVICE = "GW2AR-18C";
+end
 
     /***************************************************************
      * 107.4MHz / 5 = 21.48MHz
