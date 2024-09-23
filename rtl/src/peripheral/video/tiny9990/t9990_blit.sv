@@ -239,7 +239,7 @@ wire srch_edge_right = work.srch.edge_left;
                          (REG.LO[2'b10] ? ( src_data_le & ~DST_DATA) : 32'b0) |
                          (REG.LO[2'b11] ? ( src_data_le &  DST_DATA) : 32'b0));
 
-    enum logic [5:0] {
+    typedef enum logic [5:0] {
         STATE_IDLE,
         STATE_STOP,
         STATE_LINE,
@@ -291,10 +291,12 @@ wire srch_edge_right = work.srch.edge_left;
         STATE_DST_WRITE_CPU_WAIT_ACK,
         STATE_DST_WRITE_WAIT,
         STATE_COMPLETE
-    } state;
-localparam STATE_DST_WRITE_P1_ODD_VRAM_WAIT_BUSY = STATE_DST_WRITE_WAIT;
-localparam STATE_DST_WRITE_VRAM_WAIT_BUSY        = STATE_DST_WRITE_WAIT;
-localparam STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
+    } state_t;
+localparam state_t STATE_DST_WRITE_P1_ODD_VRAM_WAIT_BUSY = STATE_DST_WRITE_WAIT;
+localparam state_t STATE_DST_WRITE_VRAM_WAIT_BUSY        = STATE_DST_WRITE_WAIT;
+localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
+
+    state_t state;
 
     reg src_nx_over;
     reg dst_nx_over;
