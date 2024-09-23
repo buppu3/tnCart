@@ -191,7 +191,6 @@ module EXPANSION_BUS #(
             end
 
             assign Secondary[num].CLK_21M = Primary.CLK_21M;
-            assign Secondary[num].CLK_14M = Primary.CLK_14M;
 
             assign tmp_dout    [num] = Secondary[num].DOUT     | ((num < COUNT-1) ? tmp_dout    [num + 1] : 0);
             assign tmp_busdir_n[num] = Secondary[num].BUSDIR_n & ((num < COUNT-1) ? tmp_busdir_n[num + 1] : 1);
