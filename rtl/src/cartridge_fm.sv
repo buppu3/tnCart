@@ -202,12 +202,14 @@ if(CONFIG::ENABLE_FM == CONFIG::ENABLE_IKAOPLL) begin
     reg dac_stb_delay;
     always_ff @(posedge Bus.CLK_21M) dac_stb_delay <= dac_stb;
 
+    wire [15:0] dac_sig_ext = {dac_sig[12:0], 3'd0};
+
     always_ff @(posedge Bus.CLK_21M or negedge RESET_n) begin
         if(!RESET_n) begin
             Sound.Signal <= 0;
         end
         else if(!dac_stb_delay && dac_stb) begin
-            Sound.Signal <= dac_sig[12:3];
+            Sound.Signal <= dac_sig_ext[15:16-$bits(Sound.Signal)];
         end
     end
 

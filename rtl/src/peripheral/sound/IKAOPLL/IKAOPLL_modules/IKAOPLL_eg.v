@@ -59,7 +59,7 @@ always @(posedge emuclk) begin
         if(i_CYCLE_21) eg_prescaler <= eg_prescaler + 2'd1;
     end end
 
-    eg_prescaler_d0_z <= eg_prescaler[0];
+    if(!phi1ncen_n) eg_prescaler_d0_z <= eg_prescaler[0];
 end
 
 

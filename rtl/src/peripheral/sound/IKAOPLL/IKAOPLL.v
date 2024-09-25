@@ -38,8 +38,8 @@ module IKAOPLL #(
     output  wire        [7:0]   o_IMP_NOFLUC_MAG,
 
     //signed output with zero-level fluctuation
-    output  wire signed [8:0]   o_IMP_FLUC_SIGNED_MO,    
-    output  wire signed [8:0]   o_IMP_FLUC_SIGNED_RO,
+    output  wire signed [9:0]   o_IMP_FLUC_SIGNED_MO,    
+    output  wire signed [9:0]   o_IMP_FLUC_SIGNED_RO,
 
     //"accumulated" output
     input   wire signed [4:0]   i_ACC_SIGNED_MOVOL,

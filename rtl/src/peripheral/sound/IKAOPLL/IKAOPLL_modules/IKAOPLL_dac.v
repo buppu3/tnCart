@@ -26,8 +26,8 @@ module IKAOPLL_dac (
     output  wire        [7:0]   o_IMP_NOFLUC_MAG,
 
     //signed output with zero-level fluctuation
-    output  wire signed [8:0]   o_IMP_FLUC_SIGNED_MO,    
-    output  wire signed [8:0]   o_IMP_FLUC_SIGNED_RO,
+    output  wire signed [9:0]   o_IMP_FLUC_SIGNED_MO,    
+    output  wire signed [9:0]   o_IMP_FLUC_SIGNED_RO,
 
     //"accumulated" output
     input   wire signed [4:0]   i_ACC_SIGNED_MOVOL,
@@ -111,8 +111,8 @@ assign  o_IMP_NOFLUC_SIGN = snddata_signmag[8];
 assign  o_IMP_NOFLUC_MAG = snddata_signmag[7:0];
 
 //dac
-wire signed [8:0]   dac_out = snddata_signmag[8] ? {1'b1, ~snddata_signmag[7:0]} : {1'b0, snddata_signmag[7:0]};
-wire signed [8:0]   dac_zlv = snddata_signmag[8] ? 9'h1FF : 9'h1; //zero level
+wire signed [9:0]   dac_out = snddata_signmag[8] ? {2'b11, ~snddata_signmag[7:0]}: {2'b00, snddata_signmag[7:0]} + 10'b1;
+wire signed [9:0]   dac_zlv = snddata_signmag[8] ? 10'h3FF : 10'h1; //zero level
 assign  o_IMP_FLUC_SIGNED_MO = fm_dac_en   ? dac_out : dac_zlv;
 assign  o_IMP_FLUC_SIGNED_RO = perc_dac_en ? dac_out : dac_zlv;
 
