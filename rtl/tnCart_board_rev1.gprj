@@ -17,11 +17,6 @@
         <File path="src/cartridge_ram.sv" type="file.verilog" enable="1"/>
         <File path="src/cartridge_v9990.sv" type="file.verilog" enable="1"/>
         <File path="src/config.sv" type="file.verilog" enable="1"/>
-        <File path="src/debug/debugger.sv" type="file.verilog" enable="1"/>
-        <File path="src/debug/debugger_bus_sim.sv" type="file.verilog" enable="1"/>
-        <File path="src/debug/debugger_get_hex.sv" type="file.verilog" enable="1"/>
-        <File path="src/debug/debugger_input.sv" type="file.verilog" enable="1"/>
-        <File path="src/debug/debugger_output.sv" type="file.verilog" enable="1"/>
         <File path="src/main.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/flash.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/led.sv" type="file.verilog" enable="1"/>
