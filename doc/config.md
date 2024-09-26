@@ -32,6 +32,9 @@ ENABLE_* パラメータで各機能の ENABLE/DISABLE を設定できます。
 | ENABLE_V9990<br/>ENABLE_V9990_CMD | V9990 エミュレータの有効(ENABLE)/無効(DISABLE)を設定します。|
 | ENABLE_SCANLINE | アップスキャン時に走査線の隙間あり(ENABLE)/隙間なし(DISABLE)を設定します。 |
 
+## 備考
 ~~V9990 機能を有効にする際は、config.sv の ENABLE_V9990, ENABLE_V9990_CMD を 1 に、ENABLE_FM, ENABLE_PSG, ENABLE_SCC 等を 0 に変更してから論理合成してください。全ての機能を有効にした状態では回路の規模が大きくなるため、TangNano20K では合成できません。~~
 
-現在のバージョンは TangNano20K にギリギリ収まるサイズに最適化したので ENABLE_V9990, ENABLE_V9990_CMD, ENABLE_FM, ENABLE_PSG, ENABLE_SCC はすべて ENABLE になっています。
+現在のバージョンは TangNano20K にギリギリ収まるサイズに最適化したので ENABLE_V9990, ENABLE_V9990_CMD, ENABLE_FM, ENABLE_PSG, ENABLE_SCC はすべて ENABLE になっています。  
+
+Gowin Synthesis のバージョンで出力されるネットリストが違いますので、合成後は Time Analysis Report を確認した方がよいです(私は V1.9.9_x64で合成しています)。
