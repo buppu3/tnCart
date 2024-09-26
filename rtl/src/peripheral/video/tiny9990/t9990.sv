@@ -33,14 +33,14 @@
 
 `default_nettype none
 
-package T9990;
+package T9990_RESO;
     // RESO
-    localparam [2:0] RESO_B1 = 3'd0;    // 256x212
-    localparam [2:0] RESO_B2 = 3'd1;    // 384x240
-    localparam [2:0] RESO_B3 = 3'd2;    // 512x212
-    localparam [2:0] RESO_B4 = 3'd3;    // 768x240
-    localparam [2:0] RESO_B5 = 3'd4;    // 640x400
-    localparam [2:0] RESO_B6 = 3'd5;    // 640x480
+    localparam [2:0] B1 = 3'd0;    // 256x212
+    localparam [2:0] B2 = 3'd1;    // 384x240
+    localparam [2:0] B3 = 3'd2;    // 512x212
+    localparam [2:0] B4 = 3'd3;    // 768x240
+    localparam [2:0] B5 = 3'd4;    // 640x400
+    localparam [2:0] B6 = 3'd5;    // 640x480
 endpackage
 
 /***********************************************************************

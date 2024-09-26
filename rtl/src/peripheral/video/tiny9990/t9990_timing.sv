@@ -33,14 +33,17 @@
 
 `default_nettype none
 
-package T9990_TIMING;
-    localparam [2:0] RAM_XX = 3'h0;
-    localparam [2:0] RAM_VC = 3'h1;
-    localparam [2:0] RAM_SP = 3'h2;
-    localparam [2:0] RAM_BP = 3'h3;
-    localparam [2:0] RAM_PA = 3'h4;
-    localparam [2:0] RAM_PB = 3'h5;
-    localparam [2:0] RAM_RF = 3'h6;
+/***************************************************************
+ * メモリ接続先
+ ***************************************************************/
+package T9990_MEM_CONNECT;
+    localparam [2:0] RAM_XX = 3'h0; // no connect
+    localparam [2:0] RAM_VC = 3'h1; // VDP command / CPU
+    localparam [2:0] RAM_SP = 3'h2; // sprite
+    localparam [2:0] RAM_BP = 3'h3; // bitmap
+    localparam [2:0] RAM_PA = 3'h4; // Pattern A
+    localparam [2:0] RAM_PB = 3'h5; // Pattern B
+    localparam [2:0] RAM_RF = 3'h6; // refresh
 endpackage
 
 /***************************************************************
@@ -55,13 +58,13 @@ interface T9990_MEM_TIMING;
     modport RAM( input  PREP, EXEC, STATE );
 endinterface
 
-    localparam [2:0]    RAM_XX = T9990_TIMING::RAM_XX;  // なし
-    localparam [2:0]    RAM_VC = T9990_TIMING::RAM_VC;  // VDP コマンド or CPU R/W
-    localparam [2:0]    RAM_SP = T9990_TIMING::RAM_SP;  // スプライト
-    localparam [2:0]    RAM_BP = T9990_TIMING::RAM_BP;  // ビットマップ
-    localparam [2:0]    RAM_PA = T9990_TIMING::RAM_PA;  // P1A/P2
-    localparam [2:0]    RAM_PB = T9990_TIMING::RAM_PB;  // P1B
-    localparam [2:0]    RAM_RF = T9990_TIMING::RAM_RF;  // リフレッシュ
+    localparam [2:0]    RAM_XX = T9990_MEM_CONNECT::RAM_XX;  // なし
+    localparam [2:0]    RAM_VC = T9990_MEM_CONNECT::RAM_VC;  // VDP コマンド or CPU R/W
+    localparam [2:0]    RAM_SP = T9990_MEM_CONNECT::RAM_SP;  // スプライト
+    localparam [2:0]    RAM_BP = T9990_MEM_CONNECT::RAM_BP;  // ビットマップ
+    localparam [2:0]    RAM_PA = T9990_MEM_CONNECT::RAM_PA;  // P1A/P2
+    localparam [2:0]    RAM_PB = T9990_MEM_CONNECT::RAM_PB;  // P1B
+    localparam [2:0]    RAM_RF = T9990_MEM_CONNECT::RAM_RF;  // リフレッシュ
 
 /***************************************************************
  * タイミングジェネレータモジュール

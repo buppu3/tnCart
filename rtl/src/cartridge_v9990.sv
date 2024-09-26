@@ -169,12 +169,12 @@ module CARTRIDGE_V9990 #(
         video_b    <= {b,b[4:2]};
         video_hs_n <= !hs;
         video_vs_n <= !vs;
-        video_reso <= (reso == T9990::RESO_B1) ? VIDEO::RESOLUTION_B1 :
-                              (reso == T9990::RESO_B2) ? VIDEO::RESOLUTION_B2 :
-                              (reso == T9990::RESO_B3) ? VIDEO::RESOLUTION_B3 :
-                              (reso == T9990::RESO_B4) ? VIDEO::RESOLUTION_B4 :
-                              (reso == T9990::RESO_B5) ? VIDEO::RESOLUTION_B5 :
-                              (reso == T9990::RESO_B6) ? VIDEO::RESOLUTION_B6 : VIDEO::RESOLUTION_B1;
+        video_reso <= (reso == T9990_RESO::B1) ? VIDEO::RESOLUTION_B1 :
+                      (reso == T9990_RESO::B2) ? VIDEO::RESOLUTION_B2 :
+                      (reso == T9990_RESO::B3) ? VIDEO::RESOLUTION_B3 :
+                      (reso == T9990_RESO::B4) ? VIDEO::RESOLUTION_B4 :
+                      (reso == T9990_RESO::B5) ? VIDEO::RESOLUTION_B5 :
+                      (reso == T9990_RESO::B6) ? VIDEO::RESOLUTION_B6 : VIDEO::RESOLUTION_B1;
     end
         
 
