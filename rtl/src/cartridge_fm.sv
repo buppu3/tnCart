@@ -355,22 +355,24 @@ module LPF_OPLL #(
      * ビット拡張
      ***************************************************************/
     logic [SUM_BIT_WIDTH-1:0] in_extend;
-    SIGN_EXTENSION #(
-        .IN_WIDTH($bits(IN)),
-        .OUT_WIDTH($bits(in_extend))
-    ) u_sign_ext_in (
-        .IN(IN),
-        .OUT(in_extend)
-    );
+    if(1) begin
+        wire [(SUM_BIT_WIDTH-$bits(IN))-1:0] sign = -1;
+        wire [(SUM_BIT_WIDTH-$bits(IN))-1:0] zero = 0;
+        assign in_extend = IN[$bits(IN)-1] ? { sign, IN } : { zero, IN };
+    end
+    else begin
+        assign in_extend = SUM_BIT_WIDTH'(signed'(IN));
+    end
 
     logic [SUM_BIT_WIDTH-1:0] buffer_extend;
-    SIGN_EXTENSION #(
-        .IN_WIDTH($bits(buffer[0])),
-        .OUT_WIDTH($bits(buffer_extend))
-    ) u_sign_ext_buffer (
-        .IN(buffer[index]),
-        .OUT(buffer_extend)
-    );
+    if(1) begin
+        wire [(SUM_BIT_WIDTH-$bits(buffer[index]))-1:0] sign = -1;
+        wire [(SUM_BIT_WIDTH-$bits(buffer[index]))-1:0] zero = 0;
+        assign buffer_extend = buffer[index][$bits(buffer[index])-1] ? { sign, buffer[index] } : { zero, buffer[index] };
+    end
+    else begin
+        assign buffer_extend = SUM_BIT_WIDTH'(signed'(buffer[index]));
+    end
 
     /***************************************************************
      * 加算値計算

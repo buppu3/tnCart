@@ -95,14 +95,17 @@ module SOUND_MIXER #(
     generate
         genvar ch;
         for(ch = 0; ch < COUNT; ch = ch + 1) begin: ch_loop
-            SIGN_EXTENSION #(
-                .IN_WIDTH($bits(IN[ch].Signal)),
-                .OUT_WIDTH($bits(value[ch]))
-            ) u_sign_ext (
-                .IN(IN[ch].Signal),
-                .OUT(value[ch])
-            );
+            // 符号付ビット長の拡張
+            if(1) begin
+                wire [$clog2(COUNT+1)-1:0] sign = -1;
+                wire [$clog2(COUNT+1)-1:0] zero = 0;
+                assign value[ch] = IN[ch].Signal[$bits(IN[ch].Signal)-1] ? { sign, IN[ch].Signal } : { zero, IN[ch].Signal };
+            end
+            else begin
+                assign value[ch] = SUM_BIT_WIDTH'(signed'(IN[ch].Signal));
+            end
 
+            // 加算
             if(ch == COUNT - 1)
                 assign result[ch] = value[ch];
             else
