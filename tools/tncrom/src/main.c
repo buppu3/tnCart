@@ -95,27 +95,33 @@ static void set_rom_enable(uint8_t sltnum, int enable, int enable_continuous)
  *    0  : 成功
  *    !0 : 失敗
  ***********************************************/
-static int xfer_bank(uint8_t sltnum, uint8_t bank, BDOS_FILE_t *file)
+static int xfer_bank(uint8_t sltnum, uint8_t bank, BDOS_FILE_t *file, uint32_t pending)
 {
     int res;
     uint16_t addr = (uint16_t)0x8000;
+    uint16_t readed;
 
     // バンク切り替え
     set_bank1_reg(sltnum, bank);
 
     for(uint8_t i = 0; i < (uint8_t)(16384 / 128); i++)
     {
-        // 128バイト読み出し
-        if(0 != (res = bdos_fread(file, NULL))){
-            printf(MSG_ERR_FILEREAD);
-            return res;
-        }
+        if (pending > 0) {
+            // 128バイト読み出し
+            if(0 != (res = bdos_fread(file, &readed))){
+                printf(MSG_ERR_FILEREAD);
+                return res;
+            }
 
-        // データを転送
-        xfer_memory(sltnum, (VOID_PTR_t)addr, file->buffer, 128);
+            // データを転送
+            xfer_memory(sltnum, (VOID_PTR_t)addr, file->buffer, readed);
 
-        // 次の準備
-        addr += (uint16_t)128;
+            // 次の準備
+            addr += (uint16_t)readed;
+
+            pending -= readed;
+        } else
+            break;
     }
 
     return 0;
@@ -152,11 +158,14 @@ static int xfer_file(uint8_t sltnum, BDOS_FILE_t *file)
         printf(MSG_PROGRESS, bank);
 
         // 16KB 転送
-        if(0 != (res = xfer_bank(sltnum, bank, file))) return res;
+        if(0 != (res = xfer_bank(sltnum, bank, file, size))) return res;
 
         // 次の準備
         bank++;
-        size -= (uint32_t)16384;
+
+        // support less than 16K ROMs
+        uint16_t remaining = (size >= 16384)? 16384 : size;
+        size -= remaining;
     }    
 
     printf(MSG_PROGRESS_TERM);
