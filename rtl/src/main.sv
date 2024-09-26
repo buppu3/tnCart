@@ -56,7 +56,7 @@ module MAIN (
     localparam SOUND_FM_EXT  = 2;
     localparam SOUND_PSG     = 3;
     localparam SOUND_COUNT   = 4;
-    SOUND_IF Sound[0:SOUND_COUNT-1]();
+    SOUND_IF #(.BIT_WIDTH(CONFIG::SOUND_BIT_WIDTH)) Sound[0:SOUND_COUNT-1]();
 
     /***************************************************************
      * RAM I/F を複数に拡張
@@ -70,7 +70,7 @@ module MAIN (
     RAM_IF ExpRam[0:RAM_COUNT-1]();
     EXPANSION_RAM #(
         .COUNT          (RAM_COUNT),
-        .USE_FF         (0)
+        .USE_FF         (CONFIG::RAM_IF_EXPANSION_USES_FF)
     ) u_expram (
         .RESET_n,
         .CLK,
@@ -91,7 +91,7 @@ module MAIN (
     BUS_IF  ExpBus[0:BUS_COUNT-1]();
     EXPANSION_SLOT #(
         .COUNT          (BUS_COUNT),
-        .USE_FF         (1)
+        .USE_FF         (CONFIG::SLOT_EXPANSION_USES_FF)
     ) u_sltexp (
         .RESET_n        (SYS_RESET_n),
         .CLK,
@@ -257,7 +257,7 @@ module MAIN (
     localparam SOUND_EXT_FM      = 1;
     localparam SOUND_EXT_PSG     = 2;
     localparam SOUND_EXT_COUNT   = 3;
-    SOUND_IF AttOutExt[0:SOUND_EXT_COUNT-1]();
+    SOUND_IF #(.BIT_WIDTH($bits(Sound[0].Signal))) AttOutExt[0:SOUND_EXT_COUNT-1]();
 
     if(CONFIG::ENABLE_MEGAROM) begin
         SOUND_ATTENUATOR #(
@@ -304,14 +304,24 @@ module MAIN (
         always_comb AttOutExt[SOUND_EXT_PSG].connect_dummy();
     end
 
+    SOUND_IF #(.BIT_WIDTH($bits(AttOutExt[0].Signal))) mix_ext();
+
     SOUND_MIXER #(
         .COUNT          (SOUND_EXT_COUNT)
     ) u_mixer_ext (
         .RESET_n,
         .CLK,
         .IN             (AttOutExt),
-        .OUT            (SoundExternal)
+        .OUT            (mix_ext)
     );
+
+    if($bits(SoundExternal.Signal) == $bits(mix_ext.Signal)) begin
+        assign SoundExternal.Signal = mix_ext.Signal;
+    end
+    else begin
+        wire [$bits(mix_ext.Signal)+16-1:0] mix_ext_ex = { mix_ext.Signal, 16'd0 };
+        assign SoundExternal.Signal = mix_ext_ex[$bits(mix_ext_ex)-1:$bits(mix_ext_ex)-$bits(SoundExternal.Signal)];
+    end
 
     /***************************************************************
      * カートリッジサウンド出力ミキサー
@@ -319,7 +329,7 @@ module MAIN (
     localparam SOUND_INT_MEGAROM = 0;
     localparam SOUND_INT_FM      = 1;
     localparam SOUND_INT_COUNT   = 2;
-    SOUND_IF AttOutInt[0:SOUND_INT_COUNT-1]();
+    SOUND_IF #(.BIT_WIDTH($bits(Sound[0].Signal))) AttOutInt[0:SOUND_INT_COUNT-1]();
 
     if(CONFIG::ENABLE_MEGAROM) begin
         SOUND_ATTENUATOR #(
@@ -351,14 +361,24 @@ module MAIN (
         always_comb AttOutInt[SOUND_INT_FM].connect_dummy();
     end
 
+    SOUND_IF #(.BIT_WIDTH($bits(AttOutInt[0].Signal))) mix_int();
+
     SOUND_MIXER #(
         .COUNT          (SOUND_INT_COUNT)
     ) u_mixer_int (
         .RESET_n,
         .CLK,
         .IN             (AttOutInt),
-        .OUT            (SoundInternal)
+        .OUT            (mix_int)
     );
+
+    if($bits(SoundInternal.Signal) == $bits(mix_int.Signal)) begin
+        assign SoundInternal.Signal = mix_int.Signal;
+    end
+    else begin
+        wire [$bits(mix_int.Signal)+16-1:0] mix_int_ex = { mix_int.Signal, 16'd0 };
+        assign SoundInternal.Signal = mix_int_ex[$bits(mix_int_ex)-1:$bits(mix_int_ex)-$bits(SoundInternal.Signal)];
+    end
 
 endmodule
 

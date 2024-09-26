@@ -139,7 +139,7 @@ module EXPANSION_RAM #(
             if(!RESET_n) begin
                 Primary.ADDR   <= 0;
                 Primary.DIN    <= 0;
-                Primary.DIN_SIZE<= Primary.DIN_SIZE_8;
+                Primary.DIN_SIZE<= RAM::DIN_SIZE_8;
                 Primary.OE_n   <= 1;
                 Primary.WE_n   <= 1;
                 Primary.RFSH_n <= 1;

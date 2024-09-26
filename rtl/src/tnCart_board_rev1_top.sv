@@ -33,9 +33,6 @@
 
 `default_nettype none
 
-localparam DEBUG = 0;
-localparam BUS_SIM = 0;
-
 module TNCART_BOARD_REV1_TOP (
     input   wire            CLK_27M,
 
@@ -117,7 +114,7 @@ module TNCART_BOARD_REV1_TOP (
     logic CLK_21M;
     BOARD_REV1_CLOCK u_clk (
         .RESET_n        (1'b1),
-        .CLK_IN(CONFIG::SYNC_CPU_CLK ? CART_CLOCK : CLK_27M),
+        .CLK_IN         (CONFIG::SYNC_CPU_CLK ? CART_CLOCK : CLK_27M),
         .CLK_BASE,
         .CLK_BASE_READY,
         .CLK_MEM,
@@ -134,22 +131,22 @@ module TNCART_BOARD_REV1_TOP (
      ***************************************************************/
     UART_RX_IF RXD();
     UART_RX #(
-        .CLKFREQ(108_000_000)
+        .CLKFREQ            (108_000_000)
     ) u_rxd (
         .RESET_n,
         .CLK,
-        .RXD(UART_RX),
-        .Uart_rx_interface(RXD)
+        .RXD                (UART_RX),
+        .Uart_rx_interface  (RXD)
     );
 
     UART_TX_IF TXD();
     UART_TX #(
-        .CLKFREQ(108_000_000)
+        .CLKFREQ            (108_000_000)
     ) u_txd (
         .RESET_n,
         .CLK,
-        .TXD(UART_TX),
-        .Uart_tx_interface(TXD)
+        .TXD                (UART_TX),
+        .Uart_tx_interface  (TXD)
     );
 
     /***************************************************************
@@ -158,120 +155,39 @@ module TNCART_BOARD_REV1_TOP (
     wire RESET_n;
     wire CLK = CLK_BASE;
     BUS_IF Bus();
-    if(DEBUG) begin
-        assign RESET_n = CLK_BASE_READY && sdram_ready && RESET_OUT_n;
-        BUS_IF BusMsx();
-        if(BUS_SIM) begin
-            DEBUGGER_BUS_SIM u_bus (
-                .RESET_n,
-                .CLK,
-                .CLK_21M,
-                .Bus(BusMsx)
-            );
-            BUS_IF BusDummy();
-            BOARD_REV1_BUS u_bus_dmy (
-                .RESET_n,
-                .CLK,
-                .CLK_21M,
-                .CART_BUSDIR_n,
-                .CART_INT_n,
-                .CART_WAIT_n,
-                .CART_SLTSL_n,
-                .CART_RD_n,
-                .CART_WR_n,
-                .CART_CLOCK,
-                .CART_MUX_SIG,
-                .CART_MUX_CS_n,
-                .CART_DATA_SIG,
-                .CART_DATA_DIR,
-                .Bus(BusDummy)
-            );
-            assign BusDummy.DOUT = 0;
-            assign BusDummy.BUSDIR_n = 1;
-            assign BusDummy.INT_n = 1;
-            assign BusDummy.WAIT_n = 1;
-        end
-        else begin
-            BOARD_REV1_BUS u_bus (
-                .RESET_n,
-                .CLK,
-                .CLK_21M,
-                .CART_BUSDIR_n,
-                .CART_INT_n,
-                .CART_WAIT_n,
-                .CART_SLTSL_n,
-                .CART_RD_n,
-                .CART_WR_n,
-                .CART_CLOCK,
-                .CART_MUX_SIG,
-                .CART_MUX_CS_n,
-                .CART_DATA_SIG,
-                .CART_DATA_DIR,
-                .Bus(BusMsx)
-            );
-        end
-        logic RESET_OUT_n;
-        DEBUGGER u_dbg (
-            .RESET_n,
-            .CLK,
-            .IN(BusMsx),
-            .OUT(Bus),
-            .RESET_OUT_n,
-            .TXD,
-            .RXD
-        );
-    end
-    else if(BUS_SIM) begin
-        assign RESET_n = CLK_BASE_READY && sdram_ready;
-        DEBUGGER_BUS_SIM u_bus (
-            .RESET_n,
-            .CLK,
-            .CLK_21M,
-            .Bus
-        );
-        assign CART_BUSDIR_n = 1;
-        assign CART_INT_n = 1;
-        assign CART_WAIT_n = 1;
-        assign CART_MUX_CS_n[0] = 1;
-        assign CART_MUX_CS_n[1] = 1;
-        assign CART_MUX_CS_n[2] = 1;
-        assign CART_DATA_DIR = 1;
-        assign CART_DATA_SIG = 8'bZZZZ_ZZZZ;
-    end
-    else begin
-        // リセット信号処理
-        reg reset_n = 0;
-        assign RESET_n = reset_n;
-        always_ff @(posedge CLK_BASE or negedge CLK_BASE_READY or negedge sdram_ready) begin
-            if(!CLK_BASE_READY) reset_n <= 0;       // PLL 準備中ならリセット
-            else if(!sdram_ready) reset_n <= 0;     // SDRAM 準備中ならリセット
-            else reset_n <= 1; 
-        end
 
-        // バス信号処理
-        BOARD_REV1_BUS u_bus (
-            .RESET_n,
-            .CLK,
-            .CLK_21M,
-            .CART_BUSDIR_n,
-            .CART_INT_n,
-            .CART_WAIT_n,
-            .CART_SLTSL_n,
-            .CART_RD_n,
-            .CART_WR_n,
-            .CART_CLOCK,
-            .CART_MUX_SIG,
-            .CART_MUX_CS_n,
-            .CART_DATA_SIG,
-            .CART_DATA_DIR,
-            .Bus
-        );
-
-        assign RXD.READ = 0;
-        assign RXD.CLEAR = 0;
-        assign TXD.DATA = 0;
-        assign TXD.STROBE = 0;
+    // リセット信号処理
+    reg reset_n = 0;
+    assign RESET_n = reset_n;
+    always_ff @(posedge CLK_BASE or negedge CLK_BASE_READY or negedge sdram_ready) begin
+        if(!CLK_BASE_READY) reset_n <= 0;       // PLL 準備中ならリセット
+        else if(!sdram_ready) reset_n <= 0;     // SDRAM 準備中ならリセット
+        else reset_n <= 1; 
     end
+
+    // バス信号処理
+    BOARD_REV1_BUS u_bus (
+        .RESET_n,
+        .CLK,
+        .CLK_21M,
+        .CART_BUSDIR_n,
+        .CART_INT_n,
+        .CART_WAIT_n,
+        .CART_SLTSL_n,
+        .CART_RD_n,
+        .CART_WR_n,
+        .CART_CLOCK,
+        .CART_MUX_SIG,
+        .CART_MUX_CS_n,
+        .CART_DATA_SIG,
+        .CART_DATA_DIR,
+        .Bus
+    );
+
+    assign RXD.READ = 0;
+    assign RXD.CLEAR = 0;
+    assign TXD.DATA = 0;
+    assign TXD.STROBE = 0;
 
     /***************************************************************
      * SDRAM
@@ -279,11 +195,11 @@ module TNCART_BOARD_REV1_TOP (
     RAM_IF Ram();
     logic sdram_ready;
     SDRAM #(
-        .SDRAM_A_WIDTH(11),
-        .SDRAM_BA_WIDTH(2),
-        .SDRAM_COL_WIDTH(8),
-        .SDRAM_ROW_WIDTH(11),
-        .SDRAM_DQ_WIDTH(32)
+        .SDRAM_A_WIDTH      (11),
+        .SDRAM_BA_WIDTH     (2),
+        .SDRAM_COL_WIDTH    (8),
+        .SDRAM_ROW_WIDTH    (11),
+        .SDRAM_DQ_WIDTH     (32)
     ) u_sdram (
         .CLK                (CLK_MEM),
         .CLK_PS             (CLK_MEM_P),
@@ -309,28 +225,29 @@ module TNCART_BOARD_REV1_TOP (
      * UMA
      ***************************************************************/
     UMA_IF Uma();
-    assign Uma.ADDR[0] = 0;
-    assign Uma.ADDR[1] = CONFIG::RAM_ADDR_VRAM;
+    assign Uma.ADDR[0] = 0;                         // Uma[0] の SDRAM 先頭アドレス
+    assign Uma.ADDR[1] = CONFIG::RAM_ADDR_VRAM;     // Uma[1] の SDRAM 先頭アドレス
 
     RAM_IF UmaRam[0:Uma.COUNT-1]();
 
     if(ENABLE_UMA) begin
         UMA #(
-            .COUNT(Uma.COUNT),
-            .DIV(30)                // 108MHz/3.58MHz = 30
+            .COUNT      (Uma.COUNT),
+            .DIV        (30)                        // 108MHz/3.58MHz = 30
         ) u_uma (
             .RESET_n,
             .CLK,
-            .CLK_EN(Bus.CLK_EN),
-            .Primary(Ram),
-            .Secondary(UmaRam),
+            .CLK_EN     (Bus.CLK_EN),
+            .Primary    (Ram),
+            .Secondary  (UmaRam),
             .Uma
         );
     end
     else begin
+        // UMA を使わない時
         BYPASS_RAM u_bypass_uma (
-            .Primary(Ram),
-            .Secondary(UmaRam[0])
+            .Primary    (Ram),
+            .Secondary  (UmaRam[0])
         );
         assign UmaRam[1].DOUT = 0;
         assign UmaRam[1].ACK_n = 1;
@@ -345,7 +262,7 @@ module TNCART_BOARD_REV1_TOP (
      ***************************************************************/
     SPI_IF TF();
     SPI #(
-        .CLK_DIV        (2'd2)      // 108 / 2 / (2+1) = 18MHz
+        .CLK_DIV        (CONFIG_BOARD_REV1::TF_CLK_DIV)
     ) u_tf_spi (
         .CLK,
         .RESET_n,
@@ -355,6 +272,8 @@ module TNCART_BOARD_REV1_TOP (
         .CS_n           (TF_DAT3),
         .SPI_Interface  (TF)
     );
+
+    // 未使用ピンの処理
     assign TF_DAT1 = 1'bZ;
     assign TF_DAT2 = 1'bZ;
 
@@ -373,7 +292,7 @@ module TNCART_BOARD_REV1_TOP (
         .MOSI_BIT_WIDTH(Flash.ADDR_WIDTH+8)
     ) Flash_SPI();
     SPI #(
-        .CLK_DIV            (2'd2)  // 108 / 2 / (2+1) = 18MHz
+        .CLK_DIV            (CONFIG_BOARD_REV1::FLASH_CLK_DIV)
     ) u_flash_spi (
         .RESET_n,
         .CLK,
@@ -383,6 +302,8 @@ module TNCART_BOARD_REV1_TOP (
         .CS_n               (mspi_cs),
         .SPI_Interface      (Flash_SPI)
     );
+
+    // 未使用ピンの処理
     assign mspi_hold = 1;
 
     /***************************************************************
@@ -404,9 +325,11 @@ module TNCART_BOARD_REV1_TOP (
     /***************************************************************
      * DAC clock(108MHz/5 = 21.6MHz)
      ***************************************************************/
-    localparam CLK_DAC_DIV = 5;
-    logic [2:0] clk_dac_cnt;
+    localparam CLK_DAC_DIV = CONFIG_BOARD_REV1::DAC_FREQ_DIV;
+
+    logic [$clog2(CLK_DAC_DIV)-1:0] clk_dac_cnt;
     wire CLK_DAC_EN = (clk_dac_cnt == 0);
+
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)              clk_dac_cnt <= CLK_DAC_DIV - 1'd1;
         else if(clk_dac_cnt == 0) clk_dac_cnt <= CLK_DAC_DIV - 1'd1;
@@ -416,10 +339,10 @@ module TNCART_BOARD_REV1_TOP (
     /***************************************************************
      * cartridge sound out
      ***************************************************************/
-    SOUND_IF SoundInternal();
+    SOUND_IF #(.BIT_WIDTH(CONFIG_BOARD_REV1::DAC_BIT_WIDTH)) SoundInternal();
     DAC_1BIT u_dac_int (
         .CLK,
-        .CLK_EN(CLK_DAC_EN),
+        .CLK_EN         (CLK_DAC_EN),
         .RESET_n,
         .IN             (SoundInternal),
         .OUT            (SOUND_INT)
@@ -428,10 +351,10 @@ module TNCART_BOARD_REV1_TOP (
     /***************************************************************
      * external sound out
      ***************************************************************/
-    SOUND_IF SoundExternal();
+    SOUND_IF #(.BIT_WIDTH(CONFIG_BOARD_REV1::DAC_BIT_WIDTH)) SoundExternal();
     DAC_1BIT u_dac_ext (
         .CLK,
-        .CLK_EN(CLK_DAC_EN),
+        .CLK_EN         (CLK_DAC_EN),
         .RESET_n,
         .IN             (SoundExternal),
         .OUT            (SOUND_EXT)
@@ -446,21 +369,21 @@ module TNCART_BOARD_REV1_TOP (
         .ENABLE_SCANLINE(CONFIG::ENABLE_SCANLINE)
     ) u_upscan (
         .RESET_n,
-        .DCLK(CLK_TMDS_P),
-        .IN(Video),
-        .OUT(VideoTmds)
+        .DCLK           (CLK_TMDS_P),
+        .IN             (Video),
+        .OUT            (VideoTmds)
     );
 
     BOARD_REV1_TMDS_OUT u_tmds (
         .RESET_n,
-        .IN(VideoTmds),
-        .TMDS_READY(CLK_TMDS_READY),
-        .CLK_S(CLK_TMDS_S),
-        .CLK_P(CLK_TMDS_P),
-        .TMDS_CLKP(tmds_clk_p),
-        .TMDS_CLKN(tmds_clk_n),
-        .TMDS_DATAP(tmds_data_p),
-        .TMDS_DATAN(tmds_data_n)
+        .IN             (VideoTmds),
+        .TMDS_READY     (CLK_TMDS_READY),
+        .CLK_S          (CLK_TMDS_S),
+        .CLK_P          (CLK_TMDS_P),
+        .TMDS_CLKP      (tmds_clk_p),
+        .TMDS_CLKN      (tmds_clk_n),
+        .TMDS_DATAP     (tmds_data_p),
+        .TMDS_DATAN     (tmds_data_n)
     );
 
     /***************************************************************
@@ -470,9 +393,9 @@ module TNCART_BOARD_REV1_TOP (
         .RESET_n,
         .CLK,
         .Bus,
-        .Ram(UmaRam[0]),
-        .VideoRam(UmaRam[1]),
-        .UmaClock(Uma),
+        .Ram            (UmaRam[0]),
+        .VideoRam       (UmaRam[1]),
+        .UmaClock       (Uma),
         .TF,
         .LedNextor,
         .Flash,
