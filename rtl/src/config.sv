@@ -148,6 +148,7 @@ package CONFIG_BOARD_REV1;
     localparam          DAC_FREQ_DIV            = 5;                // DAC 標本化周波数の分周比
     localparam          TF_CLK_DIV              = 2;                // TF 通信クロック分周比
     localparam          FLASH_CLK_DIV           = 2;                // フラッシュ 通信クロック分周比
+    localparam          ENABLE_UART_MODULE      = 0;                // UART モジュールを有効(0=無効/1=有効)
 endpackage
 
 //
@@ -158,6 +159,7 @@ package CONFIG_BOARD_REV2;
     localparam          DAC_FREQ_DIV            = 5;                // DAC 標本化周波数の分周比
     localparam          TF_CLK_DIV              = 2;                // TF 通信クロック分周比
     localparam          FLASH_CLK_DIV           = 2;                // フラッシュ 通信クロック分周比
+    localparam          ENABLE_UART_MODULE      = 0;                // UART モジュールを有効(0=無効/1=有効)
 endpackage
 
 `default_nettype wire

@@ -129,25 +129,35 @@ module TNCART_BOARD_REV1_TOP (
     /***************************************************************
      * UART
      ***************************************************************/
-    UART_RX_IF RXD();
-    UART_RX #(
-        .CLKFREQ            (108_000_000)
-    ) u_rxd (
-        .RESET_n,
-        .CLK,
-        .RXD                (UART_RX),
-        .Uart_rx_interface  (RXD)
-    );
+    if(CONFIG_BOARD_REV1::ENABLE_UART_MODULE) begin
+        UART_RX_IF RXD();
+        UART_RX #(
+            .CLKFREQ            (108_000_000)
+        ) u_rxd (
+            .RESET_n,
+            .CLK,
+            .RXD                (UART_RX),
+            .Uart_rx_interface  (RXD)
+        );
 
-    UART_TX_IF TXD();
-    UART_TX #(
-        .CLKFREQ            (108_000_000)
-    ) u_txd (
-        .RESET_n,
-        .CLK,
-        .TXD                (UART_TX),
-        .Uart_tx_interface  (TXD)
-    );
+        UART_TX_IF TXD();
+        UART_TX #(
+            .CLKFREQ            (108_000_000)
+        ) u_txd (
+            .RESET_n,
+            .CLK,
+            .TXD                (UART_TX),
+            .Uart_tx_interface  (TXD)
+        );
+
+        assign RXD.READ = 0;
+        assign RXD.CLEAR = 0;
+        assign TXD.DATA = 0;
+        assign TXD.STROBE = 0;
+    end
+    else begin
+        assign UART_TX = 1;
+    end
 
     /***************************************************************
      * MSX バス
@@ -183,11 +193,6 @@ module TNCART_BOARD_REV1_TOP (
         .CART_DATA_DIR,
         .Bus
     );
-
-    assign RXD.READ = 0;
-    assign RXD.CLEAR = 0;
-    assign TXD.DATA = 0;
-    assign TXD.STROBE = 0;
 
     /***************************************************************
      * SDRAM
