@@ -173,18 +173,52 @@ static int xfer_file(uint8_t sltnum, BDOS_FILE_t *file)
 }
 
 /***********************************************
- * イメージファイル転送
+ * ヘッダー消去
  *  引数
  *    sltnum    : スロット番号
- *    rom_attr  : ROM 属性
- *    path      : 転送元ファイルのファイル
+ *  戻り値
+ *    なし
+ ***********************************************/
+static void disable_header(uint8_t sltnum)
+{
+    // 消去データ
+    uint8_t buffer[16];
+    memset(buffer, 0xFF, sizeof(buffer));
+
+    // 先頭4バンクのヘッダを消去
+    for(uint8_t bank = 0; bank < 4; bank++)
+    {
+        // バンク切り替え
+        set_bank1_reg(sltnum, bank);
+
+        // データを転送
+        xfer_memory(sltnum, (VOID_PTR_t)0x8000, buffer, sizeof(buffer));
+    }
+}
+
+/***********************************************
+ * イメージファイル転送
+ *  引数
+ *    sltnum              : スロット番号
+ *    rom_attr            : ROM 属性
+ *    path                : 転送元ファイルのファイル
+ *    disable_header_flag : ヘッダの無効化フラグ
  *  戻り値
  *    0  : 成功
  *    !0 : 失敗
  ***********************************************/
-static int load_rom_image(uint8_t sltnum, ROM_ATTR_PTR_t rom_attr, char *path)
+static int load_rom_image(uint8_t sltnum, ROM_ATTR_PTR_t rom_attr, char *path, int disable_header_flag)
 {
     int res = 0;
+
+    if(disable_header_flag)
+    {
+        // ROM 書き込み許可
+        rom_attr_xfer(sltnum, &ROM_ATTR_ASCII16_WO_WP);
+
+        // ヘッダーデータ無効化
+        disable_header(sltnum);
+    }
 
     if(path != NULL)
     {
@@ -399,7 +433,7 @@ int main(int argc, char *argv[])
     }
 
     // ファイルが指定されていない場合
-    if(!main_param.nofile_flag && main_param.rom_file[0] == '\0')
+    if(!(main_param.nofile_flag || main_param.disable_header_flag) && main_param.rom_file[0] == '\0')
     {
         output_usage();
         return 1;
@@ -454,7 +488,7 @@ int main(int argc, char *argv[])
         printf(MSG_HANDLER_ERROR);
         return 1;        
     }
-    int res = load_rom_image(main_param.sltnum, rom_attr, main_param.nofile_flag ? NULL : rom_file);
+    int res = load_rom_image(main_param.sltnum, rom_attr, main_param.nofile_flag ? NULL : rom_file, main_param.disable_header_flag);
     bdos_set_about_handler(0);
 
     if(res == 0)

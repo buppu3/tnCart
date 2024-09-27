@@ -141,6 +141,13 @@ int parse_param(MAIN_PARAM_t *param, int argc, char *argv[])
                 break;
 
             //
+            // ヘッダーを無効にする
+            //
+            case 'D':
+                param->disable_header_flag = 1;
+                break;
+
+            //
             // ROM イメージ転送しない
             //
             case 'N':
