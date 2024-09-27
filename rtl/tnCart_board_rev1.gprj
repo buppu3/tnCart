@@ -87,6 +87,7 @@
         <File path="src/peripheral/sound/vm2413/voicerom.vhd" type="file.vhdl" enable="1"/>
         <File path="src/peripheral/sound/ym2149_audio/ym2149_audio.vhd" type="file.vhdl" enable="1"/>
         <File path="src/board/rev1/board_rev1.cst" type="file.cst" enable="1"/>
-        <File path="src/board/rev1/board_rev1.sdc" type="file.sdc" enable="1"/>
+        <File path="src/board/rev1/board_rev1_27M.sdc" type="file.sdc" enable="1"/>
+        <File path="src/board/rev1/board_rev1_3_58M.sdc" type="file.sdc" enable="0"/>
     </FileList>
 </Project>
