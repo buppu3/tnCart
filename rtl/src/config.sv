@@ -130,36 +130,9 @@ package CONFIG;
     /***************************************************************
      * other(ここを変更すると動作しなくなる可能性があります)
      ***************************************************************/
-    localparam          SYNC_CPU_CLK            = 0;                // 動作クロックを CPU クロックと同期するか(0=同期/1=非同期)
     localparam          RAM_IF_EXPANSION_USES_FF= 0;                // RAM I/F 拡張動作に FF を使用(0=使用しない/1=使用する)
     localparam          SLOT_EXPANSION_USES_FF  = 1;                // SLOT 拡張に FF を使用(0=使用しない/1=使用する)
     localparam          SOUND_BIT_WIDTH         = 10;               // サウンド生成の量子化幅(bits)
-endpackage
-
-
-/***********************************************************************************
- * 基板毎の個別設定
- ***********************************************************************************/
-//
-// tnCart rev1 基板
-//
-package CONFIG_BOARD_REV1;
-    localparam          DAC_BIT_WIDTH           = 10;               // DAC 出力の量子化ビット数
-    localparam          DAC_FREQ_DIV            = 5;                // DAC 標本化周波数の分周比
-    localparam          TF_CLK_DIV              = 2;                // TF 通信クロック分周比
-    localparam          FLASH_CLK_DIV           = 2;                // フラッシュ 通信クロック分周比
-    localparam          ENABLE_UART_MODULE      = 0;                // UART モジュールを有効(0=無効/1=有効)
-endpackage
-
-//
-// tnCart rev2 基板
-//
-package CONFIG_BOARD_REV2;
-    localparam          DAC_BIT_WIDTH           = 10;               // DAC 出力の量子化ビット数
-    localparam          DAC_FREQ_DIV            = 5;                // DAC 標本化周波数の分周比
-    localparam          TF_CLK_DIV              = 2;                // TF 通信クロック分周比
-    localparam          FLASH_CLK_DIV           = 2;                // フラッシュ 通信クロック分周比
-    localparam          ENABLE_UART_MODULE      = 0;                // UART モジュールを有効(0=無効/1=有効)
 endpackage
 
 `default_nettype wire

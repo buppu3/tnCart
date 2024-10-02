@@ -5,8 +5,10 @@
     <Version>5</Version>
     <Device name="GW2AR-18C" pn="GW2AR-LV18QN88C8/I7">gw2ar18c-000</Device>
     <FileList>
+        <File path="src/board/board_id.sv" type="file.verilog" enable="1"/>
         <File path="src/board/rev1/board_rev1_bus.sv" type="file.verilog" enable="1"/>
         <File path="src/board/rev1/board_rev1_clock.sv" type="file.verilog" enable="1"/>
+        <File path="src/board/rev1/board_rev1_config.sv" type="file.verilog" enable="1"/>
         <File path="src/board/rev1/board_rev1_tmds.sv" type="file.verilog" enable="1"/>
         <File path="src/board/rev1/dvi_tx/dvi_tx.v" type="file.verilog" enable="1"/>
         <File path="src/bootloader.sv" type="file.verilog" enable="1"/>

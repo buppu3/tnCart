@@ -170,7 +170,12 @@ module BOARD_REV1_BUS(
     /***************************************************************
      * その他の信号の出力
      ***************************************************************/
-    assign  CART_INT_n = !Bus.INT_n;
+    if(CONFIG_BOARD::BOARD_ID == BOARD_ID::WonderTANG_101c) begin
+        assign  CART_INT_n = Bus.INT_n;
+    end
+    else begin
+        assign  CART_INT_n = !Bus.INT_n;
+    end
     assign  CART_WAIT_n = !Bus.WAIT_n;
 
     /***************************************************************

@@ -121,7 +121,7 @@ module BOARD_REV1_CLOCK (
      ***************************************************************/
     wire CLK_MEM_LOCK;
     assign CLK_MEM_READY = RESET_n && CLK_MEM_LOCK;
-if(CONFIG::SYNC_CPU_CLK) begin
+if(CONFIG_BOARD::SYNC_CPU_CLK) begin
     rPLL u_pll_base (
         .CLKOUT(CLK_MEM),
         .LOCK(CLK_MEM_LOCK),

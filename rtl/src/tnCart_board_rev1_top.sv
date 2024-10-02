@@ -114,7 +114,7 @@ module TNCART_BOARD_REV1_TOP (
     logic CLK_21M;
     BOARD_REV1_CLOCK u_clk (
         .RESET_n        (1'b1),
-        .CLK_IN         (CONFIG::SYNC_CPU_CLK ? CART_CLOCK : CLK_27M),
+        .CLK_IN         (CONFIG_BOARD::SYNC_CPU_CLK ? CART_CLOCK : CLK_27M),
         .CLK_BASE,
         .CLK_BASE_READY,
         .CLK_MEM,
@@ -129,7 +129,7 @@ module TNCART_BOARD_REV1_TOP (
     /***************************************************************
      * UART
      ***************************************************************/
-    if(CONFIG_BOARD_REV1::ENABLE_UART_MODULE) begin
+    if(CONFIG_BOARD::ENABLE_UART_MODULE) begin
         UART_RX_IF RXD();
         UART_RX #(
             .CLKFREQ            (108_000_000)
@@ -238,6 +238,7 @@ module TNCART_BOARD_REV1_TOP (
     if(ENABLE_UMA) begin
         UMA #(
             .COUNT      (Uma.COUNT),
+            .SYNC_CLK_EN(CONFIG_BOARD::SYNC_CPU_UMA),
             .DIV        (30)                        // 108MHz/3.58MHz = 30
         ) u_uma (
             .RESET_n,
@@ -267,7 +268,7 @@ module TNCART_BOARD_REV1_TOP (
      ***************************************************************/
     SPI_IF TF();
     SPI #(
-        .CLK_DIV        (CONFIG_BOARD_REV1::TF_CLK_DIV)
+        .CLK_DIV        (CONFIG_BOARD::TF_CLK_DIV)
     ) u_tf_spi (
         .CLK,
         .RESET_n,
@@ -297,7 +298,7 @@ module TNCART_BOARD_REV1_TOP (
         .MOSI_BIT_WIDTH(Flash.ADDR_WIDTH+8)
     ) Flash_SPI();
     SPI #(
-        .CLK_DIV            (CONFIG_BOARD_REV1::FLASH_CLK_DIV)
+        .CLK_DIV            (CONFIG_BOARD::FLASH_CLK_DIV)
     ) u_flash_spi (
         .RESET_n,
         .CLK,
@@ -330,7 +331,7 @@ module TNCART_BOARD_REV1_TOP (
     /***************************************************************
      * DAC clock(108MHz/5 = 21.6MHz)
      ***************************************************************/
-    localparam CLK_DAC_DIV = CONFIG_BOARD_REV1::DAC_FREQ_DIV;
+    localparam CLK_DAC_DIV = CONFIG_BOARD::DAC_FREQ_DIV;
 
     logic [$clog2(CLK_DAC_DIV)-1:0] clk_dac_cnt;
     wire CLK_DAC_EN = (clk_dac_cnt == 0);
@@ -344,7 +345,7 @@ module TNCART_BOARD_REV1_TOP (
     /***************************************************************
      * cartridge sound out
      ***************************************************************/
-    SOUND_IF #(.BIT_WIDTH(CONFIG_BOARD_REV1::DAC_BIT_WIDTH)) SoundInternal();
+    SOUND_IF #(.BIT_WIDTH(CONFIG_BOARD::DAC_BIT_WIDTH)) SoundInternal();
     DAC_1BIT u_dac_int (
         .CLK,
         .CLK_EN         (CLK_DAC_EN),
@@ -356,7 +357,7 @@ module TNCART_BOARD_REV1_TOP (
     /***************************************************************
      * external sound out
      ***************************************************************/
-    SOUND_IF #(.BIT_WIDTH(CONFIG_BOARD_REV1::DAC_BIT_WIDTH)) SoundExternal();
+    SOUND_IF #(.BIT_WIDTH(CONFIG_BOARD::DAC_BIT_WIDTH)) SoundExternal();
     DAC_1BIT u_dac_ext (
         .CLK,
         .CLK_EN         (CLK_DAC_EN),
