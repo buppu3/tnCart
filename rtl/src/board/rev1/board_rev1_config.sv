@@ -36,8 +36,8 @@
 package CONFIG_BOARD;
     localparam          BOARD_ID                = BOARD_ID::TNCART_REV1;
 
-    localparam          SYNC_CPU_CLK            = 0;                // 動作クロックを CPU クロックと同期するか(1=同期/0=非同期)
-    localparam          SYNC_CPU_UMA            = 0;                // UMA 動作を CPU クロックと同期するか(1=同期/0=非同期)
+    localparam          SYNC_CPU_CLK            = 1;                // 動作クロックを CPU クロックと同期するか(1=同期/0=非同期)
+    localparam          SYNC_CPU_UMA            = 2;                // UMA 動作を CPU クロックと同期するか(1=毎回同期/2=最初に同期/0=非同期)
     localparam          DAC_BIT_WIDTH           = 10;               // DAC 出力の量子化ビット数
     localparam          DAC_FREQ_DIV            = 5;                // DAC 標本化周波数の分周比
     localparam          TF_CLK_DIV              = 2;                // TF 通信クロック分周比

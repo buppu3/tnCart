@@ -107,12 +107,26 @@ module UMA #(
     localparam DIVCNT_10M_2 = (DIVCNT_TOP + DIV * 2 / 3);
 
     logic [$clog2(DIV)-1:0] mem_cnt;
-if(SYNC_CLK_EN) begin
+if(SYNC_CLK_EN == 1) begin
     // MSX の 3.58MHz に同期
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)                  mem_cnt <= 0;
         else if(CLK_EN)               mem_cnt <= 0;
         else if(mem_cnt != (DIV - 1)) mem_cnt <= mem_cnt + 1'd1;
+    end
+end
+else if(SYNC_CLK_EN == 2) begin
+    // 最初だけ MSX の 3.58MHz に同期
+    reg sync_flag;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)    sync_flag <= 0;
+        else if(CLK_EN) sync_flag <= 1;
+    end
+
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)                  mem_cnt <= 0;
+        else if(mem_cnt == (DIV - 1)) mem_cnt <= 0;
+        else if(sync_flag)            mem_cnt <= mem_cnt + 1'd1;
     end
 end
 else begin
