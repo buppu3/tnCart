@@ -5,11 +5,14 @@ TangNano20K を搭載した MSX 用カートリッジ。WonderTANG 対応版は 
 - [たぶん動く機能](#たぶん動く機能)
 - [今後の予定](#今後の予定)
 - [対応する予定がない機能](#対応する予定がない機能)
+- [使用モジュール](#使用モジュール)
+- [メモ](#メモ)
+
+## 使い方
+
 - [FPGAビットストリーム、BIOSイメージのインストール方法](https://github.com/buppu3/tnCart/blob/main/doc/flash.md)
 - [メガロムエミュレータの使い方](https://github.com/buppu3/tnCart/blob/main/doc/megarom.md)
 - [機能のカスタマイズ](https://github.com/buppu3/tnCart/blob/main/doc/config.md)
-- [使用モジュール](#使用モジュール)
-- [メモ](#メモ)
 
 ## カートリッジ基板
 回路は WonderTANG V1.01c のピンアサインとほぼ同じ(MSEL0_33 と MSEL1_33 が逆みたいです)で、バッファ IC は2電源タイプに変更してます。
@@ -20,19 +23,23 @@ TangNano20K を搭載した MSX 用カートリッジ。WonderTANG 対応版は 
 ## たぶん動く機能
 - 4MB 拡張 RAM
 - NEXTOR と TF カード制御
-- FM 音源カートリッジ(拡張 BASIC は未対応)
-- PSG 音源の 3.5mmフォンジャック出力
 - メガロムエミュレーション
 - SCC/SCC-I 音源
+- FM 音源(OPLL)カートリッジ(拡張 BASIC は未対応)
+- SCC + OPLL + PSG 音源の 3.5mmフォンジャック出力
 - PAC 機能(まだデータ保持機能が実装されていませんので、電源を切るとデータは消えます)
 - V9990 エミュレーション(「[msx-samurai](https://github.com/albs-br/msx-samurai)」,「[MSXgl](https://github.com/aoineko-fr/MSXgl) V9990サンプルの一部」,「[TINY野郎氏のテックデモ](https://www.youtube.com/watch?v=I6kXyMaED0s)」がそれなりに動く程度)
 
+### MSXglサンプル
 https://github.com/user-attachments/assets/6ccc81ad-7539-472d-90ff-44e20a4ad2ab
 
+### msx-samurai
 https://github.com/user-attachments/assets/eceabaee-c464-4074-b1bb-01007c4406e5
 
+### TINY野郎氏のテックデモ1
 https://github.com/user-attachments/assets/5c7b5b81-0413-4705-99fa-486552f4d58d
 
+### TINY野郎氏のテックデモ2
 https://github.com/user-attachments/assets/f6615e37-0041-4baa-8b7d-7cd3aba46d73
 
 ## 今後の予定
