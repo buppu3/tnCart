@@ -42,6 +42,12 @@
         <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_primitives.v" type="file.verilog" enable="1"/>
         <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_reg.v" type="file.verilog" enable="1"/>
         <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_timinggen.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKASCC/IKASCC.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKASCC/IKASCC_modules/IKASCC_player_a.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKASCC/IKASCC_modules/IKASCC_player_s.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKASCC/IKASCC_modules/IKASCC_primitives.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKASCC/IKASCC_modules/IKASCC_vrc_a.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKASCC/IKASCC_modules/IKASCC_vrc_s.v" type="file.verilog" enable="1"/>
         <File path="src/peripheral/sound/dac_1bit.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/sound/scc/scc.sv" type="file.verilog" enable="1"/>
         <File path="src/peripheral/sound/sound.sv" type="file.verilog" enable="1"/>

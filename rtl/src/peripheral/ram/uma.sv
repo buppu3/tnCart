@@ -59,7 +59,7 @@ endinterface
 module UMA #(
     parameter COUNT         = 2,
     parameter DIV           = 30,       // 3.58MHz の分周値
-    parameter DELAY         = 5,        // 3.58MHz クロックエッジからメモリアクセスまでのディレイ
+    parameter DELAY         = 0,        // 3.58MHz クロックエッジからメモリアクセスまでのディレイ
     parameter SYNC_CLK_EN   = 1         // CLK_EN で同期をとる
 ) (
     input   wire            RESET_n,
@@ -74,13 +74,13 @@ module UMA #(
     localparam DIV21MHz = 5;
     localparam DIV25MHz = 13;
 
-    localparam MRAM_EXEC_DELAY = 1;
+    localparam MRAM_EXEC_DELAY = 2;
     localparam VRAM_EXEC_DELAY = 2;
 
     /***************************************************************
      * 3.58MHz に同期して 10.74MHz 毎にメモリ切り替え
      ***************************************************************/
-    localparam DIVCNT_TOP   = (DELAY);
+    localparam DIVCNT_TOP   = 0;//(DELAY);
 
     localparam DIVCNT_25M_0 = (DIVCNT_TOP + DIV * 0 / 7);
     localparam DIVCNT_25M_1 = (DIVCNT_TOP + DIV * 1 / 7);
@@ -138,35 +138,35 @@ else begin
 end
 
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                                    Uma.CLK25M_EN <= 0;
-        else if(mem_cnt == (DIVCNT_25M_0 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_25M_1 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_25M_2 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_25M_3 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_25M_4 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_25M_5 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_25M_6 - CLK_OFFSET)) Uma.CLK25M_EN <= 1;
-        else                                            Uma.CLK25M_EN <= 0;
+        if(!RESET_n)                       Uma.CLK25M_EN <= 0;
+        else if(mem_cnt == (DIVCNT_25M_0)) Uma.CLK25M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_25M_1)) Uma.CLK25M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_25M_2)) Uma.CLK25M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_25M_3)) Uma.CLK25M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_25M_4)) Uma.CLK25M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_25M_5)) Uma.CLK25M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_25M_6)) Uma.CLK25M_EN <= 1;
+        else                               Uma.CLK25M_EN <= 0;
     end
 
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                                    Uma.CLK21M_EN <= 0;
-        else if(mem_cnt == (DIVCNT_21M_0 - CLK_OFFSET)) Uma.CLK21M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_21M_1 - CLK_OFFSET)) Uma.CLK21M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_21M_2 - CLK_OFFSET)) Uma.CLK21M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_21M_3 - CLK_OFFSET)) Uma.CLK21M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_21M_4 - CLK_OFFSET)) Uma.CLK21M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_21M_5 - CLK_OFFSET)) Uma.CLK21M_EN <= 1;
-        else                                            Uma.CLK21M_EN <= 0;
+        if(!RESET_n)                       Uma.CLK21M_EN <= 0;
+        else if(mem_cnt == (DIVCNT_21M_0)) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_21M_1)) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_21M_2)) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_21M_3)) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_21M_4)) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_21M_5)) Uma.CLK21M_EN <= 1;
+        else                               Uma.CLK21M_EN <= 0;
     end
 
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                                    Uma.CLK14M_EN <= 0;
-        else if(mem_cnt == (DIVCNT_14M_0 - CLK_OFFSET)) Uma.CLK14M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_14M_1 - CLK_OFFSET)) Uma.CLK14M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_14M_2 - CLK_OFFSET)) Uma.CLK14M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_14M_3 - CLK_OFFSET)) Uma.CLK14M_EN <= 1;
-        else                                            Uma.CLK14M_EN <= 0;
+        if(!RESET_n)                       Uma.CLK14M_EN <= 0;
+        else if(mem_cnt == (DIVCNT_14M_0)) Uma.CLK14M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_14M_1)) Uma.CLK14M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_14M_2)) Uma.CLK14M_EN <= 1;
+        else if(mem_cnt == (DIVCNT_14M_3)) Uma.CLK14M_EN <= 1;
+        else                               Uma.CLK14M_EN <= 0;
     end
 
     logic timing_toggle;
@@ -176,9 +176,9 @@ end
             Secondary[1].TIMING <= 0;
             timing_toggle <= 0;
         end
-        else if(mem_cnt == DIVCNT_10M_0 ||
-                mem_cnt == DIVCNT_10M_1 ||
-                mem_cnt == DIVCNT_10M_2 ) begin
+        else if(mem_cnt == (DIVCNT_10M_0 + CLK_OFFSET) ||
+                mem_cnt == (DIVCNT_10M_1 + CLK_OFFSET) ||
+                mem_cnt == (DIVCNT_10M_2 + CLK_OFFSET) ) begin
             Secondary[0].TIMING <= ~timing_toggle;
             Secondary[1].TIMING <= timing_toggle;
             timing_toggle <= ~timing_toggle;

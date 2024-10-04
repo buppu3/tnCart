@@ -171,44 +171,87 @@ module CARTRIDGE_MEGAROM #(
         logic busdir_n;
         logic [7:0] dout;
         wire  [10:0] sound;
-        SCC u_scc (
-            .RESET_n    (RESET_n && ExtBus[BUS_SCC].RESET_n),
-`ifdef SCC_CLK_21M
-            .CLK        (ExtBus[BUS_SCC].CLK_21M),
-            .CLK_EN     (ExtBus[BUS_SCC].CLK_EN_21M),
-`else
-            .CLK        (CLK),
-            .CLK_EN     (ExtBus[BUS_SCC].CLK_EN),
-`endif
-            .MODE_SCC_I (scc_mode_scci),
-            .ADDR       (ExtBus[BUS_SCC].ADDR[7:0]),
-            .CS_n       (scc_cs_n || ExtBus[BUS_SCC].SLTSL_n || ExtBus[BUS_SCC].MERQ_n || !SCC_ENA || scc_bank_n),
-            .RD_n       (ExtBus[BUS_SCC].RD_n),
-            .WR_n       (ExtBus[BUS_SCC].WR_n),
-            .DIN        (ExtBus[BUS_SCC].DIN),
-            .DOUT       (dout),
-            .BUSDIR_n   (busdir_n),
-            .OUT        (sound)
-        );
+        if(CONFIG::ENABLE_SCC == CONFIG::ENABLE_IKASCC) begin
+            /***************************************************************
+             * IKASCC
+             ***************************************************************/
+            reg rst_n;
+            reg cs_n;
+            reg rd_n;
+            reg wr_n;
+            reg [7:0] addr_l;
+            reg [4:0] addr_h;
+            reg [7:0] din;
 
-        assign Sound.Signal = sound[10:1];
+            always_ff @(posedge ExtBus[BUS_SCC].CLK_21M) begin
+                rst_n <= RESET_n && ExtBus[BUS_SCC].RESET_n;
+                cs_n <= ExtBus[BUS_SCC].SLTSL_n || !SCC_ENA;
+                rd_n <= ExtBus[BUS_SCC].RD_n;
+                wr_n <= ExtBus[BUS_SCC].WR_n;
+                addr_l <= ExtBus[BUS_SCC].ADDR[7:0];
+                addr_h <= ExtBus[BUS_SCC].ADDR[15:11];
+                if(!ExtBus[BUS_SCC].WR_n && wr_n) din <= ExtBus[BUS_SCC].DIN;
+            end
 
-`ifdef SCC_CLK_21M
-        always_ff @(posedge CLK or negedge RESET_n) begin
-            if(!RESET_n)                      ExtBus[BUS_SCC].BUSDIR_n <= 1;
-            else if(!ExtBus[BUS_SCC].RESET_n) ExtBus[BUS_SCC].BUSDIR_n <= 1;
-            else                              ExtBus[BUS_SCC].BUSDIR_n <= ExtBus[BUS_SCC].RD_n ? 1'b1 : busdir_n;
+            wire [7:0] db_o;
+            wire db_oe;
+
+            always_ff @(posedge CLK) begin
+                busdir_n <= !db_oe;
+                dout <= db_oe ? db_o : 8'd0;
+            end
+
+            IKASCC #(
+                .IMPL_TYPE      (0),
+                .RAM_BLOCK      (1)
+            ) u_scc (
+                .i_EMUCLK       (ExtBus[BUS_SCC].CLK_21M),
+                .i_MCLK_PCEN_n  (!ExtBus[BUS_SCC].CLK_EN_21M),
+                .i_RST_n        (rst_n),
+
+                .i_CS_n         (cs_n),
+                .i_RD_n         (rd_n),
+                .i_WR_n         (wr_n),
+                .i_ABLO         (addr_l),
+                .i_ABHI         (addr_h),
+
+                .i_DB           (din),
+                .o_DB           (db_o),
+                .o_DB_OE        (db_oe),
+
+                .o_ROMCS_n      (),
+                .o_ROMADDR      (),
+
+                .o_SOUND        (sound),
+
+                .o_TEST         ()
+            );
+        end
+        else begin
+            /***************************************************************
+             * default SCC
+             ***************************************************************/
+            SCC u_scc (
+                .RESET_n    (RESET_n && ExtBus[BUS_SCC].RESET_n),
+                .CLK        (CLK),
+                .CLK_EN     (ExtBus[BUS_SCC].CLK_EN),
+                .MODE_SCC_I (scc_mode_scci),
+                .ADDR       (ExtBus[BUS_SCC].ADDR[7:0]),
+                .CS_n       (scc_cs_n || ExtBus[BUS_SCC].SLTSL_n || ExtBus[BUS_SCC].MERQ_n || !SCC_ENA || scc_bank_n),
+                .RD_n       (ExtBus[BUS_SCC].RD_n),
+                .WR_n       (ExtBus[BUS_SCC].WR_n),
+                .DIN        (ExtBus[BUS_SCC].DIN),
+                .DOUT       (dout),
+                .BUSDIR_n   (busdir_n),
+                .OUT        (sound)
+            );
         end
 
-        always_ff @(posedge CLK or negedge RESET_n) begin
-            if(!RESET_n)                      ExtBus[BUS_SCC].DOUT <= 8'h00;
-            else if(!ExtBus[BUS_SCC].RESET_n) ExtBus[BUS_SCC].DOUT <= 8'h00;
-            else                              ExtBus[BUS_SCC].DOUT <= ExtBus[BUS_SCC].RD_n ? 8'h00 : dout;
-        end
-`else
+        wire [15:0] sound_ext = { sound, 5'd0 };
+        assign Sound.Signal = sound_ext[15:16-$bits(Sound.Signal)];
+
         assign ExtBus[BUS_SCC].BUSDIR_n = busdir_n;
         assign ExtBus[BUS_SCC].DOUT = dout;
-`endif
     end
     else begin
         assign ExtBus[BUS_SCC].BUSDIR_n = 1;

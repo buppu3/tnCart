@@ -28,7 +28,7 @@ ENABLE_* パラメータで各機能の ENABLE/DISABLE を設定できます。
 | ENABLE_NEXTOR   | NEXTOR および TF カード機能の有効(ENABLE)/無効(DISABLE)を設定します。 |
 | ENABLE_RAM      | 拡張 4MB RAM 機能の有効(ENABLE)/無効(DISABLE)を設定します。 |
 | ENABLE_PSG      | PSG 出力機能の有効(ENABLE)/無効(DISABLE)を設定します。 |
-| ENABLE_SCC      | SCC 出力機能の有効(ENABLE)/無効(DISABLE)を設定します。 |
+| ENABLE_SCC      | SCC 出力機能の有効(ENABLE または ENABLE_IKASCC)/無効(DISABLE)を設定します。 |
 | ENABLE_V9990<br/>ENABLE_V9990_CMD | V9990 エミュレータの有効(ENABLE)/無効(DISABLE)を設定します。|
 | ENABLE_SCANLINE | アップスキャン時に走査線の隙間あり(ENABLE)/隙間なし(DISABLE)を設定します。 |
 
@@ -38,3 +38,7 @@ ENABLE_* パラメータで各機能の ENABLE/DISABLE を設定できます。
 現在のバージョンは TangNano20K にギリギリ収まるサイズに最適化したので ENABLE_V9990, ENABLE_V9990_CMD, ENABLE_FM, ENABLE_PSG, ENABLE_SCC はすべて ENABLE になっています。  
 
 Gowin Synthesis のバージョンで出力されるネットリストが違いますので、合成後は Time Analysis Report を確認した方がよいです(私は V1.9.9_x64で合成しています)。
+
+IKASCC は 1chip MSX では MUX されたバスタイミングが合わないため動きません。
+
+ENABLE_IKASCC 指定時は SCC-I 音源は使えません。

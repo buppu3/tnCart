@@ -44,6 +44,7 @@ package CONFIG;
     localparam ENABLE           = 1;            // 機能の有効
     localparam ENABLE_VM2413    = 1;            // 機能の有効(VM2413)
     localparam ENABLE_IKAOPLL   = 2;            // 機能の有効(IKAOPLL)
+    localparam ENABLE_IKASCC    = 2;            // 機能の有効(IKASCC, 1chip MSX では動かない)
 
     /***************************************************************
      * フラッシュメモリマップ
@@ -121,7 +122,7 @@ package CONFIG;
     localparam          ENABLE_NEXTOR           = ENABLE;           // NEXTOR カートリッジを有効にするか(DISABLE/ENABLE)
     localparam          ENABLE_RAM              = ENABLE;           // 拡張 RAM カートリッジを有効にするか(DISABLE/ENABLE)
     localparam          ENABLE_PSG              = ENABLE;           // PSG を有効にするか(DISABLE/ENABLE)
-    localparam          ENABLE_SCC              = ENABLE;           // SCC を有効にするか(DISABLE/ENABLE)
+    localparam          ENABLE_SCC              = ENABLE;           // SCC を有効にするか(DISABLE/ENABLE/ENABLE_IKASCC)
     localparam          ENABLE_V9990            = ENABLE;           // V9990 を有効にするか(DISABLE/ENABLE)
     localparam          ENABLE_V9990_CMD        = ENABLE;           // V9990 の VDP コマンドを有効(V9990のVDPコマンドを有効にすると回路の規模が大きくなるので、他の大きな機能と同時使用はできない)
     //localparam        ENABLE_PAC_WRITE        = ENABLE;           // PAC データを FLASH に保存するか(DISABLE/ENABLE)

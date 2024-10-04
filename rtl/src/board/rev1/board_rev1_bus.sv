@@ -153,11 +153,12 @@ module BOARD_REV1_BUS(
     logic M1_n;
     logic RD_n;
     logic WR_n;
+    logic CLOCK;
     logic RFSH_n;
     PIN_FILTER u_nsltsl (.CLK(CLK), .RESET_n(RESET_n), .ENA(mux_active[CS_MERQ ]), .IN(CART_SLTSL_n           ), .OUT(SLTSL_n    ));
     PIN_FILTER u_nrd    (.CLK(CLK), .RESET_n(RESET_n), .ENA(1'b1                ), .IN(CART_RD_n              ), .OUT(RD_n       ));
     PIN_FILTER u_nwr    (.CLK(CLK), .RESET_n(RESET_n), .ENA(1'b1                ), .IN(CART_WR_n              ), .OUT(WR_n       ));
-    PIN_FILTER u_clock  (.CLK(CLK), .RESET_n(RESET_n), .ENA(1'b1                ), .IN(CART_CLOCK             ), .OUT(curr_clk   ));
+    PIN_FILTER u_clock  (.CLK(CLK), .RESET_n(RESET_n), .ENA(1'b1                ), .IN(CART_CLOCK             ), .OUT(CLOCK      ));
     PIN_FILTER u_nmerq  (.CLK(CLK), .RESET_n(RESET_n), .ENA(mux_active[CS_MERQ ]), .IN(CART_MUX_SIG[BIT_MERQ ]), .OUT(MERQ_n     ));
     PIN_FILTER u_niorq  (.CLK(CLK), .RESET_n(RESET_n), .ENA(mux_active[CS_IORQ ]), .IN(CART_MUX_SIG[BIT_IORQ ]), .OUT(IORQ_n     ));
     PIN_FILTER u_ncs1   (.CLK(CLK), .RESET_n(RESET_n), .ENA(mux_active[CS_CS1  ]), .IN(CART_MUX_SIG[BIT_CS1  ]), .OUT(CS1_n      ));
@@ -196,7 +197,7 @@ module BOARD_REV1_BUS(
     PIN_FILTER u_d7_in (.CLK(CLK), .RESET_n(RESET_n), .ENA(1'b1), .IN(CART_DATA_SIG[7]), .OUT(DIN[7]));
 
     /***************************************************************
-     * RD_n, WR_n の遅延
+     * RD_n, WR_n, CLOCK の遅延
      ***************************************************************/
     logic [9-1:0] delay_rd_n;
     always_ff @(posedge CLK or negedge RESET_n) begin
@@ -210,7 +211,28 @@ module BOARD_REV1_BUS(
         else            delay_wr_n <= { WR_n, delay_wr_n[$bits(delay_wr_n)-1:1] };
     end
 
-    assign Bus.ADDR = ADDR;
+    logic [9-1:0] delay_clk;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)    delay_clk <= -1;
+        else            delay_clk <= { CLOCK, delay_clk[$bits(delay_clk)-1:1] };
+    end
+
+    logic delay_clk2/* synthesis syn_maxfan=15 */;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)    delay_clk2 <= 0;
+        else            delay_clk2 <= delay_clk[1];
+    end
+
+    /***************************************************************
+     * アドレスバスの更新タイミングを MERQ や IORQ 等と合わせる
+     ***************************************************************/
+    reg [15:0] ff_addr;
+    always_ff @(posedge CLK) if(mux_active[2]) ff_addr <= ADDR;
+
+    /***************************************************************
+     * 信号を Bus I/F に出力
+     ***************************************************************/
+    assign Bus.ADDR = ff_addr;
     assign Bus.DIN = DIN;
     assign Bus.SLTSL_n = SLTSL_n;
     assign Bus.MERQ_n = MERQ_n;
@@ -226,7 +248,7 @@ module BOARD_REV1_BUS(
     /***************************************************************
      * CLK_EN
      ***************************************************************/
-    logic curr_clk;
+    wire curr_clk = delay_clk[0];
     logic prev_clk;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)    prev_clk <= 0;
@@ -241,10 +263,14 @@ module BOARD_REV1_BUS(
      ***************************************************************/
     assign Bus.CLK_21M = CLK_21M;   // 21.6MHz
 
-    // 3.58MHz
-    logic curr_clk_d21m;
-    PIN_FILTER u_clock_d21m (.CLK(CLK_21M), .RESET_n(RESET_n), .ENA(1'b1), .IN(CART_CLOCK), .OUT(curr_clk_d21m));
-
+    // 3.58MHz エッジ
+    wire curr_clk_d21m;
+    if(CONFIG::ENABLE_SCC == CONFIG::ENABLE_IKASCC) begin
+        assign curr_clk_d21m = delay_clk2;
+    end
+    else begin
+        assign curr_clk_d21m = delay_clk[0];
+    end
     logic prev_clk_d21m;
     always_ff @(posedge CLK_21M or negedge RESET_n) begin
         if(!RESET_n)    prev_clk_d21m <= 0;

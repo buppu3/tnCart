@@ -53,6 +53,7 @@ https://github.com/user-attachments/assets/f6615e37-0041-4baa-8b7d-7cd3aba46d73
 - PSG https://github.com/dnotq/ym2149_audio
 - OPLL(VM2413) https://github.com/hra1129/one-chip-msx-kai/tree/main/source/pld/src/sound/opll/vm2413
 - OPLL(IKAOPLL) https://github.com/ika-musume/IKAOPLL
+- SCC(IKASCC) https://github.com/ika-musume/IKASCC
 
 ## メモ
 - V9990 の映像は 720x480ドット(ピクセルクロック約27MHz) の DVI 信号で出力されます。接続するモニターやビデオキャプチャー機器によっては正常に動作しない可能性があります。

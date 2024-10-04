@@ -62,15 +62,6 @@ module PACROM_CONTROLLER #(
         genvar num;
         for(num = 0; num < COUNT; num = num + 1) begin: extbus_loop
             if(USE_FF) begin
-                always_ff @(posedge Bus.CLK_21M or negedge RESET_n) begin
-                    if(!RESET_n) begin
-                        ExtBus[num].CLK_EN_21M <= 0;
-                    end
-                    else begin
-                        ExtBus[num].CLK_EN_21M <= Bus.CLK_EN_21M;
-                    end
-                end
-
                 always @(posedge CLK or negedge RESET_n) begin
                     if(!RESET_n) begin
                         ExtBus[num].ADDR        <= 0;
@@ -141,10 +132,10 @@ module PACROM_CONTROLLER #(
                 assign ExtBus[num].RESET_n     = Bus.RESET_n;
                 assign ExtBus[num].CLK         = Bus.CLK;
                 assign ExtBus[num].CLK_EN      = Bus.CLK_EN;
-                assign ExtBus[num].CLK_EN_21M  = Bus.CLK_EN_21M;
             end
 
             assign ExtBus[num].CLK_21M = Bus.CLK_21M;
+            assign ExtBus[num].CLK_EN_21M = Bus.CLK_EN_21M;
 
             assign tmp_dout    [num] = ExtBus[num].DOUT     | ((num < COUNT-1) ? tmp_dout    [num + 1] : 0);
             assign tmp_busdir_n[num] = ExtBus[num].BUSDIR_n & ((num < COUNT-1) ? tmp_busdir_n[num + 1] : 1);

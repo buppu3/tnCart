@@ -122,9 +122,19 @@ module BOARD_REV1_CLOCK (
     wire CLK_MEM_LOCK;
     assign CLK_MEM_READY = RESET_n && CLK_MEM_LOCK;
 if(CONFIG_BOARD::SYNC_CPU_CLK) begin
+
+    // 
+    wire w_clk_mem_lock;
+    reg ff_clk_mem_lock = 0;
+    assign CLK_MEM_LOCK = ff_clk_mem_lock;
+    always_ff @(posedge CLK_IN) begin
+        if(!RESET_n)            ff_clk_mem_lock <= 0;
+        else if(w_clk_mem_lock) ff_clk_mem_lock <= 1;
+    end
+
     rPLL u_pll_base (
         .CLKOUT(CLK_MEM),
-        .LOCK(CLK_MEM_LOCK),
+        .LOCK(w_clk_mem_lock),
         .CLKOUTP(CLK_MEM_P),
         .CLKOUTD(),
         .CLKOUTD3(),

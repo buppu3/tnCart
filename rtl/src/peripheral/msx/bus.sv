@@ -108,15 +108,6 @@ module EXPANSION_BUS #(
         genvar num;
         for(num = 0; num < COUNT; num = num + 1) begin: sec
             if(USE_FF) begin
-                always_ff @(posedge Primary.CLK_21M or negedge RESET_n) begin
-                    if(!RESET_n) begin
-                        Secondary[num].CLK_EN_21M <= 0;
-                    end
-                    else begin
-                        Secondary[num].CLK_EN_21M <= Primary.CLK_EN_21M;
-                    end
-                end
-
                 always_ff @(posedge CLK or negedge RESET_n) begin
                     if(!RESET_n) begin
                         Secondary[num].SLTSL_n    <= 1;
@@ -187,10 +178,10 @@ module EXPANSION_BUS #(
                 assign Secondary[num].RESET_n    = Primary.RESET_n;
                 assign Secondary[num].CLK        = Primary.CLK;
                 assign Secondary[num].CLK_EN     = Primary.CLK_EN;
-                assign Secondary[num].CLK_EN_21M = Primary.CLK_EN_21M;
             end
 
             assign Secondary[num].CLK_21M = Primary.CLK_21M;
+            assign Secondary[num].CLK_EN_21M = Primary.CLK_EN_21M;
 
             assign tmp_dout    [num] = Secondary[num].DOUT     | ((num < COUNT-1) ? tmp_dout    [num + 1] : 0);
             assign tmp_busdir_n[num] = Secondary[num].BUSDIR_n & ((num < COUNT-1) ? tmp_busdir_n[num + 1] : 1);
