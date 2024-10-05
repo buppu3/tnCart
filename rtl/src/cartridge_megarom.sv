@@ -176,6 +176,7 @@ module CARTRIDGE_MEGAROM #(
              * IKASCC
              ***************************************************************/
             reg rst_n;
+            reg clk_en;
             reg cs_n;
             reg rd_n;
             reg wr_n;
@@ -183,14 +184,22 @@ module CARTRIDGE_MEGAROM #(
             reg [4:0] addr_h;
             reg [7:0] din;
 
+            wire wr_edge = !ExtBus[BUS_SCC].WR_n && wr_n;
+            wire rd_edge = !ExtBus[BUS_SCC].RD_n && rd_n;
+
             always_ff @(posedge ExtBus[BUS_SCC].CLK_21M) begin
                 rst_n <= RESET_n && ExtBus[BUS_SCC].RESET_n;
+                clk_en <= !ExtBus[BUS_SCC].CLK_EN_21M;              // CLK_EN も1クロック遅らせる
                 cs_n <= ExtBus[BUS_SCC].SLTSL_n || !SCC_ENA;
                 rd_n <= ExtBus[BUS_SCC].RD_n;
                 wr_n <= ExtBus[BUS_SCC].WR_n;
-                addr_l <= ExtBus[BUS_SCC].ADDR[7:0];
-                addr_h <= ExtBus[BUS_SCC].ADDR[15:11];
-                if(!ExtBus[BUS_SCC].WR_n && wr_n) din <= ExtBus[BUS_SCC].DIN;
+                // WR_n, RD_n の立ち下がりでアドレス更新
+                if(wr_edge || rd_edge) begin
+                    addr_l <= ExtBus[BUS_SCC].ADDR[7:0];
+                    addr_h <= ExtBus[BUS_SCC].ADDR[15:11];
+                end
+                // WR_n の立ち下がりでデータ更新
+                if(wr_edge) din <= ExtBus[BUS_SCC].DIN;
             end
 
             wire [7:0] db_o;
@@ -206,7 +215,7 @@ module CARTRIDGE_MEGAROM #(
                 .RAM_BLOCK      (1)
             ) u_scc (
                 .i_EMUCLK       (ExtBus[BUS_SCC].CLK_21M),
-                .i_MCLK_PCEN_n  (!ExtBus[BUS_SCC].CLK_EN_21M),
+                .i_MCLK_PCEN_n  (clk_en),
                 .i_RST_n        (rst_n),
 
                 .i_CS_n         (cs_n),
