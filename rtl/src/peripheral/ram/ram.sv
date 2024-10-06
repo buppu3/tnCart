@@ -37,9 +37,11 @@
  * メモリパッケージ
  ***********************************************************************/
 package RAM;
-    localparam [1:0]    DIN_SIZE_8  = 2'b00;
-    localparam [1:0]    DIN_SIZE_16 = 2'b01;
-    localparam [1:0]    DIN_SIZE_32 = 2'b10;
+    localparam [2:0]    DIN_SIZE_8    = 3'b000;
+    localparam [2:0]    DIN_SIZE_16   = 3'b001;
+    localparam [2:0]    DIN_SIZE_32   = 3'b010;
+    localparam [2:0]    DIN_SIZE_32_E = 3'b011; // 64bit アクセスして偶数アドレスを 32bit 分
+    localparam [2:0]    DIN_SIZE_32_O = 3'b111; // 64bit アクセスして奇数アドレスを 32bit 分
 endpackage
 
 /***********************************************************************
@@ -53,7 +55,7 @@ interface RAM_IF #(parameter ADDR_BIT_WIDTH=24);
     logic [31:0]                DIN;            // ライトデータ
     logic [31:0]                DOUT;           // リードデータ
     logic                       ACK_n;          // 応答
-    logic [1:0]                 DIN_SIZE;       // ライトデータサイズ
+    logic [2:0]                 DIN_SIZE;       // R/Wデータサイズ
     logic                       TIMING;         // メモリアクセスタイミング信号
 
     // ホスト側ポート

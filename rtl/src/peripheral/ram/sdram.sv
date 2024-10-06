@@ -70,7 +70,7 @@ module SDRAM #(
     localparam      MR_WRITE_BURST      = 1'b0;             // write burst(0:enable / 1:disable)
     localparam      MR_CAS_LATENCY      = 3'b010;           // cas latency(010:CL2 / 011:CL3)
     localparam      MR_BURST_TYPE       = 1'b0;             // burst type(0:sequential / 1:interleave)
-    localparam      MR_BURST_LENGTH     = 3'b000;           // burst length(000:1word / 001:2word / 010:4word / 011:8word)
+    localparam      MR_BURST_LENGTH     = 3'b001;           // burst length(000:1word / 001:2word / 010:4word / 011:8word)
 
     /***************************************************************
      * SDRAM のコマンド定義
@@ -198,13 +198,18 @@ module SDRAM #(
 
     localparam      STATE_IDLE          = (STATE_INIT_END);
     localparam      STATE_ACTIVE_ACK    = (STATE_IDLE + 7'd0);
-    localparam      STATE_INACTIVE_ACK  = (STATE_IDLE + 7'd6);
-    localparam      STATE_END           = (STATE_IDLE + 7'd7);
+    localparam      STATE_INACTIVE_ACK  = (STATE_IDLE + 7'd7);
+    localparam      STATE_END           = (STATE_IDLE + 7'd8);
 
     localparam      STATE_ACTIVE        = (STATE_IDLE + 7'd0);
-    localparam      STATE_SETUP_DATA    = (STATE_IDLE + 7'd1);
+    localparam      STATE_SETUP_WDATA_1 = (STATE_IDLE + 7'd1);
+    localparam      STATE_2             = (STATE_IDLE + 7'd2);
     localparam      STATE_READ_WRITE    = (STATE_IDLE + 7'd3);
-    localparam      STATE_FETCH_DATA    = (STATE_IDLE + 7'd6);
+    localparam      STATE_SETUP_WDATA_2 = (STATE_IDLE + 7'd4);
+    localparam      STATE_HIZ_WDATA     = (STATE_IDLE + 7'd5);
+    localparam      STATE_FETCH_RDATA_1 = (STATE_IDLE + 7'd6);
+    localparam      STATE_FETCH_RDATA_2 = (STATE_IDLE + 7'd7);
+
     reg [6:0]       state;
     always_ff @(posedge CLK or negedge RESET_n)
     begin
@@ -283,36 +288,7 @@ module SDRAM #(
                         SDRAM_CMD <= CMD_ACT;
                         SDRAM_BA <= sdram_bank;
                         SDRAM_A <= sdram_row;
-
-                        // DQ MASK を設定
-                        if(Ram.WE_n) begin
-                            SDRAM_DQM <= 0;
-                        end
-                        else begin
-                            if(SDRAM_DQ_WIDTH == 32)
-                            begin
-                                case (Ram.DIN_SIZE)
-                                    default:
-                                        case (Ram.ADDR[1:0])
-                                            2'd0:   SDRAM_DQM <= 4'b1110;
-                                            2'd1:   SDRAM_DQM <= 4'b1101;
-                                            2'd2:   SDRAM_DQM <= 4'b1011;
-                                            2'd3:   SDRAM_DQM <= 4'b0111;
-                                        endcase
-                                    RAM::DIN_SIZE_16:
-                                        case (Ram.ADDR[1:1])
-                                            2'd0:   SDRAM_DQM <= 4'b1100;
-                                            2'd1:   SDRAM_DQM <= 4'b0011;
-                                        endcase
-                                    RAM::DIN_SIZE_32:SDRAM_DQM <= 4'b0000;
-                                endcase
-                            end else begin
-                                case (Ram.ADDR[0])
-                                    2'd0:   SDRAM_DQM <= 4'b10;
-                                    2'd1:   SDRAM_DQM <= 4'b01;
-                                endcase
-                            end
-                        end
+                        SDRAM_DQM <= 0;
 
                         save_addr <= Ram.ADDR;
                         save_din <= Ram.DIN;
@@ -324,7 +300,7 @@ module SDRAM #(
                         // 状態を更新
                         cmd_is_refresh <= 0;
                         cmd_is_write <= (Ram.WE_n == 0);
-                        cmd_is_read <= (Ram.OE_n == 0);
+                        cmd_is_read <= (Ram.WE_n != 0);
 
                     end else if(begin_rfsh)
                     begin
@@ -356,7 +332,7 @@ module SDRAM #(
                 //
                 // 書き込みデータの準備
                 //
-                STATE_SETUP_DATA:
+                STATE_SETUP_WDATA_1:
                 begin
                     // SDRAM へ NOP コマンドを送信
                     SDRAM_CMD <= CMD_NOP;
@@ -367,13 +343,42 @@ module SDRAM #(
                         // WRITE データを設定
                         if(SDRAM_DQ_WIDTH == 32)
                         begin
-                            case (save_din_size)
-                                default:          sdram_DQ_OUT <= { save_din[ 7:0], save_din[ 7:0], save_din[ 7:0], save_din[ 7:0]};
-                                RAM::DIN_SIZE_16: sdram_DQ_OUT <= { save_din[15:0], save_din[15:0]};
-                                RAM::DIN_SIZE_32: sdram_DQ_OUT <=   save_din[31:0];
-                            endcase
+                            if(save_din_size == RAM::DIN_SIZE_32_E) begin
+                                sdram_DQ_OUT <= { save_din[15:8], save_din[15:8], save_din[ 7:0], save_din[ 7:0]};
+                                SDRAM_DQM <= 4'b1010;
+                            end
+                            else if(save_din_size == RAM::DIN_SIZE_32_O) begin
+                                sdram_DQ_OUT <= { save_din[15:8], save_din[15:8], save_din[ 7:0], save_din[ 7:0]};
+                                SDRAM_DQM <= 4'b0101;
+                            end
+                            else begin
+                                case (save_din_size)
+                                    default:          sdram_DQ_OUT <= { save_din[ 7:0], save_din[ 7:0], save_din[ 7:0], save_din[ 7:0]};
+                                    RAM::DIN_SIZE_16: sdram_DQ_OUT <= { save_din[15:0], save_din[15:0]};
+                                    RAM::DIN_SIZE_32: sdram_DQ_OUT <=   save_din[31:0];
+                                endcase
+                                case (save_din_size)
+                                    default:
+                                        case (Ram.ADDR[1:0])
+                                            2'd0:       SDRAM_DQM <= 4'b1110;
+                                            2'd1:       SDRAM_DQM <= 4'b1101;
+                                            2'd2:       SDRAM_DQM <= 4'b1011;
+                                            2'd3:       SDRAM_DQM <= 4'b0111;
+                                        endcase
+                                    RAM::DIN_SIZE_16:
+                                        case (Ram.ADDR[1:1])
+                                            2'd0:       SDRAM_DQM <= 4'b1100;
+                                            2'd1:       SDRAM_DQM <= 4'b0011;
+                                        endcase
+                                    RAM::DIN_SIZE_32:   SDRAM_DQM <= 4'b0000;
+                                endcase
+                            end
                         end else begin
                             sdram_DQ_OUT <= { save_din, save_din};
+                            case (Ram.ADDR[0])
+                                2'd0:   SDRAM_DQM <= 4'b10;
+                                2'd1:   SDRAM_DQM <= 4'b01;
+                            endcase
                         end
 
                         // DQ の出力許可
@@ -400,9 +405,55 @@ module SDRAM #(
                 end
 
                 //
-                // データの取り込み
+                // ライトデータ(bit32~63)
                 //
-                STATE_FETCH_DATA:
+                STATE_SETUP_WDATA_2:
+                begin
+                    // SDRAM へ NOP コマンドを送信
+                    SDRAM_CMD <= CMD_NOP;
+
+                    if(cmd_is_write)
+                    begin
+                        if(SDRAM_DQ_WIDTH == 32)
+                        begin
+                            if(save_din_size == RAM::DIN_SIZE_32_E) begin
+                                sdram_DQ_OUT <= { save_din[31:24], save_din[31:24], save_din[23:16], save_din[23:16]};
+                                SDRAM_DQM <= 4'b1010;
+                            end
+                            else if(save_din_size == RAM::DIN_SIZE_32_O) begin
+                                sdram_DQ_OUT <= { save_din[31:24], save_din[31:24], save_din[23:16], save_din[23:16]};
+                                SDRAM_DQM <= 4'b0101;
+                            end
+                            else begin
+                                SDRAM_DQM <= 4'b1111;
+                            end
+                        end
+                        else begin
+                            SDRAM_DQM <= 2'b11;
+                        end
+                    end
+                end
+
+                //
+                // ライトデータ終了
+                //
+                STATE_HIZ_WDATA:
+                begin
+                    // SDRAM へ NOP コマンドを送信
+                    SDRAM_CMD <= CMD_NOP;
+
+                    if(cmd_is_write)
+                    begin
+                        SDRAM_DQM <= 4'b1111;
+                    end
+
+                    sdram_DQ_OUT_ENA_n <= DQ_OUT_ENA_INACTIVE;
+                end
+
+                //
+                // データの取り込み(bit0~31)
+                //
+                STATE_FETCH_RDATA_1:
                 begin
                     // SDRAM へ NOP コマンドを送信
                     SDRAM_CMD <= CMD_NOP;
@@ -410,10 +461,15 @@ module SDRAM #(
                     // DQ_IN を読み出す
                     if(cmd_is_read)
                     begin
-                        cmd_is_read <= 0;
                         if(SDRAM_DQ_WIDTH == 32)
                         begin
-                            case (save_addr[1:0])
+                            if(save_din_size == RAM::DIN_SIZE_32_E) begin
+                                Ram.DOUT <= {SDRAM_DQ[23:16], SDRAM_DQ[7:0], SDRAM_DQ[23:16], SDRAM_DQ[7:0]};
+                            end
+                            else if(save_din_size == RAM::DIN_SIZE_32_O) begin
+                                Ram.DOUT <= {SDRAM_DQ[31:24], SDRAM_DQ[15:8], SDRAM_DQ[31:24], SDRAM_DQ[15:8]};
+                            end
+                            else case (save_addr[1:0])
                                 2'd0:   Ram.DOUT <=               SDRAM_DQ[31: 0];
                                 2'd1:   Ram.DOUT <= { 8'h00,      SDRAM_DQ[31: 8] };
                                 2'd2:   Ram.DOUT <= { 16'h0000,   SDRAM_DQ[31:16] };
@@ -426,9 +482,29 @@ module SDRAM #(
                             endcase
                         end
                     end
+                end
 
-                    // DQ 出力中なら Hi-Z にする
-                    sdram_DQ_OUT_ENA_n <= DQ_OUT_ENA_INACTIVE;
+                //
+                // データの取り込み(bit32~63)
+                //
+                STATE_FETCH_RDATA_2:
+                begin
+                    // SDRAM へ NOP コマンドを送信
+                    SDRAM_CMD <= CMD_NOP;
+
+                    // DQ_IN を読み出す
+                    if(cmd_is_read)
+                    begin
+                        if(SDRAM_DQ_WIDTH == 32)
+                        begin
+                            if(save_din_size == RAM::DIN_SIZE_32_E) begin
+                                Ram.DOUT <= {SDRAM_DQ[23:16], SDRAM_DQ[7:0], Ram.DOUT[15:0]};
+                            end
+                            else if(save_din_size == RAM::DIN_SIZE_32_O) begin
+                                Ram.DOUT <= {SDRAM_DQ[31:24], SDRAM_DQ[15:8], Ram.DOUT[15:0]};
+                            end
+                        end
+                    end
                 end
 
                 default:

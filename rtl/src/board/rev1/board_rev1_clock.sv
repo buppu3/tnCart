@@ -36,7 +36,7 @@
 /***********************************************************************
  * 
  ***********************************************************************/
-module BOARD_REV1_CLOCK (
+module BOARD_REV1_CLOCK /* synthesis syn_preserve=1 */ (
     input wire      RESET_n,
     input wire      CLK_IN,
 

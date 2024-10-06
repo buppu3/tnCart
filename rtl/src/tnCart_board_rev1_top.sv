@@ -103,15 +103,15 @@ module TNCART_BOARD_REV1_TOP (
     /***************************************************************
      * CLOCK
      ***************************************************************/
-    logic CLK_BASE;
+    logic CLK_BASE/* synthesis syn_keep=1 */;
     logic CLK_BASE_READY;
     logic CLK_MEM;
     logic CLK_MEM_P;
     logic CLK_MEM_READY;
-    logic CLK_TMDS_S;
-    logic CLK_TMDS_P;
+    logic CLK_TMDS_S/* synthesis syn_keep=1 */;
+    logic CLK_TMDS_P/* synthesis syn_keep=1 */;
     logic CLK_TMDS_READY;
-    logic CLK_21M;
+    logic CLK_21M/* synthesis syn_keep=1 */;
     BOARD_REV1_CLOCK u_clk (
         .RESET_n        (1'b1),
         .CLK_IN         (CONFIG_BOARD::SYNC_CPU_CLK ? CART_CLOCK : CLK_27M),

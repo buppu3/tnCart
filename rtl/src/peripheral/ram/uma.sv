@@ -192,7 +192,7 @@ end
     /***************************************************************
      * 処理完了タイミング
      ***************************************************************/
-    wire done = Secondary[0].TIMING || Secondary[1].TIMING;
+    wire done = exec_timing[0] || exec_timing[1];
 
     /***************************************************************
      * 切り替えの 1クロック後に RAM へデータ送信
@@ -336,13 +336,13 @@ end
             // DIN_SIZE の保持
             always_ff @(posedge CLK or negedge RESET_n) begin
                 if(!RESET_n)                save_din_size[process_ch] <= 0;
-                else if(det_we[process_ch]) save_din_size[process_ch] <= Secondary[process_ch].DIN_SIZE;
+                else if(det_oe[process_ch] || det_we[process_ch]) save_din_size[process_ch] <= Secondary[process_ch].DIN_SIZE;
             end
 
             // Primary へ渡すパラメータ
             assign req_addr[process_ch]     = (det_oe[process_ch] || det_we[process_ch]) ? Secondary[process_ch].ADDR     : save_addr[process_ch];
             assign req_din[process_ch]      =  det_we[process_ch]                        ? Secondary[process_ch].DIN      : save_din[process_ch];
-            assign req_din_size[process_ch] =  det_we[process_ch]                        ? Secondary[process_ch].DIN_SIZE : save_din_size[process_ch];
+            assign req_din_size[process_ch] = (det_oe[process_ch] || det_we[process_ch]) ? Secondary[process_ch].DIN_SIZE : save_din_size[process_ch];
 
         end
     endgenerate

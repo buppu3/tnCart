@@ -73,7 +73,7 @@ module T9990 (
     output wire         RAM_RFSH_n,         // リフレッシュ要求
     output wire [18:0]  RAM_ADDR,           // RAM のアドレス
     output wire [31:0]  RAM_DIN,            // RAM へ書くデータが出力される
-    output wire [1:0]   RAM_DIN_SIZE,       // アクセスのビット幅 0=8bit, 2=32bit
+    output wire [2:0]   RAM_DIN_SIZE,       // アクセスのビット幅 0=8bit, 2=32bit
     input wire [31:0]   RAM_DOUT,           // RAM から読んだデータ
 
     // ビデオ出力
@@ -304,6 +304,9 @@ module T9990 (
         // TIMING
         .TIMING(MEM_TIMING),
 
+        //
+        .DSPM(REG.DSPM),
+
         // 各モジュールへのメモリアクセス I/F
         .VC_MEM,    // VDP/CPU
         .SP_MEM,    // SPRITE
@@ -320,6 +323,9 @@ module T9990 (
     T9990_URB_RAM_VC u_ram_vc (
         .RESET_n(rst_flag),
         .CLK,
+
+        //
+        .DSPM(REG.DSPM),
 
         // VC MEM I/F
         .VC_MEM,

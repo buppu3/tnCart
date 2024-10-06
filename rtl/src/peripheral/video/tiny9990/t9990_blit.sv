@@ -220,15 +220,11 @@ wire srch_edge_right = work.srch.edge_left;
     reg ena_enqueue;
     always_ff @(posedge CLK) if(CLK_EN) ena_enqueue <= FREE_COUNT >= SRC_OUT_COUNT && src_enable;
 
-    reg [15:0] save_mem_dout;       // P1 モード VRAM0 データ一時保存用
-
     wire [31:0] src_data_le = {SRC_DATA[7:0], SRC_DATA[15:8], SRC_DATA[23:16], SRC_DATA[31:24]};        // ロジカルオペレーション SRC データ(リトルエンディアン)
     wire [31:0] bit_mask_le = {BIT_MASK[7:0], BIT_MASK[15:8], BIT_MASK[23:16], BIT_MASK[31:24]};        // ビットマスク(リトルエンディアン)
     wire [31:0] masked_src_data_le = src_data_le & bit_mask_le;                                         // ビットマスク後の SRC データ(リトルエンディアン)
 
-    wire [31:0] cmd_mem_dout_p1_be  = { save_mem_dout[7:0], CMD_MEM.DOUT[7:0], save_mem_dout[15:8], CMD_MEM.DOUT[15:8]};    // 転送元 VRAM 読み出しデータ(P1モード、ビッグエンディアン)
-    wire [31:0] cmd_mem_dout_np1_be = { CMD_MEM.DOUT[7:0], CMD_MEM.DOUT[15:8], CMD_MEM.DOUT[23:16], CMD_MEM.DOUT[31:24]};   // 転送元 VRAM 読み出しデータ(ビッグエンディアン)
-    wire [31:0] cmd_mem_dout_be  = P1 ? cmd_mem_dout_p1_be : cmd_mem_dout_np1_be;                                           // 転送元 VRAM 読み出しデータ
+    wire [31:0] cmd_mem_dout_be = { CMD_MEM.DOUT[7:0], CMD_MEM.DOUT[15:8], CMD_MEM.DOUT[23:16], CMD_MEM.DOUT[31:24]};   // 転送元 VRAM 読み出しデータ(ビッグエンディアン)
 
     wire [4:0] SRC_OUT_COUNT = SRC_COUNT;
     wire [4:0] SRC_POS_COUNT = SRC_COUNT;
@@ -255,10 +251,6 @@ wire srch_edge_right = work.srch.edge_left;
         STATE_SETUP2,
         STATE_SETUP3,
         STATE_SRC_IN,
-        STATE_SRC_READ_P1_EVEN_VRAM_WAIT_ACK,
-        STATE_SRC_READ_P1_EVEN_VRAM_WAIT_BUSY,
-        STATE_SRC_READ_P1_ODD_VRAM_WAIT_ACK,
-        STATE_SRC_READ_P1_ODD_VRAM_WAIT_BUSY,
         STATE_SRC_READ_VRAM_WAIT_ACK,
         STATE_SRC_READ_VRAM_WAIT_BUSY,
         STATE_SRC_READ_VRAM_CONV_2N,
@@ -273,18 +265,11 @@ wire srch_edge_right = work.srch.edge_left;
         STATE_SRC_ENQUEUE_DONE,
         STATE_SRC_DEQUEUE,
         STATE_DST_READ_VRAM,
-        STATE_DST_READ_P1_EVEN_VRAM_WAIT_ACK,
-        STATE_DST_READ_P1_EVEN_VRAM_WAIT_BUSY,
-        STATE_DST_READ_P1_ODD_VRAM_WAIT_ACK,
-        STATE_DST_READ_P1_ODD_VRAM_WAIT_BUSY,
         STATE_DST_READ_VRAM_WAIT_ACK,
         STATE_DST_READ_VRAM_WAIT_BUSY,
         STATE_SRC_DEQUEUE_DONE,
         STATE_LOGOP,
         STATE_DST_WRITE,
-        STATE_DST_WRITE_P1_EVEN_VRAM_WAIT_ACK,
-        STATE_DST_WRITE_P1_EVEN_VRAM_WAIT_BUSY,
-        STATE_DST_WRITE_P1_ODD_VRAM_WAIT_ACK,
         STATE_DST_WRITE_VRAM_WAIT_ACK,
         STATE_DST_WRITE_CPU_H_WAIT_ACK,
         STATE_DST_WRITE_CPU_H_WAIT_BUSY,
@@ -292,7 +277,6 @@ wire srch_edge_right = work.srch.edge_left;
         STATE_DST_WRITE_WAIT,
         STATE_COMPLETE
     } state_t;
-localparam state_t STATE_DST_WRITE_P1_ODD_VRAM_WAIT_BUSY = STATE_DST_WRITE_WAIT;
 localparam state_t STATE_DST_WRITE_VRAM_WAIT_BUSY        = STATE_DST_WRITE_WAIT;
 localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
 
@@ -373,6 +357,7 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
             STATUS.CE_intr <= 0;
             state <= STATE_IDLE;
             FIFO_CLEAR <= 0;
+            CMD_MEM.ADDR_MODE <= 0;
             CMD_MEM.OE_n <= 1;
             CMD_MEM.WE_n <= 1;
             CMD_MEM.ADDR <= 0;
@@ -560,24 +545,9 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
 
             // 転送元データが必要なら読み出し開始
             else if(ena_enqueue) begin
-                // VRAM リニア(P1モード)
-                if(P1 && src_is_linear) begin
-                    CMD_MEM.OE_n <= 0;
-                    CMD_MEM.ADDR <= {1'b0, SRC_X[18:2], 1'b0};          // 偶数アドレス(VRAM0)読み出し
-                    CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_16;
-                    state <= STATE_SRC_READ_P1_EVEN_VRAM_WAIT_ACK;
-                end
-
-                // VRAM 矩形(P1モード)
-                //else if(P1 && src_is_xy) begin
-                //    CMD_MEM.OE_n <= 0;
-                //    CMD_MEM.ADDR <= {1'b0, SRC_XY_ADDR[18:2], 1'b0};    // 偶数アドレス(VRAM0)読み出し
-                //    CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_16;
-                //    state <= STATE_SRC_READ_P1_EVEN_VRAM_WAIT_ACK;
-                //end
-
                 // VRAM リニア
-                else if(src_is_linear) begin
+                if(src_is_linear) begin
+                    CMD_MEM.ADDR_MODE <= T9990_REG::DSPM_BITMAP;   // VRAM0/1 = LSB 固定
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= {SRC_X[18:2], 2'b00};
                     CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
@@ -586,6 +556,7 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
 
                 // VRAM 矩形
                 else if(src_is_xy) begin
+                    CMD_MEM.ADDR_MODE <= REG.DSPM;  // VRAM0/1 = 画面モードに従う
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= SRC_XY_ADDR;
                     CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
@@ -621,49 +592,6 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
         //
         // VRAM 読み出し要求を受け付けるまで待つ
         //
-        else if(state == STATE_SRC_READ_P1_EVEN_VRAM_WAIT_ACK) begin
-            if(CMD_MEM.BUSY) begin
-                CMD_MEM.OE_n <= 1;
-                state <= STATE_SRC_READ_P1_EVEN_VRAM_WAIT_BUSY;
-            end
-        end
-
-        //
-        // VRAM 読み出し完了したら 奇数アドレスを読み出し
-        //
-        else if(state == STATE_SRC_READ_P1_EVEN_VRAM_WAIT_BUSY) begin
-            if(!CMD_MEM.BUSY) begin
-                // 偶数アドレスデータを保存
-                save_mem_dout <= CMD_MEM.DOUT[15:0];
-
-                // VRAM リニア(P1モード)
-                //if(src_is_linear) begin
-                    CMD_MEM.ADDR <= {1'b1, SRC_X[18:2], 1'b0};          // 奇数アドレス(VRAM1)読み出し
-                //end
-                // VRAM 矩形(P1モード)
-                //else begin
-                //    CMD_MEM.ADDR <= {1'b1, SRC_XY_ADDR[18:2], 1'b0};    // 奇数アドレス(VRAM1)読み出し
-                //end
-
-                CMD_MEM.OE_n <= 0;
-                CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_16;
-                state <= STATE_SRC_READ_P1_ODD_VRAM_WAIT_ACK;
-            end
-        end
-
-        //
-        // VRAM 読み出し要求を受け付けるまで待つ
-        //
-        else if(state == STATE_SRC_READ_P1_ODD_VRAM_WAIT_ACK) begin
-            if(CMD_MEM.BUSY) begin
-                CMD_MEM.OE_n <= 1;
-                state <= STATE_SRC_READ_P1_ODD_VRAM_WAIT_BUSY;
-            end
-        end
-
-        //
-        // VRAM 読み出し要求を受け付けるまで待つ
-        //
         else if(state == STATE_SRC_READ_VRAM_WAIT_ACK) begin
             if(CMD_MEM.BUSY) begin
                 CMD_MEM.OE_n <= 1;
@@ -674,7 +602,7 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
         //
         // VRAM 読み出し完了したらデータを並び替え
         //
-        else if(state == STATE_SRC_READ_VRAM_WAIT_BUSY || state == STATE_SRC_READ_P1_ODD_VRAM_WAIT_BUSY) begin
+        else if(state == STATE_SRC_READ_VRAM_WAIT_BUSY) begin
             if(!CMD_MEM.BUSY) begin
                 if(src_is_char) begin
                     state <= STATE_SRC_READ_VRAM_CONV_8C;
@@ -973,25 +901,15 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
 
             // DST 側の VRAM データが必要なら読み出し
             if(req_dst_vram) begin
-                if(P1 && dst_is_linear) begin
-                    CMD_MEM.OE_n <= 0;
-                    CMD_MEM.ADDR <= {1'b0, DST_X[18:2], 1'b0};
-                    CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_16;
-                    state <= STATE_DST_READ_P1_EVEN_VRAM_WAIT_ACK;
-                end
-                //else if(P1) begin
-                //    CMD_MEM.OE_n <= 0;
-                //    CMD_MEM.ADDR <= {1'b0, DST_XY_ADDR[18:2], 1'b0};
-                //    CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_16;
-                //    state <= STATE_DST_READ_P1_EVEN_VRAM_WAIT_ACK;
-                //end
-                else if(dst_is_linear) begin
+                if(dst_is_linear) begin
+                    CMD_MEM.ADDR_MODE <= T9990_REG::DSPM_BITMAP;   // VRAM0/1 = LSB 固定
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= {DST_X[18:2], 2'b00};
                     CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
                     state <= STATE_DST_READ_VRAM_WAIT_ACK;
                 end
                 else begin
+                    CMD_MEM.ADDR_MODE <= REG.DSPM;  // VRAM0/1 = 画面モードに従う
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= DST_XY_ADDR;
                     CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
@@ -1000,58 +918,6 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
             end
             else begin
                 DST_DATA <= 0;
-                state <= STATE_SRC_DEQUEUE_DONE;
-            end
-        end
-
-        //
-        // VRAM 読み出し要求を受け付けるまで待つ
-        //
-        else if(state == STATE_DST_READ_P1_EVEN_VRAM_WAIT_ACK) begin
-            DEQUEUE <= 0;
-            if(CMD_MEM.BUSY) begin
-                CMD_MEM.OE_n <= 1;
-                state <= STATE_DST_READ_P1_EVEN_VRAM_WAIT_BUSY;
-            end
-        end
-
-        //
-        // VRAM 読み出し完了したら 奇数アドレス読み出し
-        //
-        else if(state == STATE_DST_READ_P1_EVEN_VRAM_WAIT_BUSY) begin
-            if(!CMD_MEM.BUSY) begin
-                save_mem_dout <= CMD_MEM.DOUT[15:0];
-
-                //if(dst_is_linear) begin
-                    CMD_MEM.ADDR <= {1'b1, DST_X[18:2], 1'b0};
-                //end
-                //else begin
-                //    CMD_MEM.ADDR <= {1'b1, DST_XY_ADDR[18:2], 1'b0};
-                //end
-
-                CMD_MEM.OE_n <= 0;
-                CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_16;
-                state <= STATE_DST_READ_P1_ODD_VRAM_WAIT_ACK;
-            end
-        end
-
-        //
-        // VRAM 読み出し要求を受け付けるまで待つ
-        //
-        else if(state == STATE_DST_READ_P1_ODD_VRAM_WAIT_ACK) begin
-            if(CMD_MEM.BUSY) begin
-                CMD_MEM.OE_n <= 1;
-                state <= STATE_DST_READ_P1_ODD_VRAM_WAIT_BUSY;
-            end
-        end
-
-        //
-        // VRAM 読み出し完了したら DST_DATA へ格納
-        //
-        else if(state == STATE_DST_READ_P1_ODD_VRAM_WAIT_BUSY) begin
-            if(!CMD_MEM.BUSY) begin
-                // 偶数アドレスと奇数アドレスのデータを合成
-                DST_DATA <= {CMD_MEM.DOUT[15:8], save_mem_dout[15:8], CMD_MEM.DOUT[7:0], save_mem_dout[7:0]};
                 state <= STATE_SRC_DEQUEUE_DONE;
             end
         end
@@ -1163,21 +1029,8 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
         // データ書き込み
         //
         else if(state == STATE_DST_WRITE) begin
-            if(P1 && dst_is_linear) begin
-                CMD_MEM.WE_n <= 0;
-                CMD_MEM.ADDR <= { 1'b0, DST_X[18:2], 1'b0};         // 偶数アドレス(VRAM0)書き込み
-                CMD_MEM.DIN <= {WRT_DATA[23:16], WRT_DATA[7:0], WRT_DATA[23:16], WRT_DATA[7:0]};
-                CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_16;
-                state <= STATE_DST_WRITE_P1_EVEN_VRAM_WAIT_ACK;
-            end
-            //else if(P1 && dst_is_xy) begin
-            //    CMD_MEM.WE_n <= 0;
-            //    CMD_MEM.ADDR <= { 1'b0, DST_XY_ADDR[18:2], 1'b0}; // 偶数アドレス(VRAM0)書き込み
-            //    CMD_MEM.DIN <= {WRT_DATA[23:16], WRT_DATA[7:0], WRT_DATA[23:16], WRT_DATA[7:0]};
-            //    CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_16;
-            //    state <= STATE_DST_WRITE_P1_EVEN_VRAM_WAIT_ACK;
-            //end
-            else if(dst_is_linear) begin
+            if(dst_is_linear) begin
+                CMD_MEM.ADDR_MODE <= T9990_REG::DSPM_BITMAP;   // VRAM0/1 = LSB 固定
                 CMD_MEM.WE_n <= 0;
                 CMD_MEM.ADDR <= {DST_X[18:2], 2'b00};
                 CMD_MEM.DIN <= WRT_DATA;
@@ -1185,6 +1038,7 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
                 state <= STATE_DST_WRITE_VRAM_WAIT_ACK;
             end
             else if(dst_is_xy) begin
+                CMD_MEM.ADDR_MODE <= REG.DSPM;  // VRAM0/1 = 画面モードに従う
                 CMD_MEM.WE_n <= 0;
                 CMD_MEM.ADDR <= DST_XY_ADDR;
                 CMD_MEM.DIN <= WRT_DATA;
@@ -1205,44 +1059,6 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
             end
             else begin
                 state <= STATE_DST_WRITE_CPU_WAIT_BUSY;
-            end
-        end
-
-        //
-        // VRAM 書き込み要求を受け付けるまで待つ
-        //
-        else if(state == STATE_DST_WRITE_P1_EVEN_VRAM_WAIT_ACK) begin
-            if(CMD_MEM.BUSY) begin
-                CMD_MEM.WE_n <= 1;
-                state <= STATE_DST_WRITE_P1_EVEN_VRAM_WAIT_BUSY;
-            end
-        end
-
-        //
-        // VRAM 書き込み完了したら 奇数を書き込み
-        //
-        else if(state == STATE_DST_WRITE_P1_EVEN_VRAM_WAIT_BUSY) begin
-            if(!CMD_MEM.BUSY) begin
-                //if(dst_is_linear) begin
-                    CMD_MEM.ADDR <= { 1'b1, DST_X[18:2], 1'b0};         // 奇数アドレス(VRAM1)書き込み
-                //end
-                //else begin
-                //    CMD_MEM.ADDR <= { 1'b1, DST_XY_ADDR[18:2], 1'b0}; // 奇数アドレス(VRAM1)書き込み
-                //end
-                CMD_MEM.DIN <= {WRT_DATA[31:24], WRT_DATA[15:8], WRT_DATA[31:24], WRT_DATA[15:8]};
-                CMD_MEM.WE_n <= 0;
-                CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_16;
-                state <= STATE_DST_WRITE_P1_ODD_VRAM_WAIT_ACK;
-            end
-        end
-
-        //
-        // VRAM 書き込み要求を受け付けるまで待つ
-        //
-        else if(state == STATE_DST_WRITE_P1_ODD_VRAM_WAIT_ACK) begin
-            if(CMD_MEM.BUSY) begin
-                CMD_MEM.WE_n <= 1;
-                state <= STATE_DST_WRITE_P1_ODD_VRAM_WAIT_BUSY;
             end
         end
 

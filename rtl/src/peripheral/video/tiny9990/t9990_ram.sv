@@ -44,7 +44,6 @@ interface T9990_CPU_MEM_IF;
     logic [7:0]     DOUT;
     logic           BUSY;
     logic           REQ;
-    //logic           ACK;
     modport CPU (
                     output  OE_n, WE_n, ADDR, DIN,
                     input   DOUT, BUSY, REQ//, ACK
@@ -66,14 +65,15 @@ interface T9990_CMD_MEM_IF;
     logic [31:0]    DOUT;
     logic           BUSY;
     logic           REQ;
-    logic [1:0]     DIN_SIZE;
-    //logic           ACK;
+    logic [2:0]     DIN_SIZE;
+    logic [1:0]     ADDR_MODE;    // VRAM マッピングモード
+
     modport VDP (
-                    output  OE_n, WE_n, ADDR, DIN, DIN_SIZE,
+                    output  OE_n, WE_n, ADDR, DIN, DIN_SIZE, ADDR_MODE,
                     input   DOUT, BUSY, REQ//, ACK
                 );
     modport RAM (
-                    input   OE_n, WE_n, ADDR, DIN, DIN_SIZE,
+                    input   OE_n, WE_n, ADDR, DIN, DIN_SIZE, ADDR_MODE,
                     output  DOUT, BUSY, REQ//, ACK
                 );
 endinterface
@@ -87,17 +87,18 @@ interface T9990_VC_MEM_IF;
     logic           WE_n;
     logic [18:0]    ADDR;
     logic [31:0]    DIN;
-    logic [1:0]     DIN_SIZE;
+    logic [2:0]     DIN_SIZE;
     logic           ACK;
     logic [31:0]    DOUT;
+    logic [1:0]     ADDR_MODE;    // VRAM マッピングモード
 
     modport VDP (
                     input   REQ, ACK, DOUT,
-                    output  OE_n, WE_n, ADDR, DIN, DIN_SIZE
+                    output  OE_n, WE_n, ADDR, DIN, DIN_SIZE, ADDR_MODE
                 );
     modport RAM (
                     output  REQ, ACK, DOUT,
-                    input   OE_n, WE_n, ADDR, DIN, DIN_SIZE
+                    input   OE_n, WE_n, ADDR, DIN, DIN_SIZE, ADDR_MODE
                 );
 endinterface
 
@@ -126,6 +127,7 @@ endinterface
 module T9990_URB_RAM_VC (
     input wire              RESET_n,
     input wire              CLK,
+    input wire [1:0]        DSPM,
     T9990_VC_MEM_IF.VDP     VC_MEM,
     T9990_CPU_MEM_IF.RAM    CPU_MEM,
     T9990_CMD_MEM_IF.RAM    CMD_MEM
@@ -202,6 +204,7 @@ module T9990_URB_RAM_VC (
                 VC_MEM.ADDR <= CPU_MEM.ADDR;
                 VC_MEM.DIN  <= {CPU_MEM.DIN,CPU_MEM.DIN,CPU_MEM.DIN,CPU_MEM.DIN};
                 VC_MEM.DIN_SIZE <= RAM::DIN_SIZE_8;
+                VC_MEM.ADDR_MODE <= DSPM;
 
                 CPU_MEM.REQ <= 0;
                 CMD_MEM.REQ <= 0;
@@ -217,6 +220,7 @@ module T9990_URB_RAM_VC (
                 VC_MEM.ADDR <= CMD_MEM.ADDR;
                 VC_MEM.DIN  <= CMD_MEM.DIN;
                 VC_MEM.DIN_SIZE <= CMD_MEM.DIN_SIZE;
+                VC_MEM.ADDR_MODE <= CMD_MEM.ADDR_MODE;
 
                 CPU_MEM.REQ <= 0;
                 CMD_MEM.REQ <= 0;
@@ -260,7 +264,7 @@ module T9990_RAM (
     output reg              RAM_RFSH_n,
     output reg [18:0]       RAM_ADDR,
     output reg [31:0]       RAM_DIN,
-    output reg [1:0]        RAM_DIN_SIZE,
+    output reg [2:0]        RAM_DIN_SIZE,
     input wire [31:0]       RAM_DOUT,
     input wire              RAM_ACK_n,
 
@@ -269,6 +273,8 @@ module T9990_RAM (
     //
     T9990_MEM_TIMING.RAM    TIMING,
 
+    input wire [1:0]        DSPM,
+
     //
     T9990_VC_MEM_IF.RAM     VC_MEM,
     T9990_VDP_MEM_IF.RAM    SP_MEM,
@@ -276,6 +282,19 @@ module T9990_RAM (
     T9990_VDP_MEM_IF.RAM    PA_MEM,
     T9990_VDP_MEM_IF.RAM    PB_MEM
 );
+    wire [18:0] addr = timing_state == T9990_MEM_CONNECT::RAM_VC ? VC_MEM.ADDR :
+                       timing_state == T9990_MEM_CONNECT::RAM_SP ? SP_MEM.ADDR :
+                       timing_state == T9990_MEM_CONNECT::RAM_BP ? BP_MEM.ADDR :
+                       timing_state == T9990_MEM_CONNECT::RAM_PA ? PA_MEM.ADDR :
+                       timing_state == T9990_MEM_CONNECT::RAM_PB ? PB_MEM.ADDR : 0;
+
+    wire [2:0] dsize = timing_state == T9990_MEM_CONNECT::RAM_VC ? VC_MEM.DIN_SIZE : RAM::DIN_SIZE_32;
+
+    wire [1:0] dspm = timing_state == T9990_MEM_CONNECT::RAM_VC ? VC_MEM.ADDR_MODE : DSPM;
+
+    wire is_P2_PGT = (addr[18:15] != 4'b1111);
+    wire is_P2_SPAT = (addr[14] == 0);
+
     assign VC_MEM.REQ = TIMING.STATE == T9990_MEM_CONNECT::RAM_VC ? TIMING.PREP : 0;
     assign SP_MEM.REQ = TIMING.STATE == T9990_MEM_CONNECT::RAM_SP ? TIMING.PREP : 0;
     assign BP_MEM.REQ = TIMING.STATE == T9990_MEM_CONNECT::RAM_BP ? TIMING.PREP : 0;
@@ -332,7 +351,7 @@ module T9990_RAM (
         else if(state == STATE_WAIT_REQ) begin
             if(TIMING.EXEC) begin
                 case (timing_state)
-                    default:                state <= STATE_WAIT_REQ;
+                    default:                     state <= STATE_WAIT_REQ;
                     T9990_MEM_CONNECT::RAM_VC:   state <= (VC_MEM.OE_n && VC_MEM.WE_n) ? STATE_WAIT_REQ : STATE_WAIT_ACK;
                     T9990_MEM_CONNECT::RAM_SP:   state <= STATE_WAIT_ACK;
                     T9990_MEM_CONNECT::RAM_BP:   state <= STATE_WAIT_ACK;
@@ -341,18 +360,56 @@ module T9990_RAM (
                     T9990_MEM_CONNECT::RAM_RF:   state <= STATE_WAIT_ACK;
                 endcase
 
-                case (timing_state)
-                    default:                RAM_ADDR <= 0;
-                    T9990_MEM_CONNECT::RAM_VC:   RAM_ADDR <= VC_MEM.ADDR;
-                    T9990_MEM_CONNECT::RAM_SP:   RAM_ADDR <= SP_MEM.ADDR;
-                    T9990_MEM_CONNECT::RAM_BP:   RAM_ADDR <= BP_MEM.ADDR;
-                    T9990_MEM_CONNECT::RAM_PA:   RAM_ADDR <= PA_MEM.ADDR;
-                    T9990_MEM_CONNECT::RAM_PB:   RAM_ADDR <= PB_MEM.ADDR;
-                    T9990_MEM_CONNECT::RAM_RF:   RAM_ADDR <= 0;
-                endcase
+                // memory address mapping
+                //
+                // SDRAM    P2,Bx   P1      V9990 VRAM
+                // ---------------------------------------
+                // 00000h   00000h  00000h  VRAM0, 00000h
+                // 00001h   00001h  40000h  VRAM1, 00000h
+                // 00002h   00002h  00001h  VRAM0, 00001h
+                // 00003h   00003h  40001h  VRAM1, 00001h
+                // 00004h   00004h  00002h  VRAM0, 00002h
+                // 00005h   00005h  40002h  VRAM1, 00002h
+                // 00006h   00006h  00003h  VRAM0, 00003h
+                // 00007h   00007h  40003h  VRAM1, 00003h
+
+                if(dspm[1]) begin
+                    // Bx
+                    RAM_ADDR <= addr;
+                end
+                else if(dspm[0]) begin
+                    // P2
+                    //RAM_ADDR <= addr;
+                    if(is_P2_PGT)       RAM_ADDR <= addr;                                                     // PGT (00000h~77FFFh)
+                    else if(is_P2_SPAT) RAM_ADDR <= {addr[17:16], 1'b1, addr[14:0], 1'b0};                    // SPAT(78000h~7BFFFh) -> 3C000h~3FFFFh, VRAM0
+                    else                RAM_ADDR <= {addr[17:0], (dsize == RAM::DIN_SIZE_8) ? 1'b1 : 1'b0};   // PNT (7C000h~7FFFFh) -> 3C000h~3FFFFh, VRAM1
+                end
+                else begin
+                    // P1
+                    RAM_ADDR <= {addr[17:0], (VC_MEM.DIN_SIZE == RAM::DIN_SIZE_8) ? addr[18] : 1'b0};
+                end
+
+                if(dsize != RAM::DIN_SIZE_32) begin
+                    RAM_DIN_SIZE <= dsize;
+                end
+                else if(dspm[1]) begin
+                    // Bx
+                    RAM_DIN_SIZE <= dsize;
+                end
+                else if(dspm[0]) begin
+                    // P2
+                    //RAM_DIN_SIZE <= dsize;
+                    if(is_P2_PGT)       RAM_DIN_SIZE <= dsize;                // PGT (00000h~77FFFh)
+                    else if(is_P2_SPAT) RAM_DIN_SIZE <= RAM::DIN_SIZE_32_E;   // SPAT(78000h~7BFFFh) -> 3C000h~3FFFFh, VRAM0
+                    else                RAM_DIN_SIZE <= RAM::DIN_SIZE_32_O;   // PNT (7C000h~7FFFFh) -> 3C000h~3FFFFh, VRAM1
+                end
+                else begin
+                    // P1
+                    RAM_DIN_SIZE <= addr[18] ? RAM::DIN_SIZE_32_O : RAM::DIN_SIZE_32_E;
+                end
 
                 case (timing_state)
-                    default:                RAM_OE_n <= 1;
+                    default:                     RAM_OE_n <= 1;
                     T9990_MEM_CONNECT::RAM_VC:   RAM_OE_n <= VC_MEM.OE_n;
                     T9990_MEM_CONNECT::RAM_SP:   RAM_OE_n <= 0;
                     T9990_MEM_CONNECT::RAM_BP:   RAM_OE_n <= 0;
@@ -362,7 +419,7 @@ module T9990_RAM (
                 endcase
 
                 case (timing_state)
-                    default:                RAM_WE_n <= 1;
+                    default:                     RAM_WE_n <= 1;
                     T9990_MEM_CONNECT::RAM_VC:   RAM_WE_n <= VC_MEM.WE_n;
                     T9990_MEM_CONNECT::RAM_SP:   RAM_WE_n <= 1;
                     T9990_MEM_CONNECT::RAM_BP:   RAM_WE_n <= 1;
@@ -372,7 +429,7 @@ module T9990_RAM (
                 endcase
 
                 case (timing_state)
-                    default:                RAM_RFSH_n <= 1;
+                    default:                     RAM_RFSH_n <= 1;
                     T9990_MEM_CONNECT::RAM_VC:   RAM_RFSH_n <= 1;
                     T9990_MEM_CONNECT::RAM_SP:   RAM_RFSH_n <= 1;
                     T9990_MEM_CONNECT::RAM_BP:   RAM_RFSH_n <= 1;
@@ -382,7 +439,7 @@ module T9990_RAM (
                 endcase
 
                 case (timing_state)
-                    default:                RAM_DIN <= 0;
+                    default:                     RAM_DIN <= 0;
                     T9990_MEM_CONNECT::RAM_VC:   RAM_DIN <= VC_MEM.DIN;
                     T9990_MEM_CONNECT::RAM_SP:   RAM_DIN <= 0;
                     T9990_MEM_CONNECT::RAM_BP:   RAM_DIN <= 0;
@@ -392,17 +449,7 @@ module T9990_RAM (
                 endcase
 
                 case (timing_state)
-                    default:                RAM_DIN_SIZE <= RAM::DIN_SIZE_32;
-                    T9990_MEM_CONNECT::RAM_VC:   RAM_DIN_SIZE <= VC_MEM.DIN_SIZE;
-                    T9990_MEM_CONNECT::RAM_SP:   RAM_DIN_SIZE <= RAM::DIN_SIZE_32;
-                    T9990_MEM_CONNECT::RAM_BP:   RAM_DIN_SIZE <= RAM::DIN_SIZE_32;
-                    T9990_MEM_CONNECT::RAM_PA:   RAM_DIN_SIZE <= RAM::DIN_SIZE_32;
-                    T9990_MEM_CONNECT::RAM_PB:   RAM_DIN_SIZE <= RAM::DIN_SIZE_32;
-                    T9990_MEM_CONNECT::RAM_RF:   RAM_DIN_SIZE <= RAM::DIN_SIZE_32;
-                endcase
-
-                case (timing_state)
-                    default:                ack <= ack_bits_none;
+                    default:                     ack <= ack_bits_none;
                     T9990_MEM_CONNECT::RAM_VC:   ack <= (VC_MEM.OE_n && VC_MEM.WE_n) ? ack_bits_none : ack_bits_vc;
                     T9990_MEM_CONNECT::RAM_SP:   ack <= ack_bits_sp;
                     T9990_MEM_CONNECT::RAM_BP:   ack <= ack_bits_bp;
