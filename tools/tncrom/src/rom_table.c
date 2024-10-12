@@ -136,7 +136,7 @@ const ROM_ATTR_t ROM_ATTR_KONAMI = {
  ***********************************************/
 const ROM_ATTR_t ROM_ATTR_KONAMI_SCC_I = {
     (uint8_t)(FLAG_SCC | FLAG_SCC_I),               // FLAGS
-    (uint8_t)0x7F,                                  // BANK VALUE MASK
+    (uint8_t)0xFF,                                  // BANK VALUE MASK
     (uint16_t)0xF800,                               // BANK REGISTER ADDRESS MASK
     {
         { (uint16_t)0x5000, 0, 0 },                 // BANK #0 REGISTER ADDRESS, INITIAL VALUE, RESERVED
