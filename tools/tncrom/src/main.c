@@ -31,7 +31,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-// zcc +msx -subtype=msxdos -o../bin/TNCROM.COM main.c ..\..\lib\bdos.c ..\..\lib\tools.c ..\..\lib\rom_tools.c ..\..\lib\reboot.c rom_table.c config.c param.c
+// zcc +msx -subtype=msxdos -O3 -o../bin/TNCROM.COM main.c ..\..\lib\bdos.c ..\..\lib\tools.c ..\..\lib\rom_tools.c ..\..\lib\reboot.c rom_table.c config.c param.c
 
 #include <stdio.h>
 #include <string.h>
@@ -50,6 +50,13 @@
 
 static MAIN_PARAM_t main_param;     // パラメータ
 static BDOS_FILE_t rom_file;        // ROM ファイルアクセス用
+
+#define BUFFER_SIZE (8192)
+#if 1
+static uint8_t *buffer = (uint8_t*)(0x8000 - BUFFER_SIZE);
+#else
+static uint8_t buffer[BUFFER_SIZE];
+#endif
 
 //
 // データ書き込み用の ROM 設定
@@ -104,7 +111,32 @@ static int xfer_bank(uint8_t sltnum, uint8_t bank, BDOS_FILE_t *file, uint32_t p
     // バンク切り替え
     set_bank1_reg(sltnum, bank);
 
-    for(uint8_t i = 0; i < (uint8_t)(16384 / 128); i++)
+    if(1)
+    {
+        uint16_t remain = pending > 16384 ? 16384 : pending;
+        while(remain > 0)
+        {
+            uint16_t size = remain > BUFFER_SIZE ? BUFFER_SIZE : remain;
+            while(size > 0)
+            {
+                // read
+                res = bdos_fread_n(file, (uint16_t)buffer, size, &readed);
+                if(0 != res) {
+                    printf(MSG_ERR_FILEREAD);
+                    return res;
+                }
+
+                // データを転送
+                xfer_memory(sltnum, (VOID_PTR_t)addr, buffer, readed);
+
+                // 次の準備
+                addr += (uint16_t)readed;
+                size -= readed;
+                remain -= readed;
+            }
+        }
+    }
+    else for(uint8_t i = 0; i < (uint8_t)(16384 / 128); i++)
     {
         if (pending > 0) {
             // 128バイト読み出し

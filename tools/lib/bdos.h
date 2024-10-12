@@ -98,6 +98,7 @@ int bdos_fclose(BDOS_FILE_t *file);
 int bdos_file_size(BDOS_FILE_t *file, uint32_t *size);
 int bdos_eof(BDOS_FILE_t *file);
 int bdos_fread(BDOS_FILE_t *file, uint16_t *readed);
+int bdos_fread_n(BDOS_FILE_t *file, uint16_t addr, uint16_t size, uint16_t *readed);
 int bdos_fwrite(BDOS_FILE_t *file, uint16_t *written);
 int bdos_set_about_handler(uint16_t addr);
 int bdos_term(uint8_t code);

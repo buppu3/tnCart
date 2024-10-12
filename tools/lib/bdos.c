@@ -453,6 +453,56 @@ int bdos_fread(BDOS_FILE_t *file, uint16_t *readed)
 }
 
 /***********************************************
+ * シーケンシャルリード
+ *  引数
+ *    file      : 対象のファイル構造体
+ *  戻り値
+ *    0  : 成功
+ *    !0 : 失敗
+ ***********************************************/
+int bdos_fread_n(BDOS_FILE_t *file, uint16_t addr, uint16_t size, uint16_t *readed)
+{
+    uint32_t remain = (file->type == TYPE_DOS1 ? file->dos1.file_size : file->dos2.file_size) - file->current_pos;
+    if(remain == 0)
+    {
+        if(readed != NULL) *readed = 0;
+        return -1;
+    }
+
+    int res;
+    uint16_t readed_size;
+    if(file->type == TYPE_DOS1)
+    {
+        // DTA アドレス設定
+        if(0 != (res = bdos_call_de(BDOS_SETDTA, (uint16_t)file->buffer))) return res;
+
+
+        // 128バイトシーケンシャルリード
+        if(0 != (res = bdos_call_de(BDOS_RDSEQ, (uint16_t)&file->dos1))) return res;
+
+        //
+        readed_size = 128;
+    }
+    else
+    {
+        if(0 != (res = bdos_call_b_de_hl(BDOS_READ, file->dos2.handle, addr, size))) return res;
+
+        //
+        readed_size = bdos_hl;
+    }
+
+    //
+    if(remain < (uint32_t)readed_size)
+    {
+        readed_size = remain & 0xFFFF;
+    }
+
+    file->current_pos += (uint32_t)readed_size;
+    if(readed != NULL) *readed = readed_size;
+    return 0;
+}
+
+/***********************************************
  * シーケンシャルライト
  *  引数
  *    file      : 対象のファイル構造体
