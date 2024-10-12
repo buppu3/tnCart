@@ -68,7 +68,25 @@
 
 module MEGAROM_CONFIGURE #(
     parameter [31:0]    RAM_ADDR = 0,
-    parameter [15:0]    BASE_ADDR = 0
+    parameter [15:0]    BASE_ADDR = 0,
+    parameter [7:0]     DEFAULT_BANK_REG_INIT_0     = 0,
+    parameter [7:0]     DEFAULT_BANK_REG_INIT_1     = 0,
+    parameter [7:0]     DEFAULT_BANK_REG_INIT_2     = 0,
+    parameter [7:0]     DEFAULT_BANK_REG_INIT_3     = 0,
+    parameter [15:0]    DEFAULT_BANK_REG_ADDR_0     = 16'hFFFF,
+    parameter [15:0]    DEFAULT_BANK_REG_ADDR_1     = 16'hFFFF,
+    parameter [15:0]    DEFAULT_BANK_REG_ADDR_2     = 16'hFFFF,
+    parameter [15:0]    DEFAULT_BANK_REG_ADDR_3     = 16'hFFFF,
+    parameter [15:0]    DEFAULT_BANK_REG_ADDR_MASK  = 16'h0000,
+    parameter [7:0]     DEFAULT_BANK_REG_MASK       = 8'h00,
+    parameter [0:0]     DEFAULT_WRITE_PROTECT       = 1'b1,
+    parameter [0:0]     DEFAULT_IS_16K_BANK         = 1'b1,
+    parameter [0:0]     DEFAULT_CS1_MASK            = 1'b1,
+    parameter [0:0]     DEFAULT_CS2_MASK            = 1'b1,
+    parameter [0:0]     DEFAULT_SCC_ENA             = 1'b0,
+    parameter [0:0]     DEFAULT_SCC_I_ENA           = 1'b0,
+    parameter [0:0]     DEFAULT_ENABLE_CONTINUOUS   = 1'b0,
+    parameter [0:0]     DEFAULT_ENABLE              = 1'b0
 ) (
     input wire          CLK,
     input wire          RESET_n,
@@ -113,22 +131,6 @@ module MEGAROM_CONFIGURE #(
     localparam [3:0]    BIT_FLAGS_SCC_I             = 3'h5; // 0 = SCC+ 無効 / 1= 有効
     localparam [3:0]    BIT_FLAGS_ENABLE_CONTINUOUS = 3'h6; // BIT_FLAGS_ENABLE ビットはハードウェアリセットの影響を受けない
     localparam [3:0]    BIT_FLAGS_ENABLE            = 3'h7; // ROM を有効にする
-
-    localparam [7:0]    DEFAULT_BANK_REG_INIT_0     = 0;
-    localparam [7:0]    DEFAULT_BANK_REG_INIT_1     = 0;
-    localparam [7:0]    DEFAULT_BANK_REG_INIT_2     = 0;
-    localparam [7:0]    DEFAULT_BANK_REG_INIT_3     = 0;
-    localparam [15:0]   DEFAULT_BANK_REG_ADDR_0     = 16'hFFFF;
-    localparam [15:0]   DEFAULT_BANK_REG_ADDR_1     = 16'hFFFF;
-    localparam [15:0]   DEFAULT_BANK_REG_ADDR_2     = 16'hFFFF;
-    localparam [15:0]   DEFAULT_BANK_REG_ADDR_3     = 16'hFFFF;
-    localparam [15:0]   DEFAULT_BANK_REG_ADDR_MASK  = 16'h0000;
-    localparam [7:0]    DEFAULT_BANK_REG_MASK       = 8'h00;
-    localparam [0:0]    DEFAULT_WRITE_PROTECT       = 1'b1;
-    localparam [0:0]    DEFAULT_IS_16K_BANK         = 1'b1;
-    localparam [0:0]    DEFAULT_CS1_MASK            = 1'b1;
-    localparam [0:0]    DEFAULT_CS2_MASK            = 1'b1;
-    localparam [0:0]    DEFAULT_SCC_ENA             = 1'b0;
 
     /***************************************************************
      * コントロールレジスタ
@@ -217,8 +219,9 @@ module MEGAROM_CONFIGURE #(
             ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_CS1_MASK         ] <= DEFAULT_CS1_MASK;
             ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_CS2_MASK         ] <= DEFAULT_CS2_MASK;
             ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_SCC              ] <= DEFAULT_SCC_ENA;
-            ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_ENABLE_CONTINUOUS] <= 0;
-            ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_ENABLE           ] <= 0;
+            ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_SCC_I            ] <= DEFAULT_SCC_I_ENA;
+            ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_ENABLE_CONTINUOUS] <= DEFAULT_ENABLE_CONTINUOUS;
+            ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_ENABLE           ] <= DEFAULT_ENABLE;
         end
         else if(!Bus.RESET_n) begin
             // BIT_FLAGS_ENABLE_CONTINUOUS が無効なら BIT_FLAGS_ENABLE を無効にする

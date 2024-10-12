@@ -44,7 +44,9 @@ package CONFIG;
     localparam ENABLE           = 1;            // 機能の有効
     localparam ENABLE_VM2413    = 1;            // 機能の有効(VM2413)
     localparam ENABLE_IKAOPLL   = 2;            // 機能の有効(IKAOPLL)
-    localparam ENABLE_IKASCC    = 2;            // 機能の有効(IKASCC, 1chip MSX では動かない)
+    localparam ENABLE_IKASCC    = 2;            // 機能の有効(IKASCC)
+    localparam ENABLE_MEGA_SCC  = 2;            // 機能の有効(電源ON で SCC を有効)
+    localparam ENABLE_MEGA_SCC_I= 3;            // 機能の有効(電源ON で SCC-I を有効)
 
     /***************************************************************
      * フラッシュメモリマップ
@@ -117,7 +119,7 @@ package CONFIG;
     /***************************************************************
      * 機能
      ***************************************************************/
-    localparam          ENABLE_MEGAROM          = ENABLE;           // メガロムカートリッジを有効にするか(DISABLE/ENABLE)
+    localparam          ENABLE_MEGAROM          = ENABLE;           // メガロムカートリッジを有効にするか(DISABLE/ENABLE/ENABLE_MEGA_SCC/ENABLE_MEGA_SCC_I)
     localparam          ENABLE_FM               = ENABLE_IKAOPLL;   // FM 音源カートリッジを有効にするか(DISABLE/ENABLE_VM2413/ENABLE_IKAOPLL)
     localparam          ENABLE_NEXTOR           = ENABLE;           // NEXTOR カートリッジを有効にするか(DISABLE/ENABLE)
     localparam          ENABLE_RAM              = ENABLE;           // 拡張 RAM カートリッジを有効にするか(DISABLE/ENABLE)

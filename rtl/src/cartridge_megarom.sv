@@ -37,7 +37,25 @@
  * MEGA ROM カードリッジ
  ***************************************************************/
 module CARTRIDGE_MEGAROM #(
-    parameter               RAM_ADDR = 0
+    parameter           RAM_ADDR = 0,
+    parameter [7:0]     DEFAULT_BANK_REG_INIT_0     = 0,
+    parameter [7:0]     DEFAULT_BANK_REG_INIT_1     = 0,
+    parameter [7:0]     DEFAULT_BANK_REG_INIT_2     = 0,
+    parameter [7:0]     DEFAULT_BANK_REG_INIT_3     = 0,
+    parameter [15:0]    DEFAULT_BANK_REG_ADDR_0     = 16'hFFFF,
+    parameter [15:0]    DEFAULT_BANK_REG_ADDR_1     = 16'hFFFF,
+    parameter [15:0]    DEFAULT_BANK_REG_ADDR_2     = 16'hFFFF,
+    parameter [15:0]    DEFAULT_BANK_REG_ADDR_3     = 16'hFFFF,
+    parameter [15:0]    DEFAULT_BANK_REG_ADDR_MASK  = 16'h0000,
+    parameter [7:0]     DEFAULT_BANK_REG_MASK       = 8'h00,
+    parameter [0:0]     DEFAULT_WRITE_PROTECT       = 1'b1,
+    parameter [0:0]     DEFAULT_IS_16K_BANK         = 1'b1,
+    parameter [0:0]     DEFAULT_CS1_MASK            = 1'b1,
+    parameter [0:0]     DEFAULT_CS2_MASK            = 1'b1,
+    parameter [0:0]     DEFAULT_SCC_ENA             = 1'b0,
+    parameter [0:0]     DEFAULT_SCC_I_ENA           = 1'b0,
+    parameter [0:0]     DEFAULT_ENABLE_CONTINUOUS   = 1'b0,
+    parameter [0:0]     DEFAULT_ENABLE              = 1'b0
 ) (
     input   wire            RESET_n,
     input   wire            CLK,
@@ -53,7 +71,25 @@ module CARTRIDGE_MEGAROM #(
     logic SCC_ENA;
     logic SCC_I_ENA;
     MEGAROM_CONFIGURE #(
-        .RAM_ADDR(RAM_ADDR)
+        .RAM_ADDR(RAM_ADDR),
+        .DEFAULT_BANK_REG_INIT_0(DEFAULT_BANK_REG_INIT_0),
+        .DEFAULT_BANK_REG_INIT_1(DEFAULT_BANK_REG_INIT_1),
+        .DEFAULT_BANK_REG_INIT_2(DEFAULT_BANK_REG_INIT_2),
+        .DEFAULT_BANK_REG_INIT_3(DEFAULT_BANK_REG_INIT_3),
+        .DEFAULT_BANK_REG_ADDR_0(DEFAULT_BANK_REG_ADDR_0),
+        .DEFAULT_BANK_REG_ADDR_1(DEFAULT_BANK_REG_ADDR_1),
+        .DEFAULT_BANK_REG_ADDR_2(DEFAULT_BANK_REG_ADDR_2),
+        .DEFAULT_BANK_REG_ADDR_3(DEFAULT_BANK_REG_ADDR_3),
+        .DEFAULT_BANK_REG_ADDR_MASK(DEFAULT_BANK_REG_ADDR_MASK),
+        .DEFAULT_BANK_REG_MASK(DEFAULT_BANK_REG_MASK),
+        .DEFAULT_WRITE_PROTECT(DEFAULT_WRITE_PROTECT),
+        .DEFAULT_IS_16K_BANK(DEFAULT_IS_16K_BANK),
+        .DEFAULT_CS1_MASK(DEFAULT_CS1_MASK),
+        .DEFAULT_CS2_MASK(DEFAULT_CS2_MASK),
+        .DEFAULT_SCC_ENA(DEFAULT_SCC_ENA),
+        .DEFAULT_SCC_I_ENA(DEFAULT_SCC_I_ENA),
+        .DEFAULT_ENABLE_CONTINUOUS(DEFAULT_ENABLE_CONTINUOUS),
+        .DEFAULT_ENABLE(DEFAULT_ENABLE)
     ) u_conf (
         .RESET_n,
         .CLK,

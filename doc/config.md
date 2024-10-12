@@ -23,7 +23,7 @@ MUL と DIV の比率で指定します。例えば出力を 0.5倍にすると�
 ENABLE_* パラメータで各機能の ENABLE/DISABLE を設定できます。
 | パラメータ       | 内容                                                                     |
 | ---             | ---                                                                      |
-| ENABLE_MEGAROM  | メガロムエミュレータおよび SCC 機能の有効(ENABLE)/無効(DISABLE)を設定します。 |
+| ENABLE_MEGAROM  | メガロムエミュレータおよび SCC 機能の有効(ENABLE または ENABLE_MEGA_SCC または ENABLE_MEGA_SCC_I)/無効(DISABLE)を設定します。 |
 | ENABLE_FM       | FM 音源および PAC 機能の有効(ENABLE_IKAOPLL または ENABLE_VM2413)/無効(DISABLE)を設定します。 |
 | ENABLE_NEXTOR   | NEXTOR および TF カード機能の有効(ENABLE)/無効(DISABLE)を設定します。 |
 | ENABLE_RAM      | 拡張 4MB RAM 機能の有効(ENABLE)/無効(DISABLE)を設定します。 |
@@ -39,6 +39,8 @@ ENABLE_* パラメータで各機能の ENABLE/DISABLE を設定できます。
 
 Gowin Synthesis のバージョンで出力されるネットリストが違いますので、合成後は Time Analysis Report を確認した方がよいです(私は V1.9.9_x64で合成しています)。
 
-IKASCC は 1chip MSX では MUX されたバスタイミングが合わないため動きません。
+~~IKASCC は 1chip MSX では MUX されたバスタイミングが合わないため動きません。~~
 
 ENABLE_IKASCC 指定時は SCC-I 音源は使えません。
+
+ENABLE_MEGAROM に ENABLE_MEGA_SCC または ENABLE_MEGA_SCC_I を指定すると tncrom.com を使用せずに SCC/SCC-I を有効にできます。
