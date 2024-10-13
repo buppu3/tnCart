@@ -34,7 +34,7 @@
 #ifndef _INCLUDE_MESSAGE_H_
 #define _INCLUDE_MESSAGE_H_
 
-#define MSG_VERSION             "ROM loader for tnCart ver %d.%02d\n"\
+#define MSG_VERSION             "ROM loader for tnCart v%d.%02d\n"\
                                 "\n"
 #define MSG_USAGE               "USAGE: TNCROM -S [SLOT] -T [TYPE] {-R} {-C} [FILE]\n"
 #define MSG_HELP                "OPTION:\n"\
