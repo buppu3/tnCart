@@ -202,10 +202,11 @@ wire srch_edge_right = work.srch.edge_left;
     );
 
     // 転送先座標からビットマスクを計算
+    reg [15:0] wm;
     reg [31:0] BIT_MASK;
     T9990_BLIT_BITMASK u_bitmsk (
         .CLK,
-        .WM(REG.WM),
+        .WM(wm),
         .CLRM(DST_CLRM),
         .DIX(DST_DIX),
         .OFFSET(DST_X[3:0]),
@@ -348,6 +349,9 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
         end
     end
 
+    wire cond_dst_is_xy = (REG.OP == T9990_REG::CMD_LMMC) || (REG.OP == T9990_REG::CMD_LMMV) || (REG.OP == T9990_REG::CMD_LMMM) || (REG.OP == T9990_REG::CMD_LINE) || (REG.OP == T9990_REG::CMD_PSET) || (REG.OP == T9990_REG::CMD_CMMC) || (REG.OP == T9990_REG::CMD_CMMK) || (REG.OP == T9990_REG::CMD_CMMM) || (REG.OP == T9990_REG::CMD_BMXL);
+    wire cond_dst_is_linear = (REG.OP == T9990_REG::CMD_BMLX || REG.OP == T9990_REG::CMD_BMLL);
+
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n) begin
             P2_CPU_TO_VDP.REQ <= 0;
@@ -442,19 +446,17 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
                 end
 
                 // DST_X, DST_Y, DST_DIX
-                if(REG.OP == T9990_REG::CMD_BMLX || REG.OP == T9990_REG::CMD_BMLL) begin
+                if(cond_dst_is_linear) begin
                     // 転送先アドレス
                     DST_X <= REG.DA;
                     DST_Y <= 0;
                     DST_DIX <= 0;
-                    dst_is_linear <= 1;
                 end
                 else begin
                     // 転送先座標
                     DST_X <= REG.DX;
                     DST_Y <= REG.DY;
                     DST_DIX <= REG.DIX;
-                    dst_is_linear <= 0;
                 end
 
                 //
@@ -464,12 +466,24 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
                 src_is_char <= (REG.OP == T9990_REG::CMD_CMMC) || (REG.OP == T9990_REG::CMD_CMMK) || (REG.OP == T9990_REG::CMD_CMMM);
                 dst_is_cpu <= (REG.OP == T9990_REG::CMD_LMCM) || (REG.OP == T9990_REG::CMD_POINT);
                 src_is_xy <= (REG.OP == T9990_REG::CMD_LMCM) || (REG.OP == T9990_REG::CMD_LMMM) || (REG.OP == T9990_REG::CMD_BMLX) || (REG.OP == T9990_REG::CMD_SRCH) || (REG.OP == T9990_REG::CMD_POINT);
-                dst_is_xy <= (REG.OP == T9990_REG::CMD_LMMC) || (REG.OP == T9990_REG::CMD_LMMV) || (REG.OP == T9990_REG::CMD_LMMM) || (REG.OP == T9990_REG::CMD_LINE) || (REG.OP == T9990_REG::CMD_PSET) || (REG.OP == T9990_REG::CMD_CMMC) || (REG.OP == T9990_REG::CMD_CMMK) || (REG.OP == T9990_REG::CMD_CMMM) || (REG.OP == T9990_REG::CMD_BMXL);
+                dst_is_linear <= cond_dst_is_linear;
+                dst_is_xy <= cond_dst_is_xy;
 
                 //
                 is_line <= (REG.OP == T9990_REG::CMD_LINE);
                 is_srch <= (REG.OP == T9990_REG::CMD_SRCH);
                 is_point <= (REG.OP == T9990_REG::CMD_POINT);
+
+                // マスクデータの生成
+                if(P1 && cond_dst_is_xy) begin
+                    wm <= REG.DX[9] ? {REG.WM[15:8],REG.WM[15:8]} : {REG.WM[ 7:0],REG.WM[ 7:0]};
+                end
+                else if(cond_dst_is_xy || cond_dst_is_linear) begin
+                    wm <= REG.WM;
+                end
+                else begin
+                    wm <= 16'hFFFF;
+                end
 
                 // state
                 case (REG.OP)

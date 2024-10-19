@@ -49,7 +49,7 @@ module T9990_BLIT_ADDR (
         if(P1) begin
             // X[9] == 0 : SCREEN-A (00000h~)
             // X[9] == 1 : SCREEN-B (40000h~)
-            ADDR <= { X[9] ^ Y[11], Y[10:0], X[ 7:3], 2'b00};
+            ADDR <= { X[9], Y[10:0], X[ 7:3], 2'b00};
         end
         else case ({CLRM, XIMM})
             {T9990_REG::CLRM_2BPP,  T9990_REG::XIMM_256 }:  ADDR <= {1'b0, Y[11:0], X[ 7:4], 2'b00};
