@@ -30,6 +30,7 @@ ENABLE_* パラメータで各機能の ENABLE/DISABLE を設定できます。
 | ENABLE_PSG      | PSG 出力機能の有効(ENABLE)/無効(DISABLE)を設定します。 |
 | ENABLE_SCC      | SCC 出力機能の有効(ENABLE または ENABLE_IKASCC)/無効(DISABLE)を設定します。 |
 | ENABLE_V9990<br/>ENABLE_V9990_CMD | V9990 エミュレータの有効(ENABLE)/無効(DISABLE)を設定します。|
+| ENABLE_PAC_WRITE | PAC データをフラッシュへ記録するか(ENABLE)/記録しないか(DISABLE)を設定します。 |
 | ENABLE_SCANLINE | アップスキャン時に走査線の隙間あり(ENABLE)/隙間なし(DISABLE)を設定します。 |
 
 ## 備考

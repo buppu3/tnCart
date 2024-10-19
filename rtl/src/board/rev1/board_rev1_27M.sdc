@@ -20,8 +20,8 @@ create_generated_clock -name CLK_BASE -source [get_ports {CLK_27M}] -master_cloc
 // 21.6MHz(CLK_21M = CLK_BASE / 5)
 create_generated_clock -name CLK_21M -source [get_nets {CLK_BASE}] -master_clock CLK_BASE -divide_by 5 -multiply_by 1 -add [get_nets {CLK_21M}]
 
-// 5.4MHz(DCLK = CLK_BASE / 20)
-create_generated_clock -name DCLK -source [get_nets {CLK_BASE}] -master_clock CLK_BASE -divide_by 20 -multiply_by 1 -duty_cycle 10 -offset 9.25 -add [get_nets {Video.DCLK}]
+// 14.4MHz(DCLK = CLK_BASE / 7.5)
+create_generated_clock -name DCLK -source [get_nets {CLK_BASE}] -master_clock CLK_BASE -divide_by 15 -multiply_by 2 -duty_cycle 10 -offset 9.25 -add [get_nets {Video.DCLK}]
 
 //------------------------
 // TMDS

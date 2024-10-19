@@ -45,6 +45,7 @@ module CARTRIDGE_FM #(
     input   wire            CLK,
     BUS_IF.CARTRIDGE        Bus,
     RAM_IF.HOST             Ram,
+    PAC_IF.HOST             PAC,
     SOUND_IF.OUT            Sound,
     output  wire            Output_En
 );
@@ -65,7 +66,8 @@ module CARTRIDGE_FM #(
         .CLK,
         .Bus,
         .Ram,
-        .ExtBus
+        .ExtBus,
+        .SramEnable(PAC.SramEnable)
     );
 
     /***************************************************************

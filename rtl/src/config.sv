@@ -92,7 +92,9 @@ package CONFIG;
      *  80_0000 +-------------------+
      ***************************************************************/
     localparam [23:0]   RAM_ADDR_RAM            = 24'h00_0000;
+    localparam [23:0]   RAM_SIZE_RAM            = 24'h40_0000;
     localparam [23:0]   RAM_ADDR_MEGAROM        = 24'h40_0000;
+    localparam [23:0]   RAM_SIZE_MEGAROM        = 24'h30_0000;
     localparam [23:0]   RAM_ADDR_BIOS           = 24'h70_0000;
     localparam [23:0]   RAM_ADDR_BIOS_NEXTOR    = RAM_ADDR_BIOS;
     localparam [23:0]   RAM_ADDR_BIOS_FM        = (RAM_ADDR_BIOS_NEXTOR + FLASH_SIZE_BIOS_NEXTOR);
@@ -127,7 +129,7 @@ package CONFIG;
     localparam          ENABLE_SCC              = ENABLE;           // SCC を有効にするか(DISABLE/ENABLE/ENABLE_IKASCC)
     localparam          ENABLE_V9990            = ENABLE;           // V9990 を有効にするか(DISABLE/ENABLE)
     localparam          ENABLE_V9990_CMD        = ENABLE;           // V9990 の VDP コマンドを有効(V9990のVDPコマンドを有効にすると回路の規模が大きくなるので、他の大きな機能と同時使用はできない)
-    //localparam        ENABLE_PAC_WRITE        = ENABLE;           // PAC データを FLASH に保存するか(DISABLE/ENABLE)
+    localparam          ENABLE_PAC_WRITE        = ENABLE;           // PAC データを FLASH に保存するか(DISABLE/ENABLE)
     localparam          ENABLE_SCANLINE         = DISABLE;          // 200ラインモード時に走査線の隙間を空ける
 
     /***************************************************************

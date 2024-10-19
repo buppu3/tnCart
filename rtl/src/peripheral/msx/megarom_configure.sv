@@ -67,8 +67,19 @@
 //  001Fh   予約
 
 module MEGAROM_CONFIGURE #(
-    parameter [31:0]    RAM_ADDR = 0,
-    parameter [15:0]    BASE_ADDR = 0,
+    parameter [23:0]    FLASH_FS_ADDR               = 0,
+    parameter [23:0]    FLASH_FS_SIZE               = 0,
+    parameter [23:0]    FLASH_MEGAROM_ADDR          = 0,
+    parameter [23:0]    FLASH_MEGAROM_SIZE          = 0,
+    parameter [23:0]    FLASH_NEXTOR_ADDR           = 0,
+    parameter [23:0]    FLASH_NEXTOR_SIZE           = 0,
+    parameter [23:0]    FLASH_FM_ADDR               = 0,
+    parameter [23:0]    FLASH_FM_SIZE               = 0,
+    parameter [23:0]    FLASH_PAC_ADDR              = 0,
+    parameter [23:0]    FLASH_PAC_SIZE              = 0,
+    parameter [23:0]    RAM_ADDR                    = 0,
+    parameter [23:0]    RAM_SIZE                    = 0,
+    parameter [15:0]    BASE_ADDR                   = 0,
     parameter [7:0]     DEFAULT_BANK_REG_INIT_0     = 0,
     parameter [7:0]     DEFAULT_BANK_REG_INIT_1     = 0,
     parameter [7:0]     DEFAULT_BANK_REG_INIT_2     = 0,
@@ -91,10 +102,12 @@ module MEGAROM_CONFIGURE #(
     input wire          CLK,
     input wire          RESET_n,
     BUS_IF.CARTRIDGE    Bus,
+    XFER_IF.HOST        Xfer,
     MEGAROM_IF.HOST     Megarom,
     output reg          SCC_ENA,
     output reg          SCC_I_ENA
 );
+    // 00h~1Fh
     localparam [7:0]    KEY_0 = 8'hAB;
     localparam [7:0]    KEY_1 = 8'hCD;
     localparam [7:0]    KEY_2 = 8'h98;
@@ -123,6 +136,39 @@ module MEGAROM_CONFIGURE #(
     localparam [4:0]    ADDR_BANK3_ADDR_H           = 5'h1D;
     localparam [4:0]    ADDR_BANK3_INIT_VAL         = 5'h1E;
     localparam [4:0]    ADDR_BANK3_RESERVED         = 5'h1F;
+
+    // 20h~2Fh
+    localparam [4:0]    ADDR_FLASH_RAM_ADDR_L       = 5'h00;
+    localparam [4:0]    ADDR_FLASH_RAM_ADDR_M       = 5'h01;
+    localparam [4:0]    ADDR_FLASH_RAM_ADDR_H       = 5'h02;
+    localparam [4:0]    ADDR_FLASH_FLASH_ADDR_L     = 5'h03;
+    localparam [4:0]    ADDR_FLASH_FLASH_ADDR_M     = 5'h04;
+    localparam [4:0]    ADDR_FLASH_FLASH_ADDR_H     = 5'h05;
+    localparam [4:0]    ADDR_FLASH_SIZE_L           = 5'h06;
+    localparam [4:0]    ADDR_FLASH_SIZE_M           = 5'h07;
+    localparam [4:0]    ADDR_FLASH_SIZE_H           = 5'h08;
+    localparam [4:0]    ADDR_FLASH_WDATA            = 5'h09;
+    localparam [4:0]    ADDR_FLASH_RDATA            = 5'h0A;
+
+    // 30h~3Fh
+    localparam [4:0]    ADDR_FLASH_FS_ADDR_M        = 5'h10;
+    localparam [4:0]    ADDR_FLASH_FS_ADDR_H        = 5'h11;
+    localparam [4:0]    ADDR_FLASH_FS_SIZE          = 5'h12;
+    localparam [4:0]    ADDR_FLASH_MEGAROM_ADDR_M   = 5'h13;
+    localparam [4:0]    ADDR_FLASH_MEGAROM_ADDR_H   = 5'h14;
+    localparam [4:0]    ADDR_FLASH_MEGAROM_SIZE     = 5'h15;
+    localparam [4:0]    ADDR_FLASH_NEXTOR_ADDR_M    = 5'h16;
+    localparam [4:0]    ADDR_FLASH_NEXTOR_ADDR_H    = 5'h17;
+    localparam [4:0]    ADDR_FLASH_NEXTOR_SIZE      = 5'h18;
+    localparam [4:0]    ADDR_FLASH_FM_ADDR_M        = 5'h19;
+    localparam [4:0]    ADDR_FLASH_FM_ADDR_H        = 5'h1A;
+    localparam [4:0]    ADDR_FLASH_FM_SIZE          = 5'h1B;
+    localparam [4:0]    ADDR_FLASH_MEGAROM_RAM_ADDR_M= 5'h1C;
+    localparam [4:0]    ADDR_FLASH_MEGAROM_RAM_ADDR_H= 5'h1D;
+    localparam [4:0]    ADDR_FLASH_MEGAROM_RAM_SIZE = 5'h1E;
+    localparam [4:0]    ADDR_FLASH_CONTROL          = 5'h1F;
+    localparam [4:0]    ADDR_FLASH_STATUS           = 5'h1F;
+
     localparam [3:0]    BIT_FLAGS_WRITE_PROTECT     = 3'h0;
     localparam [3:0]    BIT_FLAGS_BANK_SIZE         = 3'h1;
     localparam [3:0]    BIT_FLAGS_CS1_MASK          = 3'h2;
@@ -136,6 +182,15 @@ module MEGAROM_CONFIGURE #(
      * コントロールレジスタ
      ***************************************************************/
     reg [7:0]   ctrl_reg[0:31];
+
+    /***************************************************************
+     * flash コントロールレジスタ
+     ***************************************************************/
+    logic [7:0] flash_reg[0:15];
+    assign Xfer.RamAddress   = {flash_reg[ADDR_FLASH_RAM_ADDR_H  ], flash_reg[ADDR_FLASH_RAM_ADDR_M  ], flash_reg[ADDR_FLASH_RAM_ADDR_L  ]};
+    assign Xfer.FlashAddress = {flash_reg[ADDR_FLASH_FLASH_ADDR_H], flash_reg[ADDR_FLASH_FLASH_ADDR_M], flash_reg[ADDR_FLASH_FLASH_ADDR_L]};
+    assign Xfer.Size         = {flash_reg[ADDR_FLASH_SIZE_H      ], flash_reg[ADDR_FLASH_SIZE_M      ], flash_reg[ADDR_FLASH_SIZE_L      ]};
+    assign Xfer.WData        = flash_reg[ADDR_FLASH_WDATA];
 
     /***************************************************************
      * 未使用信号の処理
@@ -169,8 +224,8 @@ module MEGAROM_CONFIGURE #(
     /***************************************************************
      * アドレスデコード
      ***************************************************************/
-    wire cs_reg_rd_n = reg_protect || (Bus.ADDR[15:5] != BASE_ADDR[15:5]);
-    wire cs_reg_wr_n = reg_protect ? (Bus.ADDR[15:2] != BASE_ADDR[15:2]) : (Bus.ADDR[15:5] != BASE_ADDR[15:5]);
+    wire cs_reg_rd_n = reg_protect || (Bus.ADDR[15:6] != BASE_ADDR[15:6]);
+    wire cs_reg_wr_n = reg_protect ? (Bus.ADDR[15:2] != BASE_ADDR[15:2]) : (Bus.ADDR[15:6] != BASE_ADDR[15:6]);
 
     /***************************************************************
      * レジスタリード
@@ -180,10 +235,37 @@ module MEGAROM_CONFIGURE #(
             Bus.BUSDIR_n <= 1;
             Bus.DOUT <= 0;
         end
-        else begin
+        else if(Bus.ADDR[5] == 0) begin
             Bus.BUSDIR_n <= 0;
             Bus.DOUT <= ctrl_reg[Bus.ADDR[4:0]];
         end
+        else if(Bus.ADDR[4:0] == ADDR_FLASH_RDATA) begin
+            Bus.BUSDIR_n <= 0;
+            Bus.DOUT <= Xfer.RData;
+        end
+        else if(Bus.ADDR[4] == 0) begin
+            Bus.BUSDIR_n <= 0;
+            Bus.DOUT <= flash_reg[Bus.ADDR[3:0]];
+        end
+        else case (Bus.ADDR[4:0])
+            default:                    begin   Bus.BUSDIR_n <= 1;  Bus.DOUT <= 0;                                          end
+            ADDR_FLASH_STATUS:          begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= {7'b0000000, (Xfer.Busy ? 1'b1 : 1'b0)};    end
+            ADDR_FLASH_FS_ADDR_M:       begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= FLASH_FS_ADDR[15: 8];                       end
+            ADDR_FLASH_FS_ADDR_H:       begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= FLASH_FS_ADDR[23:16];                       end
+            ADDR_FLASH_FS_SIZE:         begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= FLASH_FS_SIZE[21:14];                       end
+            ADDR_FLASH_MEGAROM_ADDR_M:  begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= FLASH_MEGAROM_ADDR[15: 8];                  end
+            ADDR_FLASH_MEGAROM_ADDR_H:  begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= FLASH_MEGAROM_ADDR[23:16];                  end
+            ADDR_FLASH_MEGAROM_SIZE:    begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= FLASH_MEGAROM_SIZE[21:14];                  end
+            ADDR_FLASH_NEXTOR_ADDR_M:   begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= FLASH_NEXTOR_ADDR[15: 8];                   end
+            ADDR_FLASH_NEXTOR_ADDR_H:   begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= FLASH_NEXTOR_ADDR[23:16];                   end
+            ADDR_FLASH_NEXTOR_SIZE:     begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= FLASH_NEXTOR_SIZE[21:14];                   end
+            ADDR_FLASH_FM_ADDR_M:       begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= FLASH_FM_ADDR[15: 8];                       end
+            ADDR_FLASH_FM_ADDR_H:       begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= FLASH_FM_ADDR[23:16];                       end
+            ADDR_FLASH_FM_SIZE:         begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= FLASH_FM_SIZE[21:14];                       end
+            ADDR_FLASH_MEGAROM_RAM_ADDR_M:begin Bus.BUSDIR_n <= 0;  Bus.DOUT <= RAM_ADDR[15: 8];                            end
+            ADDR_FLASH_MEGAROM_RAM_ADDR_H:begin Bus.BUSDIR_n <= 0;  Bus.DOUT <= RAM_ADDR[23:16];                            end
+            ADDR_FLASH_MEGAROM_RAM_SIZE:begin   Bus.BUSDIR_n <= 0;  Bus.DOUT <= RAM_SIZE[21:14];                            end
+        endcase
     end
 
     /***************************************************************
@@ -230,9 +312,83 @@ module MEGAROM_CONFIGURE #(
             begin
                 ctrl_reg[ADDR_FLAGS][BIT_FLAGS_ENABLE] <= 0;
             end
+
+            ctrl_reg[ADDR_KEY_0         ] <= ~KEY_0;
+            ctrl_reg[ADDR_KEY_1         ] <= ~KEY_1;
+            ctrl_reg[ADDR_KEY_2         ] <= ~KEY_2;
+            ctrl_reg[ADDR_KEY_3         ] <= ~KEY_3;
         end
         else if(det_wr && !cs_reg_wr_n) begin
-            ctrl_reg[Bus.ADDR[4:0]] <= Bus.DIN;
+            if(Bus.ADDR[5] == 0) begin
+                ctrl_reg[Bus.ADDR[4:0]] <= Bus.DIN;
+            end
+        end
+    end
+
+    /***************************************************************
+     * flash_reg ライト
+     ***************************************************************/
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n || !Bus.RESET_n) begin
+            flash_reg[ 0] <= 0;
+            flash_reg[ 1] <= 0;
+            flash_reg[ 2] <= 0;
+            flash_reg[ 3] <= 0;
+            flash_reg[ 4] <= 0;
+            flash_reg[ 5] <= 0;
+            flash_reg[ 6] <= 0;
+            flash_reg[ 7] <= 0;
+            flash_reg[ 8] <= 0;
+            flash_reg[ 9] <= 0;
+            flash_reg[10] <= 0;
+            flash_reg[11] <= 0;
+            flash_reg[12] <= 0;
+            flash_reg[13] <= 0;
+            flash_reg[14] <= 0;
+            flash_reg[15] <= 0;
+        end
+        else if(det_wr && !cs_reg_wr_n) begin
+            if(Bus.ADDR[5:4] == 2'b10) begin
+                flash_reg[Bus.ADDR[3:0]] <= Bus.DIN;
+            end
+        end
+    end
+
+    /***************************************************************
+     * コマンド
+     ***************************************************************/
+    logic [31:0] flash_cmd;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n) begin
+            Xfer.Mode <= XFER::XFER_MODE_FLASH_TO_RAM;
+            Xfer.Start <= 0;
+            flash_cmd <= 0;
+        end
+        else if(!Bus.RESET_n) begin
+            Xfer.Mode <= XFER::XFER_MODE_FLASH_TO_RAM;
+            Xfer.Start <= 0;
+            flash_cmd <= 0;
+        end
+        else if(Xfer.Start && Xfer.Busy) begin
+            Xfer.Start <= 0;
+        end
+        else if(flash_cmd[31:0] == {8'h40, 8'h52, 8'h44, 8'h0D}) begin
+            Xfer.Mode <= XFER::XFER_MODE_FLASH_TO_RAM;
+            Xfer.Start <= 1;
+            flash_cmd <= 0;
+        end
+        else if(flash_cmd[31:0] == {8'h40, 8'h57, 8'h52, 8'h0D}) begin
+            Xfer.Mode <= XFER::XFER_MODE_RAM_TO_FLASH;
+            Xfer.Start <= 1;
+            flash_cmd <= 0;
+        end
+        else if(flash_cmd[31:0] == {8'h40, 8'h45, 8'h42, 8'h0D}) begin
+            Xfer.Mode <= XFER::XFER_MODE_ERASE;
+            Xfer.Start <= 1;
+            flash_cmd <= 0;
+        end
+        else if(det_wr && !cs_reg_wr_n && Bus.ADDR[5] == 1'b1 && Bus.ADDR[4:0] == ADDR_FLASH_CONTROL) begin
+            flash_cmd <= {flash_cmd[23:0], Bus.DIN};
         end
     end
 

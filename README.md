@@ -27,7 +27,7 @@ TangNano20K を搭載した MSX 用カートリッジ。WonderTANG 対応版は 
 - SCC/SCC-I 音源
 - FM 音源(OPLL)カートリッジ(拡張 BASIC は未対応)
 - SCC + OPLL + PSG 音源の 3.5mmフォンジャック出力
-- PAC 機能(まだデータ保持機能が実装されていませんので、電源を切るとデータは消えます)
+- PAC 機能(~~まだデータ保持機能が実装されていませんので、電源を切るとデータは消えます~~)
 - V9990 エミュレーション(「[msx-samurai](https://github.com/albs-br/msx-samurai)」,「[MSXgl](https://github.com/aoineko-fr/MSXgl) V9990サンプルの一部」,「[TINY野郎氏のテックデモ](https://www.youtube.com/watch?v=I6kXyMaED0s)」がそれなりに動く程度)
 
 ### MSXglサンプル
@@ -43,7 +43,6 @@ https://github.com/user-attachments/assets/5c7b5b81-0413-4705-99fa-486552f4d58d
 https://github.com/user-attachments/assets/f6615e37-0041-4baa-8b7d-7cd3aba46d73
 
 ## 今後の予定
-- PAC データを FLASH で保持
 - V9990 のカーソル EOR 処理
 - V9990 の B0(192x240) モード
 - 回路と基板の修正(WS2812を点灯しないようにする等)

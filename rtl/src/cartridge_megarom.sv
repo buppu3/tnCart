@@ -37,7 +37,18 @@
  * MEGA ROM カードリッジ
  ***************************************************************/
 module CARTRIDGE_MEGAROM #(
-    parameter           RAM_ADDR = 0,
+    parameter [23:0]    FLASH_FS_ADDR               = 0,
+    parameter [23:0]    FLASH_FS_SIZE               = 0,
+    parameter [23:0]    FLASH_MEGAROM_ADDR          = 0,
+    parameter [23:0]    FLASH_MEGAROM_SIZE          = 0,
+    parameter [23:0]    FLASH_NEXTOR_ADDR           = 0,
+    parameter [23:0]    FLASH_NEXTOR_SIZE           = 0,
+    parameter [23:0]    FLASH_FM_ADDR               = 0,
+    parameter [23:0]    FLASH_FM_SIZE               = 0,
+    parameter [23:0]    FLASH_PAC_ADDR              = 0,
+    parameter [23:0]    FLASH_PAC_SIZE              = 0,
+    parameter [23:0]    RAM_ADDR                    = 0,
+    parameter [23:0]    RAM_SIZE                    = 0,
     parameter [7:0]     DEFAULT_BANK_REG_INIT_0     = 0,
     parameter [7:0]     DEFAULT_BANK_REG_INIT_1     = 0,
     parameter [7:0]     DEFAULT_BANK_REG_INIT_2     = 0,
@@ -61,6 +72,7 @@ module CARTRIDGE_MEGAROM #(
     input   wire            CLK,
     BUS_IF.CARTRIDGE        Bus,
     RAM_IF.HOST             Ram,
+    XFER_IF.HOST            Xfer,
     SOUND_IF.OUT            Sound
 );
 
@@ -71,7 +83,18 @@ module CARTRIDGE_MEGAROM #(
     logic SCC_ENA;
     logic SCC_I_ENA;
     MEGAROM_CONFIGURE #(
-        .RAM_ADDR(RAM_ADDR),
+        .FLASH_FS_ADDR          (FLASH_FS_ADDR),
+        .FLASH_FS_SIZE          (FLASH_FS_SIZE),
+        .FLASH_MEGAROM_ADDR     (FLASH_MEGAROM_ADDR),
+        .FLASH_MEGAROM_SIZE     (FLASH_MEGAROM_SIZE),
+        .FLASH_NEXTOR_ADDR      (FLASH_NEXTOR_ADDR),
+        .FLASH_NEXTOR_SIZE      (FLASH_NEXTOR_SIZE),
+        .FLASH_FM_ADDR          (FLASH_FM_ADDR),
+        .FLASH_FM_SIZE          (FLASH_FM_SIZE),
+        .FLASH_PAC_ADDR         (FLASH_PAC_ADDR),
+        .FLASH_PAC_SIZE         (FLASH_PAC_SIZE),
+        .RAM_ADDR               (RAM_ADDR),
+        .RAM_SIZE               (RAM_SIZE),
         .DEFAULT_BANK_REG_INIT_0(DEFAULT_BANK_REG_INIT_0),
         .DEFAULT_BANK_REG_INIT_1(DEFAULT_BANK_REG_INIT_1),
         .DEFAULT_BANK_REG_INIT_2(DEFAULT_BANK_REG_INIT_2),
@@ -94,6 +117,7 @@ module CARTRIDGE_MEGAROM #(
         .RESET_n,
         .CLK,
         .Bus(ExtBus[BUS_CONFIG]),
+        .Xfer(Xfer),
         .Megarom,
         .SCC_ENA,
         .SCC_I_ENA

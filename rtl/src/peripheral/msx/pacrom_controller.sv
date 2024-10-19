@@ -46,7 +46,8 @@ module PACROM_CONTROLLER #(
     input   wire            CLK,
     BUS_IF.CARTRIDGE        Bus,
     RAM_IF.HOST             Ram,
-    BUS_IF.MSX              ExtBus[0:COUNT-1]
+    BUS_IF.MSX              ExtBus[0:COUNT-1],
+    output wire             SramEnable
 );
     localparam [15:0] BankAddr = 16'h5FFE;
     localparam [15:0] BankKey = 16'h694D;
@@ -211,7 +212,8 @@ module PACROM_CONTROLLER #(
     /***************************************************************
      * address
      ***************************************************************/
-    wire bank_pac = (BankReg[0] == BankKey[7:0]) && (BankReg[1] == BankKey[15:8]) && (Bus.ADDR[15:13] == 2'b010);
+    assign SramEnable = (BankReg[0] == BankKey[7:0]) && (BankReg[1] == BankKey[15:8]);
+    wire bank_pac = SramEnable && (Bus.ADDR[15:13] == 2'b010);
     wire [23:0] addr = bank_pac ? {RAM_ADDR_PAC[23:13], Bus.ADDR[12:0]} : {RAM_ADDR_BIOS[23:14], Bus.ADDR[13:0]};
 
     /***************************************************************

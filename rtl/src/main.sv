@@ -97,12 +97,13 @@ module MAIN (
         .CLK,
         .Primary        (Bus),
         .Secondary      (ExpBus),
-        .WAIT_n         (BOOT_n)
+        .WAIT_n         (BOOT_WAIT_n)
     );
 
     /***************************************************************
      * MEGAROM カートリッジ
      ***************************************************************/
+    XFER_IF Xfer();
     if(CONFIG::ENABLE_MEGAROM) begin
         localparam [7:0]     DEFAULT_BANK_REG_INIT_0     = (CONFIG::ENABLE_MEGAROM == CONFIG::ENABLE_MEGA_SCC_I) ? 0        : (CONFIG::ENABLE_MEGAROM == CONFIG::ENABLE_MEGA_SCC) ? 0        : 0;
         localparam [7:0]     DEFAULT_BANK_REG_INIT_1     = (CONFIG::ENABLE_MEGAROM == CONFIG::ENABLE_MEGA_SCC_I) ? 1        : (CONFIG::ENABLE_MEGAROM == CONFIG::ENABLE_MEGA_SCC) ? 1        : 0;
@@ -123,7 +124,18 @@ module MAIN (
         localparam [0:0]     DEFAULT_ENABLE_CONTINUOUS   = (CONFIG::ENABLE_MEGAROM == CONFIG::ENABLE_MEGA_SCC_I) ? 1'b1     : (CONFIG::ENABLE_MEGAROM == CONFIG::ENABLE_MEGA_SCC) ? 1'b1     : 1'b0;
         localparam [0:0]     DEFAULT_ENABLE              = (CONFIG::ENABLE_MEGAROM == CONFIG::ENABLE_MEGA_SCC_I) ? 1'b1     : (CONFIG::ENABLE_MEGAROM == CONFIG::ENABLE_MEGA_SCC) ? 1'b1     : 1'b0;
         CARTRIDGE_MEGAROM #(
-            .RAM_ADDR       (CONFIG::RAM_ADDR_MEGAROM),
+            .FLASH_FS_ADDR          (0),
+            .FLASH_FS_SIZE          (24'h10_0000),
+            .FLASH_MEGAROM_ADDR     (CONFIG::FLASH_ADDR_MEGAROM),
+            .FLASH_MEGAROM_SIZE     (CONFIG::FLASH_SIZE_MEGAROM),
+            .FLASH_NEXTOR_ADDR      (CONFIG::FLASH_ADDR_BIOS),
+            .FLASH_NEXTOR_SIZE      (CONFIG::FLASH_SIZE_BIOS_NEXTOR),
+            .FLASH_FM_ADDR          (CONFIG::FLASH_ADDR_BIOS + CONFIG::FLASH_SIZE_BIOS_NEXTOR),
+            .FLASH_FM_SIZE          (CONFIG::FLASH_SIZE_BIOS_FM),
+            .FLASH_PAC_ADDR         (CONFIG::FLASH_ADDR_PAC),
+            .FLASH_PAC_SIZE         (CONFIG::FLASH_SIZE_PAC),
+            .RAM_ADDR               (CONFIG::RAM_ADDR_MEGAROM),
+            .RAM_SIZE               (CONFIG::RAM_SIZE_MEGAROM),
             .DEFAULT_BANK_REG_INIT_0(DEFAULT_BANK_REG_INIT_0),
             .DEFAULT_BANK_REG_INIT_1(DEFAULT_BANK_REG_INIT_1),
             .DEFAULT_BANK_REG_INIT_2(DEFAULT_BANK_REG_INIT_2),
@@ -147,6 +159,7 @@ module MAIN (
             .CLK,
             .Bus            (ExpBus[BUS_MEGAROM]),
             .Ram            (ExpRam[RAM_MEGAROM]),
+            .Xfer           (Xfer),
             .Sound          (Sound[SOUND_MEGAROM])
         );
         end
@@ -154,11 +167,13 @@ module MAIN (
         always_comb ExpBus[BUS_MEGAROM].connect_dummy();
         always_comb ExpRam[RAM_MEGAROM].connect_dummy();
         always_comb Sound[SOUND_MEGAROM].connect_dummy();
+        always_comb Xfer.connect_dummy();
     end
 
     /***************************************************************
      * FM 音源カートリッジ
      ***************************************************************/
+    PAC_IF PAC();
     if(CONFIG::ENABLE_FM) begin
         wire FM_Sound_Enable;
         CARTRIDGE_FM #(
@@ -170,12 +185,14 @@ module MAIN (
             .CLK,
             .Bus            (ExpBus[BUS_FM]),
             .Ram            (ExpRam[RAM_FM]),
+            .PAC            (PAC),
             .Sound          (Sound[SOUND_FM_EXT]),
             .Output_En      (FM_Sound_Enable)
         );
         assign Sound[SOUND_FM_INT].Signal = FM_Sound_Enable ? Sound[SOUND_FM_EXT].Signal : 0;
     end
     else begin
+        always_comb PAC.connect_dummy();
         always_comb ExpBus[BUS_FM].connect_dummy();
         always_comb ExpRam[RAM_FM].connect_dummy();
         always_comb Sound[SOUND_FM_EXT].connect_dummy();
@@ -262,6 +279,7 @@ module MAIN (
      ***************************************************************/
     logic SYS_RESET_n;
     logic BOOT_n;
+    logic BOOT_WAIT_n;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)     SYS_RESET_n <= 0;
         else if(!BOOT_n) SYS_RESET_n <= 0;
@@ -275,14 +293,23 @@ module MAIN (
         .MEGAROM_CLEAR_ADDR(CONFIG::RAM_ADDR_MEGAROM),
         .MEGAROM_CLEAR_SIZE(32768),
         .RAM_CLEAR_ADDR (CONFIG::RAM_ADDR_RAM),
-        .RAM_CLEAR_SIZE (65536)
+        .RAM_CLEAR_SIZE (65536),
+        .PAC_RAM_ADDR   (CONFIG::RAM_ADDR_PAC),
+        .PAC_FLASH_ADDR (CONFIG::FLASH_ADDR_PAC)
     ) u_boot (
         .RESET_n,
         .CLK,
         .Flash,
         .Ram            (ExpRam[RAM_BOOTLOADER]),
         .Led            (LedBoot),
+        .Xfer           (Xfer),
+        .PAC            (PAC),
         .ClearMegarom   (1'b1),
+        .BusReset_n     (Bus.RESET_n),
+        .RD_n           (Bus.RD_n),
+        .WR_n           (Bus.WR_n),
+        .RFSH_n         (Bus.RFSH_n),
+        .WAIT_n         (BOOT_WAIT_n),
         .READY          (BOOT_n)
     );
 

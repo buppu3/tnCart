@@ -98,7 +98,7 @@ module TNCART_BOARD_REV1_TOP (
 );
 
     // UMA を有効
-    localparam          ENABLE_UMA              = CONFIG::ENABLE_V9990;
+    localparam          ENABLE_UMA              = 1;//CONFIG::ENABLE_V9990;
 
     /***************************************************************
      * CLOCK
