@@ -1,5 +1,5 @@
 //
-// tnCart_board_rev1_top.sv
+// tnCart_board_rev2_top.sv
 //
 // BSD 3-Clause License
 // 
@@ -33,11 +33,8 @@
 
 `default_nettype none
 
-module TNCART_BOARD_REV1_TOP (
+module TNCART_BOARD_REV2_TOP (
     input   wire            CLK_27M,
-
-    // JUMPER
-    input   wire            JUMPER,
 
     // SDRAM
     output  wire            O_sdram_clk,
@@ -55,18 +52,17 @@ module TNCART_BOARD_REV1_TOP (
     output  wire            CART_BUSDIR_n,
     output  wire            CART_INT_n,
     output  wire            CART_WAIT_n,
-    input   wire            CART_SLTSL_n,
-    input   wire            CART_RD_n,
-    input   wire            CART_WR_n,
     input   wire            CART_CLOCK,
-    input   wire    [7:0]   CART_MUX_SIG,
-    output  wire    [2:0]   CART_MUX_CS_n,
+    input   wire    [5:0]   CART_MUX_SIG,
+    output  wire    [1:0]   CART_MUX_CS_A,
     inout   wire    [7:0]   CART_DATA_SIG,
-    output  wire            CART_DATA_DIR,
 
     // SOUND
     output  wire            SOUND_INT,
-    output  wire            SOUND_EXT,
+    output  wire            I2S_SCLK,
+    output  wire            I2S_BCLK,
+    output  wire            I2S_DIN,
+    output  wire            I2S_LRCLK,
 
     // LED
     output  wire            LED,
@@ -176,21 +172,17 @@ module TNCART_BOARD_REV1_TOP (
     end
 
     // バス信号処理
-    BOARD_REV1_BUS u_bus (
+    BOARD_REV2_BUS u_bus (
         .RESET_n,
         .CLK,
         .CLK_21M,
         .CART_BUSDIR_n,
         .CART_INT_n,
         .CART_WAIT_n,
-        .CART_SLTSL_n,
-        .CART_RD_n,
-        .CART_WR_n,
         .CART_CLOCK,
         .CART_MUX_SIG,
-        .CART_MUX_CS_n,
+        .CART_MUX_CS_A,
         .CART_DATA_SIG,
-        .CART_DATA_DIR,
         .Bus
     );
 
@@ -329,12 +321,82 @@ module TNCART_BOARD_REV1_TOP (
     );
 
     /***************************************************************
+     * I2S DAC clock(108MHz/2/38 = 1.42MHz)
+     ***************************************************************/
+    wire CLK_DAC_EN;
+    wire DAC_SCLK;
+    wire DAC_BCLK;
+    wire DAC_BCLK_SRC;
+
+    if(CONFIG::ENABLE_DAC_I2S) begin
+
+        // SCLK のソースを選択
+        wire SCLK_SRC;
+        if(CONFIG_BOARD::DAC_SCLK_SRC == 0) begin
+            assign SCLK_SRC = CLK;
+        end
+        else if(CONFIG_BOARD::DAC_SCLK_SRC == 1) begin
+            assign SCLK_SRC = CLK_27M;
+        end
+
+        if(CONFIG_BOARD::DAC_SCLK_DIV) begin
+            // SCLK のソースクロックを分周
+            localparam SCLK_DIV = CONFIG_BOARD::DAC_SCLK_DIV;
+            logic [$clog2(SCLK_DIV)-1:0] dac_sclk_cnt;
+            logic ff_dac_sclk;
+            assign DAC_SCLK = ff_dac_sclk;
+
+            always_ff @(posedge SCLK_SRC or negedge RESET_n) begin
+                if(!RESET_n)               dac_sclk_cnt <= SCLK_DIV - 1'd1;
+                else if(dac_sclk_cnt == 0) dac_sclk_cnt <= SCLK_DIV - 1'd1;
+                else                       dac_sclk_cnt <= dac_sclk_cnt - 1'd1;
+            end
+
+            always_ff @(posedge SCLK_SRC or negedge RESET_n) begin
+                if(!RESET_n)               ff_dac_sclk <= 0;
+                else if(dac_sclk_cnt == 0) ff_dac_sclk <= ~ff_dac_sclk;
+            end
+        end
+        else begin
+            assign DAC_SCLK = 1'b0;
+        end
+
+        // BCLK のソースを選択
+        if(CONFIG_BOARD::DAC_BCLK_SRC == 0) begin
+            assign DAC_BCLK_SRC = CLK;
+        end
+        else if(CONFIG_BOARD::DAC_BCLK_SRC == 1) begin
+            assign DAC_BCLK_SRC = CLK_27M;
+        end
+        else if(CONFIG_BOARD::DAC_BCLK_SRC == 2) begin
+            assign DAC_BCLK_SRC = DAC_SCLK;
+        end
+
+        // BCLK のソースクロックを分周
+        localparam BCLK_DIV = CONFIG_BOARD::DAC_BCLK_DIV;
+        logic [$clog2(BCLK_DIV)-1:0] dac_bclk_cnt;
+        logic ff_dac_bclk;
+        assign DAC_BCLK = ff_dac_bclk;
+
+        always_ff @(posedge DAC_BCLK_SRC or negedge RESET_n) begin
+            if(!RESET_n)               dac_bclk_cnt <= BCLK_DIV - 1'd1;
+            else if(dac_bclk_cnt == 0) dac_bclk_cnt <= BCLK_DIV - 1'd1;
+            else                       dac_bclk_cnt <= dac_bclk_cnt - 1'd1;
+        end
+
+        always_ff @(posedge DAC_BCLK_SRC or negedge RESET_n) begin
+            if(!RESET_n)               ff_dac_bclk <= 0;
+            else if(dac_bclk_cnt == 0) ff_dac_bclk <= ~ff_dac_bclk;
+        end
+    end
+
+    /***************************************************************
      * DAC clock(108MHz/5 = 21.6MHz)
      ***************************************************************/
     localparam CLK_DAC_DIV = CONFIG_BOARD::DAC_FREQ_DIV;
 
     logic [$clog2(CLK_DAC_DIV)-1:0] clk_dac_cnt;
-    wire CLK_DAC_EN = (clk_dac_cnt == 0);
+    assign CLK_DAC_EN = (clk_dac_cnt == 0);
 
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)              clk_dac_cnt <= CLK_DAC_DIV - 1'd1;
@@ -357,14 +419,50 @@ module TNCART_BOARD_REV1_TOP (
     /***************************************************************
      * external sound out
      ***************************************************************/
-    SOUND_IF #(.BIT_WIDTH(CONFIG_BOARD::DAC_BIT_WIDTH)) SoundExternal[0:0]();
-    DAC_1BIT u_dac_ext (
-        .CLK,
-        .CLK_EN         (CLK_DAC_EN),
-        .RESET_n,
-        .IN             (SoundExternal[0]),
-        .OUT            (SOUND_EXT)
-    );
+    localparam ext_sound_ch = (CONFIG::ENABLE_DAC_STEREO?2:1);
+    SOUND_IF #(.BIT_WIDTH(CONFIG_BOARD::DAC_BIT_WIDTH)) SoundExternal[0:ext_sound_ch-1]();
+    if(CONFIG::ENABLE_DAC_I2S) begin
+        // I2S
+        assign I2S_BCLK = DAC_BCLK;
+        assign I2S_SCLK = DAC_SCLK;
+        DAC_I2S u_dac_i2s (
+            .CLK            (DAC_BCLK_SRC),
+            .RESET_n,
+            .IN_L           (SoundExternal[0]),
+            .IN_R           (CONFIG::ENABLE_DAC_STEREO ? SoundExternal[1] : SoundExternal[0]),
+            .BCLK           (DAC_BCLK),
+            .LRCLK          (I2S_LRCLK),
+            .DIN            (I2S_DIN)
+        );
+    end
+    else begin
+        // PDM 左チャンネル
+        assign I2S_LRCLK = 1'bZ;
+        assign I2S_SCLK = 1'bZ;
+        DAC_1BIT u_dac_ext_l (
+            .CLK,
+            .CLK_EN         (CLK_DAC_EN),
+            .RESET_n,
+            .IN             (SoundExternal[0]),
+            .OUT            (I2S_DIN)
+        );
+
+        // PDM 右チェンネル
+        if(CONFIG::ENABLE_DAC_STEREO) begin
+            // ステレオ信号がある時
+            DAC_1BIT u_dac_ext_r (
+                .CLK,
+                .CLK_EN         (CLK_DAC_EN),
+                .RESET_n,
+                .IN             (SoundExternal[1]),
+                .OUT            (I2S_BCLK)
+            );
+        end
+        else begin
+            // ステレオ信号がない時は左と同じ信号を出力
+            assign I2S_BCLK = I2S_DIN;
+        end
+    end
 
     /***************************************************************
      * VIDEO
@@ -395,7 +493,9 @@ module TNCART_BOARD_REV1_TOP (
     /***************************************************************
      * MAIN
      ***************************************************************/
-    MAIN u_main (
+    MAIN #(
+        .EXT_SOUND_CH_COUNT (ext_sound_ch)
+    ) u_main (
         .RESET_n,
         .CLK,
         .Bus,

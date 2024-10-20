@@ -1,0 +1,102 @@
+<?xml version="1" encoding="UTF-8"?>
+<!DOCTYPE gowin-fpga-project>
+<Project>
+    <Template>FPGA</Template>
+    <Version>5</Version>
+    <Device name="GW2AR-18C" pn="GW2AR-LV18QN88C8/I7">gw2ar18c-000</Device>
+    <FileList>
+        <File path="src/board/board_id.sv" type="file.verilog" enable="1"/>
+        <File path="src/board/rev1/board_rev1_clock.sv" type="file.verilog" enable="1"/>
+        <File path="src/board/rev1/board_rev1_tmds.sv" type="file.verilog" enable="1"/>
+        <File path="src/board/rev1/dvi_tx/dvi_tx.v" type="file.verilog" enable="1"/>
+        <File path="src/board/rev2/board_rev2_bus.sv" type="file.verilog" enable="1"/>
+        <File path="src/board/rev2/board_rev2_config.sv" type="file.verilog" enable="1"/>
+        <File path="src/bootloader.sv" type="file.verilog" enable="1"/>
+        <File path="src/cartridge_fm.sv" type="file.verilog" enable="1"/>
+        <File path="src/cartridge_megarom.sv" type="file.verilog" enable="1"/>
+        <File path="src/cartridge_nextor.sv" type="file.verilog" enable="1"/>
+        <File path="src/cartridge_psg.sv" type="file.verilog" enable="1"/>
+        <File path="src/cartridge_ram.sv" type="file.verilog" enable="1"/>
+        <File path="src/cartridge_v9990.sv" type="file.verilog" enable="1"/>
+        <File path="src/config.sv" type="file.verilog" enable="1"/>
+        <File path="src/main.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/flash.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/led.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/msx/bus.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/msx/expansion_slot.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/msx/megarom_configure.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/msx/megarom_controller.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/msx/pacrom_controller.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/msx/tf_controller.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/ram/ram.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/ram/sdram.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/ram/uma.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/signal/attenuator.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/signal/limiter.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_dac.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_eg.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_lfo.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_op.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_pg.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_primitives.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_reg.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKAOPLL/IKAOPLL_modules/IKAOPLL_timinggen.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKASCC/IKASCC.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKASCC/IKASCC_modules/IKASCC_player_a.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKASCC/IKASCC_modules/IKASCC_player_s.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKASCC/IKASCC_modules/IKASCC_primitives.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKASCC/IKASCC_modules/IKASCC_vrc_a.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/IKASCC/IKASCC_modules/IKASCC_vrc_s.v" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/dac_1bit.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/dac_i2s.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/scc/scc.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/sound.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/spi.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/uart.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_bitmap.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_blit.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_blit_addr.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_blit_bitmask.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_blit_fifo.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_clock.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_color_decode.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_palette.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_pattern.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_port.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_priority.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_ram.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_selector.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_shift_buffer.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_sprite.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/tiny9990/t9990_timing.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/video.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/video_dummy.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/video/video_upscan.sv" type="file.verilog" enable="1"/>
+        <File path="src/tnCart_board_rev2_top.sv" type="file.verilog" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/attacktable.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/controller.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/envelopegenerator.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/envelopememory.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/feedbackmemory.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/lineartable.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/operator.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/opll.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/outputgenerator.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/outputmemory.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/phasegenerator.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/phasememory.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/registermemory.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/sinetable.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/slotcounter.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/temporalmixer.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/vm2413.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/voicememory.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/vm2413/voicerom.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/peripheral/sound/ym2149_audio/ym2149_audio.vhd" type="file.vhdl" enable="1"/>
+        <File path="src/board/rev2/board_rev2.cst" type="file.cst" enable="1"/>
+        <File path="src/board/rev2/board_rev2_27M.sdc" type="file.sdc" enable="0"/>
+        <File path="src/board/rev2/board_rev2_3_58M.sdc" type="file.sdc" enable="1"/>
+    </FileList>
+</Project>

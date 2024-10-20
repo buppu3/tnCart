@@ -132,6 +132,9 @@ package CONFIG;
     localparam          ENABLE_PAC_WRITE        = ENABLE;           // PAC データを FLASH に保存するか(DISABLE/ENABLE)
     localparam          ENABLE_SCANLINE         = DISABLE;          // 200ラインモード時に走査線の隙間を空ける
 
+    localparam          ENABLE_DAC_I2S          = DISABLE;          // I2S DAC を使用するか(DISABLE/ENABLE)
+    localparam          ENABLE_DAC_STEREO       = DISABLE;          // ステレオ出力を有効にするか(DISABLE/ENABLE)
+
     /***************************************************************
      * other(ここを変更すると動作しなくなる可能性があります)
      ***************************************************************/

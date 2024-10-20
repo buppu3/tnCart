@@ -33,7 +33,9 @@
 
 `default_nettype none
 
-module MAIN (
+module MAIN #(
+    parameter               EXT_SOUND_CH_COUNT  = 1
+) (
     input   wire            RESET_n,
     input   wire            CLK,
     BUS_IF.CARTRIDGE        Bus,                // BUS I/F
@@ -45,7 +47,7 @@ module MAIN (
     FLASH_IF.HOST           Flash,              // フラッシュメモリ
     LED_IF.HOST             LedBoot,            // Bootloader 用 LED
     VIDEO_IF                Video,              // ビデオ出力
-    SOUND_IF.OUT            SoundExternal,      // 外部サウンド出力
+    SOUND_IF.OUT            SoundExternal[0:EXT_SOUND_CH_COUNT-1],  // 外部サウンド出力
     SOUND_IF.OUT            SoundInternal       // カートリッジサウンド出力
 );
     /***************************************************************
@@ -378,13 +380,22 @@ module MAIN (
         .OUT            (mix_ext)
     );
 
-    if($bits(SoundExternal.Signal) == $bits(mix_ext.Signal)) begin
-        assign SoundExternal.Signal = mix_ext.Signal;
+    if($bits(SoundExternal[0].Signal) == $bits(mix_ext.Signal)) begin
+        assign SoundExternal[0].Signal = mix_ext.Signal;
     end
     else begin
         wire [$bits(mix_ext.Signal)+16-1:0] mix_ext_ex = { mix_ext.Signal, 16'd0 };
-        assign SoundExternal.Signal = mix_ext_ex[$bits(mix_ext_ex)-1:$bits(mix_ext_ex)-$bits(SoundExternal.Signal)];
+        assign SoundExternal[0].Signal = mix_ext_ex[$bits(mix_ext_ex)-1:$bits(mix_ext_ex)-$bits(SoundExternal[0].Signal)];
     end
+
+    generate
+        genvar ext_ch;
+        if(EXT_SOUND_CH_COUNT >= 2) begin
+            for(ext_ch = 1; ext_ch < EXT_SOUND_CH_COUNT; ext_ch = ext_ch + 1) begin: ch
+                assign SoundExternal[ext_ch].Signal = 0;
+            end
+        end
+    endgenerate
 
     /***************************************************************
      * カートリッジサウンド出力ミキサー
