@@ -57,143 +57,115 @@ interface UMA_IF #(parameter COUNT = 2);
 endinterface
 
 module UMA #(
-    parameter COUNT         = 2,
-    parameter DIV           = 30,       // 3.58MHz の分周値
-    parameter DELAY         = 0,        // 3.58MHz クロックエッジからメモリアクセスまでのディレイ
-    parameter SYNC_CLK_EN   = 1         // CLK_EN で同期をとる
+    parameter COUNT         = 2
 ) (
     input   wire            RESET_n,
     input   wire            CLK,
-    input   wire            CLK_EN,
+    input   wire            CLK_3_58M,
     input   wire            WAIT_EN,
     RAM_IF.HOST             Primary,
     RAM_IF.DEVICE           Secondary[0:COUNT-1],
     UMA_IF.DEVICE           Uma
 );
     localparam CLK_OFFSET = 7'd2;    // TIMING より 2clk 速く CLK_EN を出力
-    localparam DIV14MHz = 15;
-    localparam DIV21MHz = 5;
-    localparam DIV25MHz = 13;
 
     localparam MRAM_EXEC_DELAY = 2;
     localparam VRAM_EXEC_DELAY = 2;
 
     /***************************************************************
      * 3.58MHz に同期して 10.74MHz 毎にメモリ切り替え
+     *
+     * 108MHz         ~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_~_
+     * CLK_3_58M      ~~______________________________~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~______________________________~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~____________________________
+     * mem_cnt            0 1 2 3 4 5 6 7 8 9101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585900
+     * CLK21M_EN      _____~~________~~________~~________~~________~~________~~________~~________~~________~~________~~________~~________~~________~~________~~________~~___
+     * CLK14M_EN      _____~~______________~~____________~~______________~~____________~~______________~~____________~~______________~~____________~~______________~~_______
+     * S[0].TIMING    _____________________________~~______________________________________~~______________________________________________________________________________~
+     * S[1].TIMING    _________~~______________________________________~~______________________________________~~______________________________________~~___________________
+     * done_timing    _____________________________~~__________________~~__________________~~__________________~~__________________~~_______________________________________
+     * exec_timing[0] _________________________________~~______________________________________~~___________________________________________________________________________
+     * exec_timing[1] _____________~~______________________________________~~______________________________________~~______________________________________~~_______________
+     * done           _________________________________~~__________________~~__________________~~__________________~~__________________~~___________________________________
+     * SDRAM access   --------------[VRAM              ][CPU               ][VRAM              ][CPU               ][VRAM              ]--------------------[VRAM              ]     
+     *
      ***************************************************************/
-    localparam DIVCNT_TOP   = 0;//(DELAY);
+    // カウンタリセット条件
+    wire mem_cnt_rst = mem_cnt > 6'd56 && !CLK_3_58M;
 
-    localparam DIVCNT_25M_0 = (DIVCNT_TOP + DIV * 0 / 7);
-    localparam DIVCNT_25M_1 = (DIVCNT_TOP + DIV * 1 / 7);
-    localparam DIVCNT_25M_2 = (DIVCNT_TOP + DIV * 2 / 7);
-    localparam DIVCNT_25M_3 = (DIVCNT_TOP + DIV * 3 / 7);
-    localparam DIVCNT_25M_4 = (DIVCNT_TOP + DIV * 4 / 7);
-    localparam DIVCNT_25M_5 = (DIVCNT_TOP + DIV * 5 / 7);
-    localparam DIVCNT_25M_6 = (DIVCNT_TOP + DIV * 6 / 7);
-
-    localparam DIVCNT_21M_0 = (DIVCNT_TOP + DIV * 0 / 6);
-    localparam DIVCNT_21M_1 = (DIVCNT_TOP + DIV * 1 / 6);
-    localparam DIVCNT_21M_2 = (DIVCNT_TOP + DIV * 2 / 6);
-    localparam DIVCNT_21M_3 = (DIVCNT_TOP + DIV * 3 / 6);
-    localparam DIVCNT_21M_4 = (DIVCNT_TOP + DIV * 4 / 6);
-    localparam DIVCNT_21M_5 = (DIVCNT_TOP + DIV * 5 / 6);
-
-    localparam DIVCNT_14M_0 = (DIVCNT_TOP + DIV * 0 / 4);
-    localparam DIVCNT_14M_1 = (DIVCNT_TOP + DIV * 1 / 4);
-    localparam DIVCNT_14M_2 = (DIVCNT_TOP + DIV * 2 / 4);
-    localparam DIVCNT_14M_3 = (DIVCNT_TOP + DIV * 3 / 4);
-
-    localparam DIVCNT_10M_0 = (DIVCNT_TOP + DIV * 0 / 3);
-    localparam DIVCNT_10M_1 = (DIVCNT_TOP + DIV * 1 / 3);
-    localparam DIVCNT_10M_2 = (DIVCNT_TOP + DIV * 2 / 3);
-
-    logic [$clog2(DIV)-1:0] mem_cnt;
-if(SYNC_CLK_EN == 1) begin
-    // MSX の 3.58MHz に同期
+    // counter
+    logic [5:0] mem_cnt;
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                  mem_cnt <= 0;
-        else if(CLK_EN)               mem_cnt <= 0;
-        else if(mem_cnt != (DIV - 1)) mem_cnt <= mem_cnt + 1'd1;
-    end
-end
-else if(SYNC_CLK_EN == 2) begin
-    // 最初だけ MSX の 3.58MHz に同期
-    reg sync_flag;
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)    sync_flag <= 0;
-        else if(CLK_EN) sync_flag <= 1;
+        if(!RESET_n)              mem_cnt <= 0;
+        else if(mem_cnt_rst)      mem_cnt <= 0;
+        else if(mem_cnt != 6'd63) mem_cnt <= mem_cnt + 1'd1;
     end
 
+    // 25MHz 生成
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                  mem_cnt <= 0;
-        else if(mem_cnt == (DIV - 1)) mem_cnt <= 0;
-        else if(sync_flag)            mem_cnt <= mem_cnt + 1'd1;
-    end
-end
-else begin
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                  mem_cnt <= 0;
-        else if(mem_cnt == (DIV - 1)) mem_cnt <= 0;
-        else                          mem_cnt <= mem_cnt + 1'd1;
-    end
-end
-
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                       Uma.CLK25M_EN <= 0;
-        else if(mem_cnt == (DIVCNT_25M_0)) Uma.CLK25M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_25M_1)) Uma.CLK25M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_25M_2)) Uma.CLK25M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_25M_3)) Uma.CLK25M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_25M_4)) Uma.CLK25M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_25M_5)) Uma.CLK25M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_25M_6)) Uma.CLK25M_EN <= 1;
-        else                               Uma.CLK25M_EN <= 0;
+        if(!RESET_n)               Uma.CLK25M_EN <= 0;
     end
 
+    // 21.6MHz 生成
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                       Uma.CLK21M_EN <= 0;
-        else if(mem_cnt == (DIVCNT_21M_0)) Uma.CLK21M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_21M_1)) Uma.CLK21M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_21M_2)) Uma.CLK21M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_21M_3)) Uma.CLK21M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_21M_4)) Uma.CLK21M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_21M_5)) Uma.CLK21M_EN <= 1;
-        else                               Uma.CLK21M_EN <= 0;
+        if(!RESET_n)                     Uma.CLK21M_EN <= 0;
+        else if(mem_cnt == 6'd 0 - 6'd0) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == 6'd 5 - 6'd0) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == 6'd10 - 6'd0) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == 6'd15 - 6'd0) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == 6'd20 - 6'd0) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == 6'd25 - 6'd0) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == 6'd30 - 6'd0) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == 6'd35 - 6'd0) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == 6'd40 - 6'd0) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == 6'd45 - 6'd0) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == 6'd50 - 6'd0) Uma.CLK21M_EN <= 1;
+        else if(mem_cnt == 6'd55 - 6'd0) Uma.CLK21M_EN <= 1;
+        else                             Uma.CLK21M_EN <= 0;
     end
 
+    // 14.4MHz 生成
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)                       Uma.CLK14M_EN <= 0;
-        else if(mem_cnt == (DIVCNT_14M_0)) Uma.CLK14M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_14M_1)) Uma.CLK14M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_14M_2)) Uma.CLK14M_EN <= 1;
-        else if(mem_cnt == (DIVCNT_14M_3)) Uma.CLK14M_EN <= 1;
-        else                               Uma.CLK14M_EN <= 0;
+        if(!RESET_n)                     Uma.CLK14M_EN <= 0;
+        else if(mem_cnt == 6'd 0 - 6'd0) Uma.CLK14M_EN <= 1;
+        else if(mem_cnt == 6'd 8 - 6'd0) Uma.CLK14M_EN <= 1;
+        else if(mem_cnt == 6'd15 - 6'd0) Uma.CLK14M_EN <= 1;
+        else if(mem_cnt == 6'd23 - 6'd0) Uma.CLK14M_EN <= 1;
+        else if(mem_cnt == 6'd30 - 6'd0) Uma.CLK14M_EN <= 1;
+        else if(mem_cnt == 6'd38 - 6'd0) Uma.CLK14M_EN <= 1;
+        else if(mem_cnt == 6'd45 - 6'd0) Uma.CLK14M_EN <= 1;
+        else if(mem_cnt == 6'd53 - 6'd0) Uma.CLK14M_EN <= 1;
+        else                             Uma.CLK14M_EN <= 0;
     end
 
-    logic timing_toggle;
+    // CPU メモリタイミング生成
     always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n) begin
-            Secondary[0].TIMING <= 0;
-            Secondary[1].TIMING <= 0;
-            timing_toggle <= 0;
-        end
-        else if(mem_cnt == (DIVCNT_10M_0 + CLK_OFFSET) ||
-                mem_cnt == (DIVCNT_10M_1 + CLK_OFFSET) ||
-                mem_cnt == (DIVCNT_10M_2 + CLK_OFFSET) ) begin
-            Secondary[0].TIMING <= ~timing_toggle;
-            Secondary[1].TIMING <= timing_toggle;
-            timing_toggle <= ~timing_toggle;
-        end
-        else begin
-            Secondary[0].TIMING <= 0;
-            Secondary[1].TIMING <= 0;
-        end
+        if(!RESET_n) Secondary[0].TIMING <= 0;
+        else         Secondary[0].TIMING <= (mem_cnt == (6'd10 + CLK_OFFSET) || mem_cnt == (6'd30 + CLK_OFFSET));
+    end
+
+    // VRAM メモリタイミング生成
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n) Secondary[1].TIMING <= 0;
+        else         Secondary[1].TIMING <= (mem_cnt == (6'd0 + CLK_OFFSET) || mem_cnt == (6'd20 + CLK_OFFSET) || mem_cnt == (6'd40 + CLK_OFFSET));
     end
 
     /***************************************************************
      * 処理完了タイミング
      ***************************************************************/
-    wire done = exec_timing[0] || exec_timing[1];
+    logic done_timing;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n) done_timing <= 0;
+        else         done_timing <= (mem_cnt == (6'd10 + CLK_OFFSET) || mem_cnt == (6'd20 + CLK_OFFSET) || mem_cnt == (6'd30 + CLK_OFFSET) || mem_cnt == (6'd40 + CLK_OFFSET) || mem_cnt == (6'd50 + CLK_OFFSET));
+    end
+
+    logic [1:0] done_timing_buff;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n) done_timing_buff <= 0;
+        else         done_timing_buff <= {done_timing_buff[$bits(done_timing_buff)-2:0], done_timing};
+    end
+
+    //wire done = exec_timing[0] || exec_timing[1];
+    wire done = done_timing_buff[VRAM_EXEC_DELAY-1];
 
     /***************************************************************
      * 切り替えの 1クロック後に RAM へデータ送信

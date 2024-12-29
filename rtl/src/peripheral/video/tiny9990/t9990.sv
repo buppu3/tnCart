@@ -606,10 +606,11 @@ module T9990 (
     );
 
     // Ys:R:G:B を分解
+    wire debug_flag = BG_X[2:0] != 3'd0;
     assign Ys = REG.YSE ? OUT[15] : 1;
-    assign R = OUT[ 9: 5];
-    assign G = OUT[14:10];
-    assign B = OUT[ 4: 0];
+    assign R = debug_flag ? OUT[ 9: 5] : 5'b111111;
+    assign G = debug_flag ? OUT[14:10] : 5'b111111;
+    assign B = debug_flag ? OUT[ 4: 0] : 5'b111111;
     assign EO = STATUS.EO;
     assign IL = REG.ILM && REG.EO && !REG.HSCN;
     assign HSCN = REG.HSCN;

@@ -260,13 +260,11 @@ module TNCART_BOARD_REV1_TOP (
 
     if(ENABLE_UMA) begin
         UMA #(
-            .COUNT      (Uma.COUNT),
-            .SYNC_CLK_EN(CONFIG_BOARD::SYNC_CPU_UMA),
-            .DIV        (30)                        // 108MHz/3.58MHz = 30
+            .COUNT      (Uma.COUNT)
         ) u_uma (
             .RESET_n,
             .CLK,
-            .CLK_EN     (Bus.CLK_EN),
+            .CLK_3_58M  (Bus.CLK),
             .WAIT_EN    (uma_wait),
             .Primary    (Ram),
             .Secondary  (UmaRam),
