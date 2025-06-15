@@ -52,8 +52,8 @@ module TF_CONTROLLER #(
     logic   rd_n;
     logic   wr_n;
     always_comb begin
-        rd_n = Bus.RD_n || Bus.SLTSL_n || Bus.MERQ_n || ENA_n;
-        wr_n = Bus.WR_n || Bus.SLTSL_n || Bus.MERQ_n || ENA_n;
+        rd_n = Bus.RD_n || Bus.SLTSL_n || ENA_n;
+        wr_n = Bus.WR_n || Bus.SLTSL_n || ENA_n;
     end
 
     /***************************************************************

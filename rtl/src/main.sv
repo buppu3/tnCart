@@ -34,14 +34,19 @@
 `default_nettype none
 
 module MAIN #(
+    parameter               RAM_MEGAROM    = 0,
+    parameter               RAM_FMPAC      = 1,
+    parameter               RAM_NEXTOR     = 2,
+    parameter               RAM_EXPRAM     = 3,
+    parameter               RAM_BOOTLOADER = 4,
+    parameter               RAM_V9990      = 5,
+    parameter               RAM_COUNT      = 6,
     parameter               EXT_SOUND_CH_COUNT  = 1
 ) (
     input   wire            RESET_n,
-    input   wire            CLK,
+    CLOCK_IF.SRC            Clock,
     BUS_IF.CARTRIDGE        Bus,                // BUS I/F
-    RAM_IF.HOST             Ram,                // RAM I/F
-    RAM_IF                  VideoRam,           // VRAM I/F
-    UMA_IF.CLK              UmaClock,           // UMA クロック
+    RAM_IF             Ram[0:RAM_COUNT-1], // RAM I/F
     SPI_IF                  TF,                 // TF カード I/F
     LED_IF                  LedNextor,          // Nextor 用 LED
     FLASH_IF.HOST           Flash,              // フラッシュメモリ
@@ -61,26 +66,6 @@ module MAIN #(
     SOUND_IF #(.BIT_WIDTH(CONFIG::SOUND_BIT_WIDTH)) Sound[0:SOUND_COUNT-1]();
 
     /***************************************************************
-     * RAM I/F を複数に拡張
-     ***************************************************************/
-    localparam RAM_MEGAROM    = 0;
-    localparam RAM_FM         = 1;
-    localparam RAM_NEXTOR     = 2;
-    localparam RAM_RAM        = 3;
-    localparam RAM_BOOTLOADER = 4;
-    localparam RAM_COUNT      = 5;
-    RAM_IF ExpRam[0:RAM_COUNT-1]();
-    EXPANSION_RAM #(
-        .COUNT          (RAM_COUNT),
-        .USE_FF         (CONFIG::RAM_IF_EXPANSION_USES_FF)
-    ) u_expram (
-        .RESET_n,
-        .CLK,
-        .Primary        (Ram),
-        .Secondary      (ExpRam)
-    );
-
-    /***************************************************************
      * スロットの拡張
      ***************************************************************/
     localparam BUS_MEGAROM = 0;
@@ -92,11 +77,10 @@ module MAIN #(
     localparam BUS_COUNT   = 6;
     BUS_IF  ExpBus[0:BUS_COUNT-1]();
     EXPANSION_SLOT #(
-        .COUNT          (BUS_COUNT),
-        .USE_FF         (CONFIG::SLOT_EXPANSION_USES_FF)
+        .COUNT          (BUS_COUNT)
     ) u_sltexp (
-        .RESET_n        (SYS_RESET_n),
-        .CLK,
+        .RESET_n        (RESET_n),
+        .Clock,
         .Primary        (Bus),
         .Secondary      (ExpBus),
         .WAIT_n         (BOOT_WAIT_n)
@@ -158,16 +142,16 @@ module MAIN #(
             .DEFAULT_ENABLE(DEFAULT_ENABLE)
         ) u_megarom (
             .RESET_n        (SYS_RESET_n),
-            .CLK,
+            .Clock,
             .Bus            (ExpBus[BUS_MEGAROM]),
-            .Ram            (ExpRam[RAM_MEGAROM]),
+            .Ram            (Ram[RAM_MEGAROM]),
             .Xfer           (Xfer),
             .Sound          (Sound[SOUND_MEGAROM])
         );
         end
     else begin
         always_comb ExpBus[BUS_MEGAROM].connect_dummy();
-        always_comb ExpRam[RAM_MEGAROM].connect_dummy();
+        always_comb Ram[RAM_MEGAROM].connect_dummy();
         always_comb Sound[SOUND_MEGAROM].connect_dummy();
         always_comb Xfer.connect_dummy();
     end
@@ -184,9 +168,9 @@ module MAIN #(
             .RAM_ADDR_PAC   (CONFIG::RAM_ADDR_PAC)
         ) u_fm (
             .RESET_n        (SYS_RESET_n),
-            .CLK,
+            .Clock,
             .Bus            (ExpBus[BUS_FM]),
-            .Ram            (ExpRam[RAM_FM]),
+            .Ram            (Ram[RAM_FMPAC]),
             .PAC            (PAC),
             .Sound          (Sound[SOUND_FM_EXT]),
             .Output_En      (FM_Sound_Enable)
@@ -196,7 +180,7 @@ module MAIN #(
     else begin
         always_comb PAC.connect_dummy();
         always_comb ExpBus[BUS_FM].connect_dummy();
-        always_comb ExpRam[RAM_FM].connect_dummy();
+        always_comb Ram[RAM_FMPAC].connect_dummy();
         always_comb Sound[SOUND_FM_EXT].connect_dummy();
         always_comb Sound[SOUND_FM_INT].connect_dummy();
     end
@@ -209,16 +193,16 @@ module MAIN #(
             .RAM_ADDR       (CONFIG::RAM_ADDR_BIOS_NEXTOR)
         ) u_nextor (
             .RESET_n        (SYS_RESET_n),
-            .CLK,
+            .Clock,
             .Bus            (ExpBus[BUS_NEXTOR]),
-            .Ram            (ExpRam[RAM_NEXTOR]),
+            .Ram            (Ram[RAM_NEXTOR]),
             .TF,
             .Led            (LedNextor)
         );
     end
     else begin
         always_comb ExpBus[BUS_NEXTOR].connect_dummy();
-        always_comb ExpRam[RAM_NEXTOR].connect_dummy();
+        always_comb Ram[RAM_NEXTOR].connect_dummy();
         always_comb LedNextor.connect_dummy();
         always_comb TF.connect_dummy();
     end
@@ -231,14 +215,14 @@ module MAIN #(
             .RAM_ADDR       (CONFIG::RAM_ADDR_RAM)
         ) u_ram (
             .RESET_n        (SYS_RESET_n),
-            .CLK,
+            .Clock,
             .Bus            (ExpBus[BUS_RAM]),
-            .Ram            (ExpRam[RAM_RAM])
+            .Ram            (Ram[RAM_EXPRAM])
         );
     end
     else begin
         always_comb ExpBus[BUS_RAM].connect_dummy();
-        always_comb ExpRam[RAM_RAM].connect_dummy();
+        always_comb Ram[RAM_EXPRAM].connect_dummy();
     end
 
     /***************************************************************
@@ -247,7 +231,7 @@ module MAIN #(
     if(CONFIG::ENABLE_PSG) begin
         CARTRIDGE_PSG u_psg (
             .RESET_n        (SYS_RESET_n),
-            .CLK,
+            .Clock,
             .Bus            (ExpBus[BUS_PSG]),
             .Sound          (Sound[SOUND_PSG])
         );
@@ -263,17 +247,74 @@ module MAIN #(
     if(CONFIG::ENABLE_V9990) begin
         CARTRIDGE_V9990 u_v9990 (
             .RESET_n        (SYS_RESET_n),
-            .CLK,
+            .CLK            (Clock.OP_CLK),
             .Bus            (ExpBus[BUS_V9990]),
-            .Ram            (VideoRam),
-            .UmaClock,
+            .Ram            (Ram[RAM_V9990]),
             .Video          (Video)
         );
     end
     else begin
         always_comb ExpBus[BUS_V9990].connect_dummy();
         always_comb Video.connect_dummy();
-        always_comb VideoRam.connect_dummy();
+`ifdef COMMENT
+        always_comb Ram[RAM_V9990].connect_dummy();
+`else
+        // SDRAM 負荷テスト用
+        reg [2:0] ff_state;
+        reg [15:0] ff_addr;
+
+        always_ff @(posedge Clock.MEM_CLK or negedge SYS_RESET_n) begin
+            if(!SYS_RESET_n) begin
+                Ram[RAM_V9990].OE_n <= 1;
+                Ram[RAM_V9990].WE_n <= 1;
+                Ram[RAM_V9990].RFSH_n <= 1;
+                Ram[RAM_V9990].DSIZE <= RAM::DSIZE_32_O;
+                ff_state <= 0;
+                ff_addr <= 0;
+            end
+            else if((~Ram[RAM_V9990].OE_n | ~Ram[RAM_V9990].WE_n | ~Ram[RAM_V9990].RFSH_n) & ~Ram[RAM_V9990].ACK_n) begin
+                Ram[RAM_V9990].OE_n <= 1;
+                Ram[RAM_V9990].WE_n <= 1;
+                Ram[RAM_V9990].RFSH_n <= 1;
+            end
+            else if(Ram[RAM_V9990].OE_n & Ram[RAM_V9990].WE_n & Ram[RAM_V9990].RFSH_n & Ram[RAM_V9990].ACK_n) begin
+                if(ff_state == 3'd0) begin
+                    Ram[RAM_V9990].OE_n <= 0;
+                    Ram[RAM_V9990].ADDR <= ff_addr;
+                    Ram[RAM_V9990].DSIZE <= RAM::DSIZE_32_E;
+                    ff_addr <= ff_addr + 1'd1;
+                    ff_state <= 3'd1;
+                end
+                else if(ff_state == 3'd1) begin
+                    Ram[RAM_V9990].WE_n <= 0;
+                    Ram[RAM_V9990].ADDR <= ff_addr;
+                    Ram[RAM_V9990].DIN <= Ram[RAM_V9990].DOUT;
+                    Ram[RAM_V9990].DSIZE <= RAM::DSIZE_32_E;
+                    ff_addr <= ff_addr + 1'd1;
+                    ff_state <= 3'd2;
+                end
+                else if(ff_state == 3'd2) begin
+                    Ram[RAM_V9990].OE_n <= 0;
+                    Ram[RAM_V9990].ADDR <= ff_addr;
+                    Ram[RAM_V9990].DSIZE <= RAM::DSIZE_32_O;
+                    ff_addr <= ff_addr + 1'd1;
+                    ff_state <= 3'd3;
+                end
+                else if(ff_state == 3'd3) begin
+                    Ram[RAM_V9990].WE_n <= 0;
+                    Ram[RAM_V9990].ADDR <= ff_addr;
+                    Ram[RAM_V9990].DIN <= Ram[RAM_V9990].DOUT;
+                    Ram[RAM_V9990].DSIZE <= RAM::DSIZE_32_O;
+                    ff_addr <= ff_addr + 1'd1;
+                    ff_state <= 3'd4;
+                end
+                else if(ff_state == 3'd4) begin
+                    Ram[RAM_V9990].RFSH_n <= 0;
+                    ff_state <= 3'd0;
+                end
+            end
+        end
+`endif
     end
 
     /***************************************************************
@@ -282,10 +323,16 @@ module MAIN #(
     logic SYS_RESET_n;
     logic BOOT_n;
     logic BOOT_WAIT_n;
-    always_ff @(posedge CLK or negedge RESET_n) begin
+    always_ff @(posedge Clock.OP_CLK or negedge RESET_n) begin
         if(!RESET_n)     SYS_RESET_n <= 0;
         else if(!BOOT_n) SYS_RESET_n <= 0;
         else             SYS_RESET_n <= 1;
+    end
+
+    reg ff_bus_reset_n;
+    always_ff @(posedge Clock.OP_CLK or negedge RESET_n) begin
+        if(!RESET_n)     ff_bus_reset_n <= 0;
+        else             ff_bus_reset_n <= Bus.RESET_n;
     end
 
     BOOTLOADER #(
@@ -300,14 +347,14 @@ module MAIN #(
         .PAC_FLASH_ADDR (CONFIG::FLASH_ADDR_PAC)
     ) u_boot (
         .RESET_n,
-        .CLK,
+        .CLK            (Clock.OP_CLK),
         .Flash,
-        .Ram            (ExpRam[RAM_BOOTLOADER]),
+        .Ram            (Ram[RAM_BOOTLOADER]),
         .Led            (LedBoot),
         .Xfer           (Xfer),
         .PAC            (PAC),
         .ClearMegarom   (1'b1),
-        .BusReset_n     (Bus.RESET_n),
+        .BusReset_n     (ff_bus_reset_n),
         .RD_n           (Bus.RD_n),
         .WR_n           (Bus.WR_n),
         .RFSH_n         (Bus.RFSH_n),
@@ -330,7 +377,7 @@ module MAIN #(
             .DIV(CONFIG::ATT_EXT_MEGAROM_DIV)
         ) u_att_ext_megarom (
             .RESET_n,
-            .CLK,
+            .CLK(Clock.OP_CLK),
             .IN(Sound[SOUND_MEGAROM]),
             .OUT(AttOutExt[SOUND_EXT_MEGAROM])
         );
@@ -345,7 +392,7 @@ module MAIN #(
             .DIV(CONFIG::ATT_EXT_FM_DIV)
         ) u_att_ext_fm (
             .RESET_n,
-            .CLK,
+            .CLK(Clock.OP_CLK),
             .IN(Sound[SOUND_FM_EXT]),
             .OUT(AttOutExt[SOUND_EXT_FM])
         );
@@ -360,7 +407,7 @@ module MAIN #(
             .DIV(CONFIG::ATT_EXT_PSG_DIV)
         ) u_att_ext_psg (
             .RESET_n,
-            .CLK,
+            .CLK(Clock.OP_CLK),
             .IN(Sound[SOUND_PSG]),
             .OUT(AttOutExt[SOUND_EXT_PSG])
         );
@@ -375,7 +422,7 @@ module MAIN #(
         .COUNT          (SOUND_EXT_COUNT)
     ) u_mixer_ext (
         .RESET_n,
-        .CLK,
+        .CLK            (Clock.OP_CLK),
         .IN             (AttOutExt),
         .OUT            (mix_ext)
     );
@@ -411,7 +458,7 @@ module MAIN #(
             .DIV(CONFIG::ATT_INT_MEGAROM_DIV)
         ) u_att_int_megarom (
             .RESET_n,
-            .CLK,
+            .CLK(Clock.OP_CLK),
             .IN(Sound[SOUND_MEGAROM]),
             .OUT(AttOutInt[SOUND_INT_MEGAROM])
         );
@@ -426,7 +473,7 @@ module MAIN #(
             .DIV(CONFIG::ATT_INT_FM_DIV)
         ) u_att_int_fm (
             .RESET_n,
-            .CLK,
+            .CLK(Clock.OP_CLK),
             .IN(Sound[SOUND_FM_INT]),
             .OUT(AttOutInt[SOUND_INT_FM])
         );
@@ -441,7 +488,7 @@ module MAIN #(
         .COUNT          (SOUND_INT_COUNT)
     ) u_mixer_int (
         .RESET_n,
-        .CLK,
+        .CLK            (Clock.OP_CLK),
         .IN             (AttOutInt),
         .OUT            (mix_int)
     );

@@ -365,7 +365,7 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
             CMD_MEM.OE_n <= 1;
             CMD_MEM.WE_n <= 1;
             CMD_MEM.ADDR <= 0;
-            CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
+            CMD_MEM.DSIZE <= RAM::DSIZE_32;
         end
 
         //
@@ -564,7 +564,7 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
                     CMD_MEM.ADDR_MODE <= T9990_REG::DSPM_BITMAP;   // VRAM0/1 = LSB 固定
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= {SRC_X[18:2], 2'b00};
-                    CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
+                    CMD_MEM.DSIZE <= RAM::DSIZE_32;
                     state <= STATE_SRC_READ_VRAM_WAIT_ACK;
                 end
 
@@ -573,7 +573,7 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
                     CMD_MEM.ADDR_MODE <= REG.DSPM;  // VRAM0/1 = 画面モードに従う
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= SRC_XY_ADDR;
-                    CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
+                    CMD_MEM.DSIZE <= RAM::DSIZE_32;
                     state <= STATE_SRC_READ_VRAM_WAIT_ACK;
                 end
 
@@ -919,14 +919,14 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
                     CMD_MEM.ADDR_MODE <= T9990_REG::DSPM_BITMAP;   // VRAM0/1 = LSB 固定
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= {DST_X[18:2], 2'b00};
-                    CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
+                    CMD_MEM.DSIZE <= RAM::DSIZE_32;
                     state <= STATE_DST_READ_VRAM_WAIT_ACK;
                 end
                 else begin
                     CMD_MEM.ADDR_MODE <= REG.DSPM;  // VRAM0/1 = 画面モードに従う
                     CMD_MEM.OE_n <= 0;
                     CMD_MEM.ADDR <= DST_XY_ADDR;
-                    CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
+                    CMD_MEM.DSIZE <= RAM::DSIZE_32;
                     state <= STATE_DST_READ_VRAM_WAIT_ACK;
                 end
             end
@@ -1048,7 +1048,7 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
                 CMD_MEM.WE_n <= 0;
                 CMD_MEM.ADDR <= {DST_X[18:2], 2'b00};
                 CMD_MEM.DIN <= WRT_DATA;
-                CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
+                CMD_MEM.DSIZE <= RAM::DSIZE_32;
                 state <= STATE_DST_WRITE_VRAM_WAIT_ACK;
             end
             else if(dst_is_xy) begin
@@ -1056,7 +1056,7 @@ localparam state_t STATE_DST_WRITE_CPU_WAIT_BUSY         = STATE_DST_WRITE_WAIT;
                 CMD_MEM.WE_n <= 0;
                 CMD_MEM.ADDR <= DST_XY_ADDR;
                 CMD_MEM.DIN <= WRT_DATA;
-                CMD_MEM.DIN_SIZE <= RAM::DIN_SIZE_32;
+                CMD_MEM.DSIZE <= RAM::DSIZE_32;
                 state <= STATE_DST_WRITE_VRAM_WAIT_ACK;
             end
             else if(dst_is_cpu) begin

@@ -69,12 +69,13 @@ module CARTRIDGE_MEGAROM #(
     parameter [0:0]     DEFAULT_ENABLE              = 1'b0
 ) (
     input   wire            RESET_n,
-    input   wire            CLK,
+    CLOCK_IF.SRC            Clock,
     BUS_IF.CARTRIDGE        Bus,
     RAM_IF.HOST             Ram,
     XFER_IF.HOST            Xfer,
     SOUND_IF.OUT            Sound
 );
+    wire w_clk = Clock.OP_CLK;
 
     /***************************************************************
      * メガロム設定
@@ -115,7 +116,7 @@ module CARTRIDGE_MEGAROM #(
         .DEFAULT_ENABLE(DEFAULT_ENABLE)
     ) u_conf (
         .RESET_n,
-        .CLK,
+        .CLK(w_clk),
         .Bus(ExtBus[BUS_CONFIG]),
         .Xfer(Xfer),
         .Megarom,
@@ -146,11 +147,10 @@ module CARTRIDGE_MEGAROM #(
     assign BankEnable[3] = BankEnable_SCC[3];
 
     MEGAROM_CONTROLLER #(
-        .COUNT(BUS_COUNT),
-        .USE_FF(1)
+        .COUNT(BUS_COUNT)
     ) u_rom (
         .RESET_n,
-        .CLK,
+        .CLK(w_clk),
         .Megarom,
         .BankEnable,
         .WriteProtect,
@@ -174,7 +174,7 @@ module CARTRIDGE_MEGAROM #(
          ***************************************************************/
         reg scc_mode_scci;
         if(CONFIG::ENABLE_SCC) begin
-            always_ff @(posedge CLK or negedge RESET_n) begin
+            always_ff @(posedge Clock.OP_CLK or negedge RESET_n) begin
                 if(!RESET_n || !ExtBus[BUS_SCC].RESET_n || !SCC_I_ENA) begin
                     // SCC-I 音源無効
                     scc_mode_scci <= 0;
@@ -211,7 +211,7 @@ module CARTRIDGE_MEGAROM #(
          ***************************************************************/
         // sound register bank
         logic scc_bank_n;
-        always_ff @(posedge CLK or negedge RESET_n) begin
+        always_ff @(posedge Clock.OP_CLK or negedge RESET_n) begin
             if(!RESET_n)                      scc_bank_n <= 1;
             else if(!ExtBus[BUS_SCC].RESET_n) scc_bank_n <= 1;
             else if(scc_mode_scci)            scc_bank_n <= Megarom.BankRegRaw[{ExtBus[BUS_SCC].ADDR[15], ExtBus[BUS_SCC].ADDR[13]}][7] != 1'b1;   
@@ -220,7 +220,7 @@ module CARTRIDGE_MEGAROM #(
 
         // address decoder
         logic scc_cs_n;
-        always_ff @(posedge CLK or negedge RESET_n) begin
+        always_ff @(posedge Clock.OP_CLK or negedge RESET_n) begin
             if(!RESET_n)                      scc_cs_n <= 1;
             else if(!ExtBus[BUS_SCC].RESET_n) scc_cs_n <= 1;
             else if(scc_mode_scci)            scc_cs_n <= ExtBus[BUS_SCC].ADDR[15:8] != 8'hB8;
@@ -247,25 +247,27 @@ module CARTRIDGE_MEGAROM #(
             wire wr_edge = !ExtBus[BUS_SCC].WR_n && wr_n;
             wire rd_edge = !ExtBus[BUS_SCC].RD_n && rd_n;
 
-            always_ff @(posedge ExtBus[BUS_SCC].CLK_21M) begin
-                rst_n <= RESET_n && ExtBus[BUS_SCC].RESET_n;
-                clk_en <= !ExtBus[BUS_SCC].CLK_EN_21M;              // CLK_EN も1クロック遅らせる
-                cs_n <= ExtBus[BUS_SCC].SLTSL_n || !SCC_ENA;
-                rd_n <= ExtBus[BUS_SCC].RD_n;
-                wr_n <= ExtBus[BUS_SCC].WR_n;
-                // WR_n, RD_n の立ち下がりでアドレス更新
-                if(wr_edge || rd_edge) begin
-                    addr_l <= ExtBus[BUS_SCC].ADDR[7:0];
-                    addr_h <= ExtBus[BUS_SCC].ADDR[15:11];
+            always_ff @(posedge Clock.OP_CLK) begin
+                if(Clock.OP_SCC_EN) begin
+                    rst_n <= RESET_n && ExtBus[BUS_SCC].RESET_n;
+                    clk_en <= !ExtBus[BUS_SCC].CLK_EN_21M;              // CLK_EN も1クロック遅らせる
+                    cs_n <= ExtBus[BUS_SCC].SLTSL_n || !SCC_ENA;
+                    rd_n <= ExtBus[BUS_SCC].RD_n;
+                    wr_n <= ExtBus[BUS_SCC].WR_n;
+                    // WR_n, RD_n の立ち下がりでアドレス更新
+                    if(wr_edge || rd_edge) begin
+                        addr_l <= ExtBus[BUS_SCC].ADDR[7:0];
+                        addr_h <= ExtBus[BUS_SCC].ADDR[15:11];
+                    end
+                    // WR_n の立ち下がりでデータ更新
+                    if(wr_edge) din <= ExtBus[BUS_SCC].DIN;
                 end
-                // WR_n の立ち下がりでデータ更新
-                if(wr_edge) din <= ExtBus[BUS_SCC].DIN;
             end
 
             wire [7:0] db_o;
             wire db_oe;
 
-            always_ff @(posedge CLK) begin
+            always_ff @(posedge Clock.OP_CLK) begin
                 busdir_n <= !db_oe;
                 dout <= db_oe ? db_o : 8'd0;
             end
@@ -274,8 +276,8 @@ module CARTRIDGE_MEGAROM #(
                 .IMPL_TYPE      (0),
                 .RAM_BLOCK      (1)
             ) u_scc (
-                .i_EMUCLK       (ExtBus[BUS_SCC].CLK_21M),
-                .i_MCLK_PCEN_n  (clk_en),
+                .i_EMUCLK       (Clock.SCC_CLK),
+                .i_MCLK_PCEN_n  (Clock.SCC_4M_EN),
                 .i_RST_n        (rst_n),
 
                 .i_CS_n         (cs_n),
@@ -300,20 +302,54 @@ module CARTRIDGE_MEGAROM #(
             /***************************************************************
              * default SCC
              ***************************************************************/
+            reg ff_reset_n;
+            reg [7:0] ff_addr;
+            reg ff_cs_n;
+            reg ff_rd_n;
+            reg ff_wr_n;
+            reg [7:0] ff_din;
+            reg ff_scc_mode_scci;
+            wire [7:0] w_dout;
+            wire w_busdir_n;
             SCC u_scc (
-                .RESET_n    (RESET_n && ExtBus[BUS_SCC].RESET_n),
-                .CLK        (CLK),
-                .CLK_EN     (ExtBus[BUS_SCC].CLK_EN),
-                .MODE_SCC_I (scc_mode_scci),
-                .ADDR       (ExtBus[BUS_SCC].ADDR[7:0]),
-                .CS_n       (scc_cs_n || ExtBus[BUS_SCC].SLTSL_n || ExtBus[BUS_SCC].MERQ_n || !SCC_ENA || scc_bank_n),
-                .RD_n       (ExtBus[BUS_SCC].RD_n),
-                .WR_n       (ExtBus[BUS_SCC].WR_n),
-                .DIN        (ExtBus[BUS_SCC].DIN),
-                .DOUT       (dout),
-                .BUSDIR_n   (busdir_n),
+                .RESET_n    (ff_reset_n),
+                .CLK        (Clock.SCC_CLK),
+                .CLK_EN     (Clock.SCC_4M_EN),
+                .MODE_SCC_I (ff_scc_mode_scci),
+                .ADDR       (ff_addr),
+                .CS_n       (ff_cs_n),
+                .RD_n       (ff_rd_n),
+                .WR_n       (ff_wr_n),
+                .DIN        (ff_din),
+                .DOUT       (w_dout),
+                .BUSDIR_n   (w_busdir_n),
                 .OUT        (sound)
             );
+
+            always_ff @(posedge Clock.OP_CLK or negedge RESET_n) begin
+                if(!RESET_n) begin
+                    ff_reset_n <= 0;
+                    ff_addr <= 0;
+                    ff_cs_n <= 1;
+                    ff_rd_n <= 1;
+                    ff_wr_n <= 1;
+                    ff_din <= 0;
+                    ff_scc_mode_scci <= 0;
+                    dout <= 0;
+                    busdir_n <= 1;
+                end
+                else if(Clock.OP_SCC_EN) begin
+                    ff_reset_n <= RESET_n && ExtBus[BUS_SCC].RESET_n;
+                    ff_addr <= ExtBus[BUS_SCC].ADDR[7:0];
+                    ff_cs_n <= scc_cs_n || ExtBus[BUS_SCC].SLTSL_n || !SCC_ENA || scc_bank_n;
+                    ff_rd_n <= ExtBus[BUS_SCC].RD_n;
+                    ff_wr_n <= ExtBus[BUS_SCC].WR_n;
+                    ff_din <= ExtBus[BUS_SCC].DIN;
+                    ff_scc_mode_scci <= scc_mode_scci;
+                    dout <= w_dout;
+                    busdir_n <= w_busdir_n;
+                end
+            end
         end
 
         wire [15:0] sound_ext = { sound, 5'd0 };

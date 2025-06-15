@@ -36,12 +36,14 @@
 package CONFIG_BOARD;
     localparam          BOARD_ID                = BOARD_ID::TNCART_REV1;
 
-    localparam          SYNC_CPU_CLK            = 0;                // 動作クロックを CPU クロックと同期するか(1=同期/0=非同期)
-    localparam          DAC_BIT_WIDTH           = 10;               // DAC 出力の量子化ビット数
-    localparam          DAC_FREQ_DIV            = 5;                // DAC 標本化周波数の分周比
-    localparam          TF_CLK_DIV              = 2;                // TF 通信クロック分周比
-    localparam          FLASH_CLK_DIV           = 2;                // フラッシュ 通信クロック分周比
-    localparam          ENABLE_UART_MODULE      = 0;                // UART モジュールを有効(0=無効/1=有効)
+    localparam          OP_CLK_FREQ             = (SYNC_CPU_CLK ? 107_386_350 : 108_000_000);   // 動作クロック
+    localparam          LED_CLK_FREQ            = 900_000;                                      // LED モジュール動作クロック
+    localparam          SYNC_CPU_CLK            = 0;                                            // 動作クロックを CPU クロックと同期するか(1=同期/0=非同期)
+    localparam          DAC_BIT_WIDTH           = 10;                                           // DAC 出力の量子化ビット数
+    localparam          DAC_FREQ_DIV            = 2;                                            // DAC 標本化周波数の分周比
+    localparam          TF_CLK_DIV              = 2;                                            // TF 通信クロック分周比
+    localparam          FLASH_CLK_DIV           = 2;                                            // フラッシュ 通信クロック分周比
+    localparam          ENABLE_UART_MODULE      = 0;                                            // UART モジュールを有効(0=無効/1=有効)
 endpackage
 
 `default_nettype wire

@@ -42,8 +42,8 @@ package CONFIG;
      ***************************************************************/
     localparam DISABLE          = 0;            // 機能の無効
     localparam ENABLE           = 1;            // 機能の有効
-    localparam ENABLE_VM2413    = 1;            // 機能の有効(VM2413)
-    localparam ENABLE_IKAOPLL   = 2;            // 機能の有効(IKAOPLL)
+    localparam ENABLE_IKAOPLL   = 1;            // 機能の有効(IKAOPLL)
+    localparam ENABLE_VM2413    = 2;            // 機能の有効(VM2413)
     localparam ENABLE_IKASCC    = 2;            // 機能の有効(IKASCC)
     localparam ENABLE_MEGA_SCC  = 2;            // 機能の有効(電源ON で SCC を有効)
     localparam ENABLE_MEGA_SCC_I= 3;            // 機能の有効(電源ON で SCC-I を有効)
@@ -55,8 +55,8 @@ package CONFIG;
      *  10_0000 +-------------------+
      *          | NEXTOR(128KB)     |
      *  12_0000 +-------------------+
-     *          | FM-BIOS(16KB)     |
-     *  12_4000 +-------------------+
+     *          | FM-BIOS(64KB)     |
+     *  13_0000 +-------------------+
      *          | (816KB)           |
      *  1F_0000 +-------------------+
      *          | PAC(64KB)         | (予定)
@@ -69,7 +69,7 @@ package CONFIG;
     localparam [23:0]   FLASH_ADDR_BIOS         = 24'h10_0000;
     localparam [23:0]   FLASH_SIZE_BIOS         = (FLASH_SIZE_BIOS_NEXTOR + FLASH_SIZE_BIOS_FM);
     localparam [23:0]   FLASH_SIZE_BIOS_NEXTOR  = 24'h02_0000;
-    localparam [23:0]   FLASH_SIZE_BIOS_FM      = 24'h00_4000;
+    localparam [23:0]   FLASH_SIZE_BIOS_FM      = 24'h01_0000;
     localparam [23:0]   FLASH_ADDR_PAC          = 24'h1F_0000;
     localparam [23:0]   FLASH_SIZE_PAC          = 24'h01_0000;
 
@@ -82,9 +82,9 @@ package CONFIG;
      *  70_0000 +-------------------+
      *          | NEXTOR(128KB)     |
      *  72_0000 +-------------------+
-     *          | FM-BIOS(16KB)     |
-     *  72_4000 +-------------------+
-     *          | (360KB)           |
+     *          | FM-BIOS(64KB)     |
+     *  73_0000 +-------------------+
+     *          | (312KB)           |
      *  77_E000 +-------------------+
      *          | PAC(8KB)          |
      *  78_0000 +-------------------+
@@ -100,6 +100,14 @@ package CONFIG;
     localparam [23:0]   RAM_ADDR_BIOS_FM        = (RAM_ADDR_BIOS_NEXTOR + FLASH_SIZE_BIOS_NEXTOR);
     localparam [23:0]   RAM_ADDR_PAC            = 24'h77_E000;
     localparam [23:0]   RAM_ADDR_VRAM           = 24'h78_0000;
+
+    localparam          RAM_MEGAROM             = 0;
+    localparam          RAM_FMPAC               = 1;
+    localparam          RAM_NEXTOR              = 2;
+    localparam          RAM_EXPRAM              = 3;
+    localparam          RAM_BOOTLOADER          = 4;
+    localparam          RAM_V9990               = 5;
+    localparam          RAM_COUNT               = 6;
 
     /***************************************************************
      * アッテネータ
@@ -127,8 +135,8 @@ package CONFIG;
     localparam          ENABLE_RAM              = ENABLE;           // 拡張 RAM カートリッジを有効にするか(DISABLE/ENABLE)
     localparam          ENABLE_PSG              = ENABLE;           // PSG を有効にするか(DISABLE/ENABLE)
     localparam          ENABLE_SCC              = ENABLE;           // SCC を有効にするか(DISABLE/ENABLE/ENABLE_IKASCC)
-    localparam          ENABLE_V9990            = ENABLE;           // V9990 を有効にするか(DISABLE/ENABLE)
-    localparam          ENABLE_V9990_CMD        = ENABLE;           // V9990 の VDP コマンドを有効(V9990のVDPコマンドを有効にすると回路の規模が大きくなるので、他の大きな機能と同時使用はできない)
+    localparam          ENABLE_V9990            = DISABLE;//ENABLE;           // V9990 を有効にするか(DISABLE/ENABLE)
+    localparam          ENABLE_V9990_CMD        = DISABLE;//ENABLE;           // V9990 の VDP コマンドを有効(V9990のVDPコマンドを有効にすると回路の規模が大きくなるので、他の大きな機能と同時使用はできない)
     localparam          ENABLE_PAC_WRITE        = ENABLE;           // PAC データを FLASH に保存するか(DISABLE/ENABLE)
     localparam          ENABLE_SCANLINE         = DISABLE;          // 200ラインモード時に走査線の隙間を空ける
 
@@ -138,11 +146,7 @@ package CONFIG;
     /***************************************************************
      * other(ここを変更すると動作しなくなる可能性があります)
      ***************************************************************/
-    localparam          RAM_IF_EXPANSION_USES_FF= 0;                // RAM I/F 拡張動作に FF を使用(0=使用しない/1=使用する)
-    localparam          SLOT_EXPANSION_USES_FF  = 1;                // SLOT 拡張に FF を使用(0=使用しない/1=使用する)
     localparam          SOUND_BIT_WIDTH         = 10;               // サウンド生成の量子化幅(bits)
-    localparam          CONTROL_BUS_WAIT_TF     = 0;                // TF アクセス時に WAIT をアサート(0=制御しない/1=制御する)
-    localparam          CONTROL_BUS_WAIT_RAM    = 0;                // RAM READ/WRITE 時に WAIT をアサート(0=制御しない/1=3.58MHzより速い時に制御する/2=常に制御する)
 endpackage
 
 `default_nettype wire

@@ -64,7 +64,7 @@ module LED #(
     parameter       DELAY = 21_480_000, // 消灯までの遅延[clk]
     parameter       BLINK = 21_480_00   // 点滅周期[clk]
 ) (
-    input   wire    CLK,                // 駆動クロック
+    CLOCK_IF.SRC    Clock,
     input   wire    RESET_n,            // リセット信号
 
     LED_IF.DEVICE   LedNextor,          // TF アクセス状態
@@ -76,36 +76,34 @@ module LED #(
     /***************************************************************
      * ディレイカウンタ
      ***************************************************************/
-    reg [$clog2(DELAY+1)-1:0] delay_count;
+    reg [$clog2(DELAY+1)-1:0] delay_count /* synthesis syn_keep=1 */;
 
-    always_ff @(posedge CLK or negedge RESET_n) begin
+    always_ff @(posedge Clock.LED_CLK or negedge RESET_n) begin
         if(!RESET_n) begin
             delay_count <= 0;
         end
-        else begin
-            if(LedNextor.State != LedNextor.LED_STATE_OFF) begin
-                delay_count <= DELAY;
-            end
-            else if(delay_count != 0) begin
-                delay_count <= delay_count - 1'd1;
-            end
+        else if(LedNextor.State != LedNextor.LED_STATE_OFF) begin
+            delay_count <= DELAY;
+        end
+        else if(Clock.LED_ENA && delay_count != 0) begin
+            delay_count <= delay_count - 1'd1;
         end
     end
 
     /***************************************************************
      * 点滅カウンタ
      ***************************************************************/
-    reg [$clog2(BLINK+1)-1:0] blink_count;
+    reg [$clog2(BLINK+1)-1:0] blink_count /* synthesis syn_keep=1 */;
 
-    always_ff @(posedge CLK or negedge RESET_n) begin
+    always_ff @(posedge Clock.LED_CLK or negedge RESET_n) begin
         if(!RESET_n) begin
             blink_count <= 0;
         end
-        else begin
-            if(LedBoot.State == LedNextor.LED_STATE_OFF) begin
-                blink_count <= 0;
-            end
-            else if(blink_count == BLINK - 1) begin
+        else if(LedBoot.State == LedBoot.LED_STATE_OFF) begin
+            blink_count <= 0;
+        end
+        else if(Clock.LED_ENA) begin
+            if(blink_count == BLINK - 1) begin
                 blink_count <= 0;
             end
             else begin
@@ -117,7 +115,7 @@ module LED #(
     /***************************************************************
      * LED ON/OFF
      ***************************************************************/
-    always_ff @(posedge CLK) begin
+    always_ff @(posedge Clock.LED_CLK) begin
         if(LedBoot.State != LedNextor.LED_STATE_OFF) begin
             LedPort <= (blink_count < (BLINK / 2)) ? 1'b1 : 1'b0;
         end

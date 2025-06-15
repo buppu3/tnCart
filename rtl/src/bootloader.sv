@@ -154,7 +154,8 @@ module BOOTLOADER #(
     /***************************************************************
      * WAIT_n
      ***************************************************************/
-    assign WAIT_n = xfer_wait_n && READY;
+    reg ff_wait_n;
+    assign WAIT_n = xfer_wait_n && ff_wait_n;
 
     /***************************************************************
      * pac detect flag
@@ -225,6 +226,7 @@ module BOOTLOADER #(
     begin
         if(!RESET_n)
         begin
+            ff_wait_n <= 0;
             READY <= 0;
             Cooperate <= 0;
 
@@ -257,6 +259,11 @@ module BOOTLOADER #(
                 begin
                     if(BusReset_n && RFSH_n && RD_n && WR_n) begin
                         state <= STATE_LOAD_BIOS;
+                        ff_wait_n <= 0;
+                    end
+                    else begin
+                        // RFSH_n, RD_n, WR_n が 1 になるまで待つ WAIT_n を 1 にする
+                        ff_wait_n <= 1;
                     end
                 end
 
@@ -264,8 +271,11 @@ module BOOTLOADER #(
                 begin
                     if(BusReset_n && RFSH_n && RD_n && WR_n) begin
                         state <= STATE_COMPLETE;
+                        ff_wait_n <= 0;
                     end
                     else begin
+                        // RFSH_n, RD_n, WR_n が 1 になるまで待つ WAIT_n を 1 にする
+                        ff_wait_n <= 1;
                         // リセット中に SDRAM の内容が消えないようにリフレッシュ
                         XferPrim.RamAddress <= 0;
                         XferPrim.Mode <= XFER::XFER_MODE_READ_RAM;
@@ -555,13 +565,17 @@ module BOOTLOADER #(
                 begin
                     if(!BusReset_n) begin
                         // リセットされた時
+//state <= STATE_WAIT_POR;
+// ff_wait_n <= 0;
                         state <= STATE_WAIT_BOOT;
                         Cooperate <= 0;
+                        ff_wait_n <= 0;
                         READY <= 0;
                         Led.State <= Led.LED_STATE_OFF;
                     end
                     else begin
                         Cooperate <= 1;
+                        ff_wait_n <= 1;
                         READY <= 1;
 
                         if(pac_detect && CONFIG::ENABLE_PAC_WRITE) begin
@@ -736,6 +750,8 @@ module XFER_MEMORY (
      ***************************************************************/
     assign          Xfer.Busy = state != STATE_IDLE;
     
+    assign Ram.DSIZE = RAM::DSIZE_8;
+
     /***************************************************************
      * xfer 
      ***************************************************************/
@@ -751,7 +767,7 @@ module XFER_MEMORY (
             Ram.OE_n <= 1;
             Ram.ADDR <= 0;
             Ram.DIN <= 0;
-            Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
+            //Ram.DSIZE <= RAM::DSIZE_8;
 
             Flash.Enable_n <= 1;
             Flash.REQ_n <= 1;
@@ -759,6 +775,8 @@ module XFER_MEMORY (
             Flash.WData <= 0;
 
             Xfer.RData <= 0;
+
+            WAIT_n <= 1;
 
             crc_clear <= 0;
             crc_ena <= 0;
@@ -833,7 +851,7 @@ module XFER_MEMORY (
                     SUB_STATE_WRITE_RAM_RFSH_REQ:
                     begin
                         Ram.RFSH_n <= 0;
-                        Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
+                        //Ram.DSIZE <= RAM::DSIZE_8;
                         Ram.ADDR <= 0;
                         sub_state <= SUB_STATE_WRITE_RAM_WAIT_RFSH_ACK;
                     end
@@ -859,7 +877,7 @@ module XFER_MEMORY (
                     begin
                         Ram.WE_n <= 0;
                         Ram.DIN <= rw_data;
-                        Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
+                        //Ram.DSIZE <= RAM::DSIZE_8;
                         Ram.ADDR <= rw_addr;
                         sub_state <= SUB_STATE_WRITE_RAM_WAIT_ACK;
                     end
@@ -871,7 +889,7 @@ module XFER_MEMORY (
                             sub_state <= SUB_STATE_WRITE_RAM_WAIT_BUSY;
                             Ram.WE_n <= 1;
                             Ram.DIN <= 0;
-                            Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
+                            //Ram.DSIZE <= RAM::DSIZE_8;
                             Ram.ADDR <= 0;
                         end
                     end
@@ -911,7 +929,7 @@ module XFER_MEMORY (
                     SUB_STATE_READ_RAM_RFSH_REQ:
                     begin
                         Ram.RFSH_n <= 0;
-                        Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
+                        //Ram.DSIZE <= RAM::DSIZE_8;
                         Ram.ADDR <= 0;
                         sub_state <= SUB_STATE_READ_RAM_WAIT_RFSH_ACK;
                     end
@@ -936,7 +954,7 @@ module XFER_MEMORY (
                     SUB_STATE_READ_RAM_REQ:
                     begin
                         Ram.OE_n <= 0;
-                        Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
+                        //Ram.DSIZE <= RAM::DSIZE_8;
                         Ram.ADDR <= rw_addr;
                         sub_state <= SUB_STATE_READ_RAM_WAIT_ACK;
                     end
@@ -947,7 +965,7 @@ module XFER_MEMORY (
                         begin
                             sub_state <= SUB_STATE_READ_RAM_WAIT_BUSY;
                             Ram.OE_n <= 1;
-                            Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
+                            //Ram.DSIZE <= RAM::DSIZE_8;
                             Ram.ADDR <= 0;
                         end
                     end
@@ -1113,7 +1131,7 @@ module XFER_MEMORY (
                     Ram.OE_n <= 1;
                     Ram.WE_n <= 1;
                     Ram.DIN <= 0;
-                    Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
+                    //Ram.DSIZE <= RAM::DSIZE_8;
                     Ram.ADDR <= 0;
 
                     refresh_counter <= 0;

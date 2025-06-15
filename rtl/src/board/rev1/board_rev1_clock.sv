@@ -38,40 +38,26 @@
  ***********************************************************************/
 module BOARD_REV1_CLOCK /* synthesis syn_preserve=1 */ (
     input wire      RESET_n,
-    input wire      CLK_IN,
-
-    output wire     CLK_BASE,
-    output wire     CLK_21M,
-    output wire     CLK_BASE_READY,
-
-    output wire     CLK_MEM,
-    output wire     CLK_MEM_P,
-    output wire     CLK_MEM_READY,
-
-    output wire     CLK_TMDS_S,
-    output wire     CLK_TMDS_P,
-    output wire     CLK_TMDS_READY
+    input wire      CART_CLOCK,
+    input wire      CLK_27M,
+    CLOCK_IF.DST    Clock
 );
     /***************************************************************
-     * 基本クロック
+     * TMDS シリアルクロック 135MHz = 27MHz * 5
      ***************************************************************/
-    assign CLK_BASE = CLK_MEM;
-    assign CLK_BASE_READY = CLK_MEM_READY;
-
-    /***************************************************************
-     * 107.4MHz * 44 / 35 = 134.25MHz
-     ***************************************************************/
-    assign CLK_TMDS_READY = RESET_n && lock_135m;
+    wire clk_tmds_s /* synthesis syn_keep=1 */;
+    assign Clock.TMDS_S_CLK = clk_tmds_s;
+    assign Clock.TMDS_READY = RESET_n && lock_135m;
     wire lock_135m;
     rPLL u_pll_tmds (
-        .CLKOUT(CLK_TMDS_S),
+        .CLKOUT(clk_tmds_s),
         .LOCK(lock_135m),
         .CLKOUTP(),
         .CLKOUTD(),
         .CLKOUTD3(),
-        .RESET(!CLK_MEM_READY),
+        .RESET(!RESET_n),
         .RESET_P(1'b0),
-        .CLKIN(CLK_MEM),
+        .CLKIN(CLK_27M),
         .CLKFB(1'b0),
         .FBDSEL({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0}),
         .IDSEL({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0}),
@@ -81,15 +67,15 @@ module BOARD_REV1_CLOCK /* synthesis syn_preserve=1 */ (
         .FDLY({1'b0,1'b0,1'b0,1'b0})
     );
 
-    defparam u_pll_tmds.FCLKIN = "107.4";
+    defparam u_pll_tmds.FCLKIN = "27";
     defparam u_pll_tmds.DYN_IDIV_SEL = "false";
-    defparam u_pll_tmds.IDIV_SEL = 3;
+    defparam u_pll_tmds.IDIV_SEL = 0;
     defparam u_pll_tmds.DYN_FBDIV_SEL = "false";
     defparam u_pll_tmds.FBDIV_SEL = 4;
     defparam u_pll_tmds.DYN_ODIV_SEL = "false";
     defparam u_pll_tmds.ODIV_SEL = 4;
     defparam u_pll_tmds.PSDA_SEL = "0000";
-    defparam u_pll_tmds.DYN_DA_EN = "true";
+    defparam u_pll_tmds.DYN_DA_EN = "false";
     defparam u_pll_tmds.DUTYDA_SEL = "1000";
     defparam u_pll_tmds.CLKOUT_FT_DIR = 1'b1;
     defparam u_pll_tmds.CLKOUTP_FT_DIR = 1'b1;
@@ -105,128 +91,311 @@ module BOARD_REV1_CLOCK /* synthesis syn_preserve=1 */ (
     defparam u_pll_tmds.DEVICE = "GW2AR-18C";
 
     /***************************************************************
-     * 134.25MHz /5 = 26.85MHz
+     * TMDS ドットクロック 27MHz = 135MHz / 5
      ***************************************************************/
+    wire clk_tmds_p /* synthesis syn_keep=1 */;
+    assign Clock.TMDS_P_CLK = clk_tmds_p;
     CLKDIV u_div_tmds (
-        .CLKOUT(CLK_TMDS_P),
-        .HCLKIN(CLK_TMDS_S),
-        .RESETN(CLK_TMDS_READY),
+        .CLKOUT(clk_tmds_p),
+        .HCLKIN(Clock.TMDS_S_CLK),
+        .RESETN(Clock.TMDS_READY),
         .CALIB(1'b0)
     );
     defparam u_div_tmds.DIV_MODE = "5";
     defparam u_div_tmds.GSREN = "false";
-    
-    /***************************************************************
-     * 3.58MHz * 30 = 107.4MHz
-     ***************************************************************/
-    wire CLK_MEM_LOCK;
-    assign CLK_MEM_READY = RESET_n && CLK_MEM_LOCK;
-if(CONFIG_BOARD::SYNC_CPU_CLK) begin
 
-    // 
-    wire w_clk_mem_lock;
-    reg ff_clk_mem_lock = 0;
-    assign CLK_MEM_LOCK = ff_clk_mem_lock;
-    always_ff @(posedge CLK_IN) begin
-        if(!RESET_n)            ff_clk_mem_lock <= 0;
-        else if(w_clk_mem_lock) ff_clk_mem_lock <= 1;
+
+    /***************************************************************
+     * 動作クロック
+     ***************************************************************/
+    wire w_pll_ready;
+    wire clk_108m /* synthesis syn_keep=1 */;
+    wire clk_43m /* synthesis syn_keep=1 */;
+    wire clk_21m /* synthesis syn_keep=1 */;
+
+    if(CONFIG_BOARD::SYNC_CPU_CLK) begin
+        // 214.7727MHz = 3.579545MHz * 60
+        wire clk_215m /* synthesis syn_keep=1 */;
+        wire lock_215m;
+        assign w_pll_ready = lock_215m;
+        rPLL u_pll_215m (
+            .CLKOUT(clk_215m),
+            .LOCK(lock_215m),
+            .CLKOUTP(),
+            .CLKOUTD(),
+            .CLKOUTD3(),
+            .RESET(!RESET_n),
+            .RESET_P(1'b0),
+            .CLKIN(CART_CLOCK),
+            .CLKFB(1'b0),
+            .FBDSEL(6'b000000),
+            .IDSEL(6'b000000),
+            .ODSEL(6'b000000),
+            .PSDA(4'b0000),
+            .DUTYDA(4'b0000),
+            .FDLY(4'b0000)
+        );
+
+        defparam u_pll_215m.FCLKIN = "3.580";
+        defparam u_pll_215m.DYN_IDIV_SEL = "false";
+        defparam u_pll_215m.IDIV_SEL = 0;
+        defparam u_pll_215m.DYN_FBDIV_SEL = "false";
+        defparam u_pll_215m.FBDIV_SEL = 59;
+        defparam u_pll_215m.DYN_ODIV_SEL = "false";
+        defparam u_pll_215m.ODIV_SEL = 4;
+        defparam u_pll_215m.PSDA_SEL = "0000";
+        defparam u_pll_215m.DYN_DA_EN = "false";
+        defparam u_pll_215m.DUTYDA_SEL = "1000";
+        defparam u_pll_215m.CLKOUT_FT_DIR = 1'b1;
+        defparam u_pll_215m.CLKOUTP_FT_DIR = 1'b1;
+        defparam u_pll_215m.CLKOUT_DLY_STEP = 0;
+        defparam u_pll_215m.CLKOUTP_DLY_STEP = 0;
+        defparam u_pll_215m.CLKFB_SEL = "internal";
+        defparam u_pll_215m.CLKOUT_BYPASS = "false";
+        defparam u_pll_215m.CLKOUTP_BYPASS = "false";
+        defparam u_pll_215m.CLKOUTD_BYPASS = "false";
+        defparam u_pll_215m.DYN_SDIV_SEL = 2;
+        defparam u_pll_215m.CLKOUTD_SRC = "CLKOUT";
+        defparam u_pll_215m.CLKOUTD3_SRC = "CLKOUT";
+        defparam u_pll_215m.DEVICE = "GW2AR-18C";
+
+        // 107.38635MHz = 214.7727MHz / 2
+        DIV_CLK #(
+            .DIV(2),
+            .GCLK(1)
+        ) u_div_108m (
+            .RESET_n,
+            .IN(clk_215m),
+            .OUT(clk_108m)
+        );
+
+        // 42.95454MHz = 214.7727MHz / 5
+        DIV_CLK #(
+            .DIV(5),
+            .GCLK(1)
+        ) u_div_43m (
+            .RESET_n,
+            .IN(clk_215m),
+            .OUT(clk_43m)
+        );
+
+        // 21.47727MHz = 214.7727MHz / 10
+        DIV_CLK #(
+            .DIV(10),
+            .GCLK(1)
+        ) u_div_21m (
+            .RESET_n,
+            .IN(clk_215m),
+            .OUT(clk_21m)
+        );
+    end
+    else begin
+        // 432.0MHz = 27MHz * 16
+        wire clk_432m /* synthesis syn_keep=1 */;
+        wire lock_432m;
+        assign w_pll_ready = lock_432m;
+        rPLL u_pll_432m (
+            .CLKOUT(clk_432m),
+            .LOCK(lock_432m),
+            .CLKOUTP(),
+            .CLKOUTD(),
+            .CLKOUTD3(),
+            .RESET(!RESET_n),
+            .RESET_P(1'b0),
+            .CLKIN(CLK_27M),
+            .CLKFB(1'b0),
+            .FBDSEL(6'b000000),
+            .IDSEL(6'b000000),
+            .ODSEL(6'b000000),
+            .PSDA(4'b0000),
+            .DUTYDA(4'b0000),
+            .FDLY(4'b0000)
+        );
+
+        defparam u_pll_432m.FCLKIN = "27";
+        defparam u_pll_432m.DYN_IDIV_SEL = "false";
+        defparam u_pll_432m.IDIV_SEL = 0;
+        defparam u_pll_432m.DYN_FBDIV_SEL = "false";
+        defparam u_pll_432m.FBDIV_SEL = 15;
+        defparam u_pll_432m.DYN_ODIV_SEL = "false";
+        defparam u_pll_432m.ODIV_SEL = 2;
+        defparam u_pll_432m.PSDA_SEL = "0000";
+        defparam u_pll_432m.DYN_DA_EN = "false";
+        defparam u_pll_432m.DUTYDA_SEL = "1000";
+        defparam u_pll_432m.CLKOUT_FT_DIR = 1'b1;
+        defparam u_pll_432m.CLKOUTP_FT_DIR = 1'b1;
+        defparam u_pll_432m.CLKOUT_DLY_STEP = 0;
+        defparam u_pll_432m.CLKOUTP_DLY_STEP = 0;
+        defparam u_pll_432m.CLKFB_SEL = "internal";
+        defparam u_pll_432m.CLKOUT_BYPASS = "false";
+        defparam u_pll_432m.CLKOUTP_BYPASS = "false";
+        defparam u_pll_432m.CLKOUTD_BYPASS = "false";
+        defparam u_pll_432m.DYN_SDIV_SEL = 2;
+        defparam u_pll_432m.CLKOUTD_SRC = "CLKOUT";
+        defparam u_pll_432m.CLKOUTD3_SRC = "CLKOUT";
+        defparam u_pll_432m.DEVICE = "GW2AR-18C";
+
+        // 108.0MHz = 432.0MHz / 4
+        DIV_CLK #(
+            .DIV(4),
+            .GCLK(1)
+        ) u_div_108m (
+            .RESET_n,
+            .IN(clk_432m),
+            .OUT(clk_108m)
+        );
+
+        // 43.2MHz = 432.0MHz / 10
+        DIV_CLK #(
+            .DIV(10),
+            .GCLK(1)
+        ) u_div_43m (
+            .RESET_n,
+        .IN(clk_432m),
+            .OUT(clk_43m)
+        );
+
+        // 21.6MHz = 432.0MHz / 20
+        DIV_CLK #(
+            .DIV(20),
+            .GCLK(1)
+        ) u_div_21m (
+            .RESET_n,
+            .IN(clk_432m),
+            .OUT(clk_21m)
+        );
     end
 
-    rPLL u_pll_base (
-        .CLKOUT(CLK_MEM),
-        .LOCK(w_clk_mem_lock),
-        .CLKOUTP(CLK_MEM_P),
-        .CLKOUTD(),
-        .CLKOUTD3(),
-        .RESET(!RESET_n),
-        .RESET_P(1'b0),
-        .CLKIN(CLK_IN),
-        .CLKFB(1'b0),
-        .FBDSEL({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0}),
-        .IDSEL({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0}),
-        .ODSEL({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0}),
-        .PSDA({1'b0,1'b0,1'b0,1'b0}),
-        .DUTYDA({1'b0,1'b0,1'b0,1'b0}),
-        .FDLY({1'b1,1'b1,1'b1,1'b1})
-    );
+    /***************************************************************
+     * enable
+     ***************************************************************/
+    wire w_ena_43m_108;
+    wire w_ena_21m_108;
+    wire w_ena_4m_108;
+    wire w_ena_1m_108;
+    DIV_EN #(.COUNT(  5)) u_43m_108 (.RESET_n, .IN(clk_108m), .OUT(w_ena_43m_108)); // 43.2M
+    DIV_EN #(.COUNT(  5)) u_21m_108 (.RESET_n, .IN(clk_108m), .OUT(w_ena_21m_108)); // 21.6M
+    DIV_EN #(.COUNT( 30)) u_4m_108  (.RESET_n, .IN(clk_108m), .OUT(w_ena_4m_108 )); //  3.6M
+    DIV_EN #(.COUNT(120)) u_1m_108  (.RESET_n, .IN(clk_108m), .OUT(w_ena_1m_108 )); //  0.9M
 
-    defparam u_pll_base.FCLKIN = "3.58";
-    defparam u_pll_base.DYN_IDIV_SEL = "false";
-    defparam u_pll_base.IDIV_SEL = 0;
-    defparam u_pll_base.DYN_FBDIV_SEL = "false";
-    defparam u_pll_base.FBDIV_SEL = 29;
-    defparam u_pll_base.DYN_ODIV_SEL = "false";
-    defparam u_pll_base.ODIV_SEL = 8;
-    defparam u_pll_base.PSDA_SEL = "1000";
-    defparam u_pll_base.DYN_DA_EN = "false";
-    defparam u_pll_base.DUTYDA_SEL = "1000";
-    defparam u_pll_base.CLKOUT_FT_DIR = 1'b1;
-    defparam u_pll_base.CLKOUTP_FT_DIR = 1'b1;
-    defparam u_pll_base.CLKOUT_DLY_STEP = 0;
-    defparam u_pll_base.CLKOUTP_DLY_STEP = 0;
-    defparam u_pll_base.CLKFB_SEL = "internal";
-    defparam u_pll_base.CLKOUT_BYPASS = "false";
-    defparam u_pll_base.CLKOUTP_BYPASS = "false";
-    defparam u_pll_base.CLKOUTD_BYPASS = "false";
-    defparam u_pll_base.DYN_SDIV_SEL = 2;
-    defparam u_pll_base.CLKOUTD_SRC = "CLKOUT";
-    defparam u_pll_base.CLKOUTD3_SRC = "CLKOUT";
-    defparam u_pll_base.DEVICE = "GW2AR-18C";
-end
-else begin
-    rPLL u_pll_base (
-        .CLKOUT(CLK_MEM),
-        .LOCK(CLK_MEM_LOCK),
-        .CLKOUTP(CLK_MEM_P),
-        .CLKOUTD(),
-        .CLKOUTD3(),
-        .RESET(!RESET_n),
-        .RESET_P(1'b0),
-        .CLKIN(CLK_IN),
-        .CLKFB(1'b0),
-        .FBDSEL({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0}),
-        .IDSEL({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0}),
-        .ODSEL({1'b0,1'b0,1'b0,1'b0,1'b0,1'b0}),
-        .PSDA({1'b0,1'b0,1'b0,1'b0}),
-        .DUTYDA({1'b0,1'b0,1'b0,1'b0}),
-        .FDLY({1'b1,1'b1,1'b1,1'b1})
-    );
+    wire w_ena_21m_43;
+    wire w_ena_4m_43;
+    wire w_ena_dac_43;
+    DIV_EN #(.COUNT( 2)) u_21m_43 (.RESET_n, .IN(clk_43m), .OUT(w_ena_21m_43));     // 21M
+    DIV_EN #(.COUNT(12)) u_4m_43  (.RESET_n, .IN(clk_43m), .OUT(w_ena_4m_43 ));     //  4M
+    DIV_EN #(.COUNT(CONFIG_BOARD::DAC_FREQ_DIV)) u_dac_43 (.RESET_n, .IN(clk_43m), .OUT(w_ena_dac_43)); // DAC_FREQ_DIV
 
-    defparam u_pll_base.FCLKIN = "27";
-    defparam u_pll_base.DYN_IDIV_SEL = "false";
-    defparam u_pll_base.IDIV_SEL = 0;
-    defparam u_pll_base.DYN_FBDIV_SEL = "false";
-    defparam u_pll_base.FBDIV_SEL = 3;
-    defparam u_pll_base.DYN_ODIV_SEL = "false";
-    defparam u_pll_base.ODIV_SEL = 8;
-    defparam u_pll_base.PSDA_SEL = "1000";
-    defparam u_pll_base.DYN_DA_EN = "false";
-    defparam u_pll_base.DUTYDA_SEL = "1000";
-    defparam u_pll_base.CLKOUT_FT_DIR = 1'b1;
-    defparam u_pll_base.CLKOUTP_FT_DIR = 1'b1;
-    defparam u_pll_base.CLKOUT_DLY_STEP = 0;
-    defparam u_pll_base.CLKOUTP_DLY_STEP = 0;
-    defparam u_pll_base.CLKFB_SEL = "internal";
-    defparam u_pll_base.CLKOUT_BYPASS = "false";
-    defparam u_pll_base.CLKOUTP_BYPASS = "false";
-    defparam u_pll_base.CLKOUTD_BYPASS = "false";
-    defparam u_pll_base.DYN_SDIV_SEL = 2;
-    defparam u_pll_base.CLKOUTD_SRC = "CLKOUT";
-    defparam u_pll_base.CLKOUTD3_SRC = "CLKOUT";
-    defparam u_pll_base.DEVICE = "GW2AR-18C";
-end
+    wire w_ena_4m_21;
+    wire w_ena_1m_21;
+    DIV_EN #(.COUNT( 6)) u_4m_21 (.RESET_n, .IN(clk_21m), .OUT(w_ena_4m_21));        // 4M
+    DIV_EN #(.COUNT(24)) u_1m_21 (.RESET_n, .IN(clk_21m), .OUT(w_ena_1m_21));        // 1M
 
     /***************************************************************
-     * 107.4MHz / 5 = 21.48MHz
+     * assign
      ***************************************************************/
-    CLKDIV u_div_21m (
-        .CLKOUT(CLK_21M),
-        .HCLKIN(CLK_BASE),
-        .RESETN(CLK_BASE_READY),
-        .CALIB(1'b0)
+    assign Clock.MEM_READY = RESET_n && w_pll_ready;
+    assign Clock.MEM_CLK = clk_108m;
+
+    assign Clock.OP_READY = Clock.MEM_READY;
+    assign Clock.OP_CLK = clk_108m;
+    assign Clock.OP_PSG_EN = 1;
+    assign Clock.OP_SCC_EN = 1;
+    assign Clock.OP_OPLL_EN = w_ena_21m_108;
+
+    assign Clock.VDP_CLK = clk_43m;
+
+    assign Clock.PSG_CLK = clk_108m;
+    assign Clock.PSG_4M_EN = w_ena_4m_108;
+
+    assign Clock.SCC_CLK = clk_108m;
+    assign Clock.SCC_4M_EN = w_ena_4m_108;
+
+    assign Clock.OPLL_CLK = clk_21m;
+    assign Clock.OPLL_4M_EN = w_ena_4m_21;
+
+    assign Clock.LED_CLK = clk_108m;
+    assign Clock.LED_ENA = w_ena_1m_108;
+
+    assign Clock.DAC_CLK = clk_43m;
+    assign Clock.DAC_ENA = w_ena_dac_43;
+
+    module DIV_EN #(
+        parameter   COUNT = 2
+    ) (
+        input wire RESET_n,
+        input wire IN,
+        output wire OUT
     );
-    defparam u_div_21m.DIV_MODE = "5";
-    defparam u_div_21m.GSREN = "false";
+        if(COUNT <= 1) begin
+            assign OUT = 1'b1;
+        end
+        else begin
+            reg [$clog2(COUNT)-1:0] ff_cnt;
+            always_ff @(posedge IN or negedge RESET_n) begin
+                if(!RESET_n)         ff_cnt <= COUNT - 1'd1;
+                else if(ff_cnt == 0) ff_cnt <= COUNT - 1'd1;
+                else                 ff_cnt <= ff_cnt - 1'd1;
+            end
+
+            reg ff_out;
+            always_ff @(posedge IN or negedge RESET_n) begin
+                if(!RESET_n)         ff_out <= 1;
+                else if(ff_cnt == 0) ff_out <= 1;
+                else                 ff_out <= 0;
+            end
+
+            assign OUT = ff_out;
+        end
+    endmodule
+
+    module DIV_CLK #(
+        parameter DIV = 2,
+        parameter GCLK = 0
+    ) (
+        input wire IN,
+        input wire RESET_n,
+        output wire OUT
+    );
+        reg ff_out = 0;
+
+        if(DIV > 2) begin
+            localparam DIV_E = (DIV / 2);
+            localparam DIV_O = (DIV - DIV_E);
+            localparam DIV_CNT_E = (DIV_E - 1);
+            localparam DIV_CNT_O = (DIV_O - 1);
+            localparam DIV_CNT_BITS = $clog2(DIV_CNT_O+1);
+
+            reg [DIV_CNT_BITS-1:0] ff_cnt = 0;
+
+            always_ff @(posedge IN or negedge RESET_n) begin
+                if(!RESET_n)         ff_cnt <= 0;
+                else if(ff_cnt == 0) ff_cnt <= ff_out ? DIV_CNT_E : DIV_CNT_O;
+                else                 ff_cnt <= ff_cnt - 1'd1;
+            end
+
+            always_ff @(posedge IN or negedge RESET_n) begin
+                if(!RESET_n)         ff_out <= 0;
+                else if(ff_cnt == 0) ff_out <= ~ff_out;
+            end
+        end
+        else begin
+            always_ff @(posedge IN or negedge RESET_n) begin
+                if(!RESET_n) ff_out <= 0;
+                else         ff_out <= ~ff_out;
+            end
+        end
+
+        if(GCLK) begin
+            DQCE u_dqce (
+                .CLKIN(ff_out),
+                .CE(1'b1),
+                .CLKOUT(OUT)
+            );
+        end
+        else begin
+            assign OUT = ff_out;
+        end
+    endmodule
 endmodule
 
 `default_nettype wire

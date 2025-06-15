@@ -37,23 +37,23 @@
  * 基本スロットを拡張する
  ***************************************************************/
 module EXPANSION_SLOT #(
-    parameter               COUNT = 4,
-    parameter               USE_FF = 0
+    parameter               SLTEXP_ADDR = 16'hFFFF,
+    parameter               COUNT = 4
 ) (
     input   wire            RESET_n,
-    input   wire            CLK,
-
+    CLOCK_IF.SRC            Clock,
     BUS_IF.CARTRIDGE        Primary,
     BUS_IF.MSX              Secondary[0:COUNT-1],
     input   wire            WAIT_n
 );
+    localparam OPTIMAIZE = 0;
 
     /***************************************************************
      * ライト検出
      ***************************************************************/
-    wire wr_n = Primary.SLTSL_n || Primary.MERQ_n || Primary.WR_n;
+    wire wr_n = Primary.SLTSL_n || Primary.WR_n || (Primary.ADDR != SLTEXP_ADDR);
     logic prev_wr_n;
-    always_ff @(posedge CLK or negedge RESET_n) begin
+    always_ff @(posedge Clock.MEM_CLK or negedge RESET_n) begin
         if(!RESET_n)              prev_wr_n <= 1;
         else if(!Primary.RESET_n) prev_wr_n <= 1;
         else                      prev_wr_n <= wr_n;
@@ -63,32 +63,33 @@ module EXPANSION_SLOT #(
     /***************************************************************
      * write register
      ***************************************************************/
-    logic [7:0] sltexp;
-    always_ff @(posedge CLK or negedge RESET_n) begin
+    reg [7:0] sltexp;
+    always_ff @(posedge Clock.MEM_CLK or negedge RESET_n) begin
         if(!RESET_n || !Primary.RESET_n) begin
             sltexp <= 0;
         end
-        else if(det_wr && Primary.ADDR == 16'hFFFF) begin
+        else if(det_wr) begin
             sltexp <= Primary.DIN;
         end
     end
 
     /***************************************************************
+     * リード検出
+     ***************************************************************/
+    wire rd_n = Primary.SLTSL_n || Primary.RD_n || (Primary.ADDR != SLTEXP_ADDR);
+
+    /***************************************************************
      * read register
      ***************************************************************/
-    logic [7:0] my_dout;
-    logic my_busdir_n;
-    always_ff @(posedge CLK or negedge RESET_n) begin
+    reg my_busdir_n;
+    always_ff @(posedge Clock.MEM_CLK or negedge RESET_n) begin
         if(!RESET_n || !Primary.RESET_n) begin
-            my_dout <= 0;
             my_busdir_n <= 1;
         end
-        else if(!Primary.RD_n && !Primary.SLTSL_n && !Primary.MERQ_n && Primary.ADDR == 16'hFFFF) begin
-            my_dout <= ~sltexp;
+        else if(!rd_n) begin
             my_busdir_n <= 0;
         end
         else begin
-            my_dout <= 0;
             my_busdir_n <= 1;
         end
     end
@@ -110,126 +111,124 @@ module EXPANSION_SLOT #(
     /***************************************************************
      * Secondary へ接続
      ***************************************************************/
-    wire [7:0] tmp_dout    [0:COUNT-1];
-    wire       tmp_busdir_n[0:COUNT-1];
-    wire       tmp_int_n   [0:COUNT-1];
-    wire       tmp_wait_n  [0:COUNT-1];
     generate
         genvar num;
         for(num = 0; num < COUNT; num = num + 1) begin: sec
-            if(USE_FF) begin
-                always_ff @(posedge CLK or negedge RESET_n) begin
-                    if(!RESET_n) begin
-                        Secondary[num].SLTSL_n    <= 1;
-                        Secondary[num].ADDR       <= 0;
-                        Secondary[num].DIN        <= 0;
-                        Secondary[num].RFSH_n     <= 1;
-                        Secondary[num].RD_n       <= 1;
-                        Secondary[num].WR_n       <= 1;
-                        Secondary[num].MERQ_n     <= 1;
-                        Secondary[num].IORQ_n     <= 1;
-                        Secondary[num].CS1_n      <= 1;
-                        Secondary[num].CS2_n      <= 1;
-                        Secondary[num].CS12_n     <= 1;
-                        Secondary[num].M1_n       <= 1;
-                        Secondary[num].RESET_n    <= 0;
-                        Secondary[num].CLK        <= 0;
-                        Secondary[num].CLK_EN     <= 0;
-                    end
-                    else if(!Primary.RESET_n) begin
-                        Secondary[num].SLTSL_n    <= 1;
-                        Secondary[num].ADDR       <= 0;
-                        Secondary[num].DIN        <= 0;
-                        Secondary[num].RFSH_n     <= Primary.RFSH_n;
-                        Secondary[num].RD_n       <= 1;
-                        Secondary[num].WR_n       <= 1;
-                        Secondary[num].MERQ_n     <= 1;
-                        Secondary[num].IORQ_n     <= 1;
-                        Secondary[num].CS1_n      <= 1;
-                        Secondary[num].CS2_n      <= 1;
-                        Secondary[num].CS12_n     <= 1;
-                        Secondary[num].M1_n       <= 1;
-                        Secondary[num].RESET_n    <= 0;
-                        Secondary[num].CLK        <= Primary.CLK;
-                        Secondary[num].CLK_EN     <= Primary.CLK_EN;
-                    end
-                    else begin
-                        Secondary[num].SLTSL_n    <= Primary.SLTSL_n || ((num < 4) ? (curr_slot[curr_page] != num) : 1);
-                        Secondary[num].ADDR       <= Primary.ADDR;
-                        Secondary[num].DIN        <= Primary.DIN;
-                        Secondary[num].RFSH_n     <= Primary.RFSH_n;
-                        Secondary[num].RD_n       <= Primary.RD_n;
-                        Secondary[num].WR_n       <= Primary.WR_n;
-                        Secondary[num].MERQ_n     <= Primary.MERQ_n;
-                        Secondary[num].IORQ_n     <= Primary.IORQ_n;
-                        Secondary[num].CS1_n      <= Primary.CS1_n;
-                        Secondary[num].CS2_n      <= Primary.CS2_n;
-                        Secondary[num].CS12_n     <= Primary.CS12_n;
-                        Secondary[num].M1_n       <= Primary.M1_n;
-                        Secondary[num].RESET_n    <= Primary.RESET_n;
-                        Secondary[num].CLK        <= Primary.CLK;
-                        Secondary[num].CLK_EN     <= Primary.CLK_EN;
-                    end
+            always_ff @(posedge Clock.MEM_CLK or negedge RESET_n) begin
+                if(!RESET_n) begin
+                    Secondary[num].SLTSL_n    <= 1;
+                    Secondary[num].ADDR       <= 0;
+                    Secondary[num].DIN        <= 0;
+                    Secondary[num].RFSH_n     <= 1;
+                    Secondary[num].RD_n       <= 1;
+                    Secondary[num].WR_n       <= 1;
+                    Secondary[num].IORQ_n     <= 1;
+                    Secondary[num].RESET_n    <= 0;
+                    Secondary[num].CLK        <= 0;
+                end
+                else if(!Primary.RESET_n) begin
+                    Secondary[num].SLTSL_n    <= 1;
+                    Secondary[num].ADDR       <= 0;
+                    Secondary[num].DIN        <= 0;
+                    Secondary[num].RFSH_n     <= Primary.RFSH_n;
+                    Secondary[num].RD_n       <= 1;
+                    Secondary[num].WR_n       <= 1;
+                    Secondary[num].IORQ_n     <= 1;
+                    Secondary[num].RESET_n    <= 0;
+                    Secondary[num].CLK        <= Primary.CLK;
+                end
+                else begin
+                    Secondary[num].SLTSL_n    <= Primary.SLTSL_n || ((num < 4) ? (curr_slot[curr_page] != num) : 1);
+                    Secondary[num].ADDR       <= Primary.ADDR;
+                    Secondary[num].DIN        <= Primary.DIN;
+                    Secondary[num].RFSH_n     <= Primary.RFSH_n;
+                    Secondary[num].RD_n       <= Primary.RD_n;
+                    Secondary[num].WR_n       <= Primary.WR_n;
+                    Secondary[num].IORQ_n     <= Primary.IORQ_n;
+                    Secondary[num].RESET_n    <= Primary.RESET_n;
+                    Secondary[num].CLK        <= Primary.CLK;
                 end
             end
-            else begin
-                assign Secondary[num].SLTSL_n    = Primary.SLTSL_n || ((num < 4) ? (curr_slot[curr_page] != num) : 1);
-                assign Secondary[num].ADDR       = Primary.ADDR;
-                assign Secondary[num].DIN        = Primary.DIN;
-                assign Secondary[num].RFSH_n     = Primary.RFSH_n;
-                assign Secondary[num].RD_n       = Primary.RD_n;
-                assign Secondary[num].WR_n       = Primary.WR_n;
-                assign Secondary[num].MERQ_n     = Primary.MERQ_n;
-                assign Secondary[num].IORQ_n     = Primary.IORQ_n;
-                assign Secondary[num].CS1_n      = Primary.CS1_n;
-                assign Secondary[num].CS2_n      = Primary.CS2_n;
-                assign Secondary[num].CS12_n     = Primary.CS12_n;
-                assign Secondary[num].M1_n       = Primary.M1_n;
-                assign Secondary[num].RESET_n    = Primary.RESET_n;
-                assign Secondary[num].CLK        = Primary.CLK;
-                assign Secondary[num].CLK_EN     = Primary.CLK_EN;
-            end
-
-            assign Secondary[num].CLK_21M = Primary.CLK_21M;
-            assign Secondary[num].CLK_EN_21M = Primary.CLK_EN_21M;
-
-            assign tmp_dout    [num] = Secondary[num].DOUT     | ((num < COUNT-1) ? tmp_dout    [num + 1] : 0);
-            assign tmp_busdir_n[num] = Secondary[num].BUSDIR_n & ((num < COUNT-1) ? tmp_busdir_n[num + 1] : 1);
-            assign tmp_int_n   [num] = Secondary[num].INT_n    & ((num < COUNT-1) ? tmp_int_n   [num + 1] : 1);
-            assign tmp_wait_n  [num] = Secondary[num].WAIT_n   & ((num < COUNT-1) ? tmp_wait_n  [num + 1] : 1);
         end
     endgenerate
 
-    if(USE_FF) begin
-        always_ff @(posedge CLK or negedge RESET_n) begin
-            if(!RESET_n) begin
-                Primary.DOUT     <= 0;
-                Primary.BUSDIR_n <= 1;
-                Primary.INT_n    <= 1;
-                Primary.WAIT_n   <= 0;
-            end
-            else if(!Primary.RESET_n) begin
-                Primary.DOUT     <= 0;
-                Primary.BUSDIR_n <= 1;
-                Primary.INT_n    <= 1;
-                Primary.WAIT_n   <= WAIT_n;
-            end
-            else begin
-                Primary.DOUT     <= my_busdir_n ? tmp_dout    [0] : my_dout;
-                Primary.BUSDIR_n <= my_busdir_n ? tmp_busdir_n[0] : 0;
-                Primary.INT_n    <= tmp_int_n   [0];
-                Primary.WAIT_n   <= tmp_wait_n  [0] & WAIT_n;
-            end
+    /***************************************************************
+     * secondary 信号の前処理
+     ***************************************************************/
+    wire [COUNT-1:0] int_n_n;
+    wire [COUNT:0] wait_n_n;
+    wire [COUNT:0] busdir_n_n;
+    wire [$bits(Primary.DOUT)-1:0] dout[0:COUNT];
+    generate
+        genvar i;
+        for(i = 0; i < COUNT; i = i + 1) begin: lp
+            assign int_n_n[i] = ~Secondary[i].INT_n;
+            assign wait_n_n[i+1] = ~Secondary[i].WAIT_n;
+            assign busdir_n_n[i+1] = ~Secondary[i].BUSDIR_n;
+            assign dout[i+1] = Secondary[i].DOUT;
         end
-    end
-    else begin
-        assign Primary.DOUT     = my_busdir_n ? tmp_dout    [0] : my_dout;
-        assign Primary.BUSDIR_n = my_busdir_n ? tmp_busdir_n[0] : 0;
-        assign Primary.INT_n    = tmp_int_n   [0];
-        assign Primary.WAIT_n   = tmp_wait_n  [0] & WAIT_n;
-    end
+    endgenerate
+    assign wait_n_n[0] = ~WAIT_n;
+    assign busdir_n_n[0] = ~my_busdir_n;
+    assign dout[0] = ~sltexp;
+
+    /***************************************************************
+     * DOUT_n の出力
+     ***************************************************************/
+    ARRAY_SELECTOR #(
+        .COMB(1),
+        .DEFAULT(8'hFF),
+        .WIDTH($bits(Primary.DOUT)),
+        .COUNT(COUNT+1)
+    ) u_select_dout (
+        .RESET_n(RESET_n & Primary.RESET_n),
+        .CLK(Clock.MEM_CLK),
+        .ENA(1'b1),
+        .IN(dout),
+        .OE(busdir_n_n),
+        .OUT(Primary.DOUT)
+    );
+
+    /***************************************************************
+     * BUSDIR_n の出力
+     ***************************************************************/
+    NOR_Nbits #(
+        .COMB(1),
+        .COUNT($bits(busdir_n_n))
+    ) u_nor_busdir_n (
+        .RESET_n(RESET_n & Primary.RESET_n),
+        .CLK(Clock.MEM_CLK),
+        .IN(busdir_n_n),
+        .ENA(1'b1),
+        .OUT(Primary.BUSDIR_n)
+    );
+
+    /***************************************************************
+     * INT_n の出力
+     ***************************************************************/
+    NOR_Nbits #(
+        .COUNT($bits(int_n_n))
+    ) u_nor_int_n (
+        .RESET_n(RESET_n & Primary.RESET_n),
+        .CLK(Clock.MEM_CLK),
+        .IN(int_n_n),
+        .ENA(1'b1),
+        .OUT(Primary.INT_n)
+    );
+
+    /***************************************************************
+     * WAIT_n の出力
+     ***************************************************************/
+    NOR_Nbits #(
+        .COUNT($bits(wait_n_n))
+    ) u_nor_wait_n (
+        .RESET_n(RESET_n & Primary.RESET_n),
+        .CLK(Clock.MEM_CLK),
+        .IN(wait_n_n),
+        .ENA(1'b1),
+        .OUT(Primary.WAIT_n)
+    );
 
 endmodule
-
 
 `default_nettype wire

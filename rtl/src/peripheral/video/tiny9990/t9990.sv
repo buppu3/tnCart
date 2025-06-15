@@ -49,9 +49,7 @@ endpackage
 module T9990 (
     input wire          RESET_n,            // リセット
     input wire          CLK,                // 動作クロック
-    input wire          CLK_21M_EN,         // 21MHz タイミング入力
-    input wire          CLK_14M_EN,         // 14MHz タイミング入力
-    input wire          CLK_25M_EN,         // 25MHz タイミング入力(未対応)
+    input wire          CLK_43M_EN,
 
     // CPU I/F
     input wire          CSR_n,
@@ -73,7 +71,7 @@ module T9990 (
     output wire         RAM_RFSH_n,         // リフレッシュ要求
     output wire [18:0]  RAM_ADDR,           // RAM のアドレス
     output wire [31:0]  RAM_DIN,            // RAM へ書くデータが出力される
-    output wire [2:0]   RAM_DIN_SIZE,       // アクセスのビット幅 0=8bit, 2=32bit
+    output wire [2:0]   RAM_DSIZE,          // アクセスのビット幅 0=8bit, 2=32bit
     input wire [31:0]   RAM_DOUT,           // RAM から読んだデータ
 
     // ビデオ出力
@@ -117,20 +115,19 @@ module T9990 (
      * ドットクロック生成
      ***************************************************************/
     logic CLK_MASTER_EN;
+    logic CLK_21M_EN;
     logic MEM_REQ;
     logic TG_EN;
     T9990_CLOCK u_clk (
         .RESET_n(rst_flag),
         .CLK,
-        .CLK_21M_EN,
-        .CLK_14M_EN,
-        .CLK_25M_EN,
-        .RAM_REQ,
+        .CLK_43M_EN,
 
         // レジスタ
         .REG,
 
         // 出力
+        .CLK_21M_EN,
         .CLK_MASTER_EN,
         .MEM_REQ,
         .DCLK_EN,
@@ -297,7 +294,7 @@ module T9990 (
         .RAM_RFSH_n,
         .RAM_ADDR,
         .RAM_DIN,
-        .RAM_DIN_SIZE,
+        .RAM_DSIZE,
         .RAM_DOUT,
         .RAM_ACK_n,
 
@@ -606,11 +603,10 @@ module T9990 (
     );
 
     // Ys:R:G:B を分解
-    wire debug_flag = BG_X[2:0] != 3'd0;
     assign Ys = REG.YSE ? OUT[15] : 1;
-    assign R = debug_flag ? OUT[ 9: 5] : 5'b111111;
-    assign G = debug_flag ? OUT[14:10] : 5'b111111;
-    assign B = debug_flag ? OUT[ 4: 0] : 5'b111111;
+    assign R = OUT[ 9: 5];
+    assign G = OUT[14:10];
+    assign B = OUT[ 4: 0];
     assign EO = STATUS.EO;
     assign IL = REG.ILM && REG.EO && !REG.HSCN;
     assign HSCN = REG.HSCN;

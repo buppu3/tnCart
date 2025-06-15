@@ -36,7 +36,7 @@
 /***********************************************************************
  * メガロムコントローラーインターフェース
  ***********************************************************************/
-interface MEGAROM_IF #(parameter ADDR_BIT_WIDTH=24, BANK_COUNT = 4);
+interface MEGAROM_IF #(parameter ADDR_BIT_WIDTH=24);
     logic [ADDR_BIT_WIDTH-1:0]  MemoryTopAddr;                  // メモリ先頭アドレス
     logic                       WriteProtect;                   // 書き込み禁止
     logic                       is_16k_bank;                    // banksize 0:8KB / 1:16KB
@@ -44,11 +44,11 @@ interface MEGAROM_IF #(parameter ADDR_BIT_WIDTH=24, BANK_COUNT = 4);
     logic                       CS2_Mask;                       // 0:PAGE2 を使用する / 1:PAGE2 を使用しない
 
     logic [15:0]                BankRegAddrMask;
-    logic [15:0]                BankRegAddr[0:BANK_COUNT-1];
-    logic [7:0]                 BankRegMask;                    // バンクレジスタマスク
-    logic [7:0]                 BankRegInit[0:BANK_COUNT-1];    // バンクレジスタ初期値
-    logic [7:0]                 BankReg[0:BANK_COUNT-1];        // バンクレジスタ(マスク値)
-    logic [7:0]                 BankRegRaw[0:BANK_COUNT-1];     // バンクレジスタ(ライト値)
+    logic [15:0]                BankRegAddr[0:4-1];
+    logic [7:0]                 BankRegMask;           // バンクレジスタマスク
+    logic [7:0]                 BankRegInit[0:4-1];    // バンクレジスタ初期値
+    logic [7:0]                 BankReg[0:4-1];        // バンクレジスタ(マスク値)
+    logic [7:0]                 BankRegRaw[0:4-1];     // バンクレジスタ(ライト値)
 
     // ホスト側ポート
     modport HOST(
@@ -71,8 +71,7 @@ endinterface
  * メガロムコントローラ
  ***************************************************************/
 module MEGAROM_CONTROLLER #(
-    parameter               COUNT = 1,
-    parameter               USE_FF = 0
+    parameter               COUNT = 1
 ) (
     input   wire            RESET_n,
     input   wire            CLK,
@@ -87,127 +86,79 @@ module MEGAROM_CONTROLLER #(
     /***************************************************************
      * external signal
      ***************************************************************/
-    logic [7:0] tmp_dout[0:COUNT-1];
-    logic tmp_busdir_n[0:COUNT-1];
-    logic tmp_int_n[0:COUNT-1];
-    logic tmp_wait_n[0:COUNT-1];
     generate
         genvar num;
         for(num = 0; num < COUNT; num = num + 1) begin: extbus_loop
-            if(USE_FF) begin
-                always @(posedge CLK or negedge RESET_n) begin
-                    if(!RESET_n) begin
-                        ExtBus[num].ADDR        <= 0;
-                        ExtBus[num].DIN         <= 0;
-                        ExtBus[num].RFSH_n      <= 1;
-                        ExtBus[num].RD_n        <= 1;
-                        ExtBus[num].WR_n        <= 1;
-                        ExtBus[num].MERQ_n      <= 1;
-                        ExtBus[num].IORQ_n      <= 1;
-                        ExtBus[num].CS1_n       <= 1;
-                        ExtBus[num].CS2_n       <= 1;
-                        ExtBus[num].CS12_n      <= 1;
-                        ExtBus[num].M1_n        <= 1;
-                        ExtBus[num].SLTSL_n     <= 1;
-                        ExtBus[num].RESET_n     <= 0;
-                        ExtBus[num].CLK         <= 0;
-                        ExtBus[num].CLK_EN      <= 0;
-                    end
-                    else if(!Bus.RESET_n) begin
-                        ExtBus[num].ADDR        <= 0;
-                        ExtBus[num].DIN         <= 0;
-                        ExtBus[num].RFSH_n      <= Bus.RFSH_n;
-                        ExtBus[num].RD_n        <= 1;
-                        ExtBus[num].WR_n        <= 1;
-                        ExtBus[num].MERQ_n      <= 1;
-                        ExtBus[num].IORQ_n      <= 1;
-                        ExtBus[num].CS1_n       <= 1;
-                        ExtBus[num].CS2_n       <= 1;
-                        ExtBus[num].CS12_n      <= 1;
-                        ExtBus[num].M1_n        <= 1;
-                        ExtBus[num].SLTSL_n     <= 1;
-                        ExtBus[num].RESET_n     <= 0;
-                        ExtBus[num].CLK         <= Bus.CLK;
-                        ExtBus[num].CLK_EN      <= Bus.CLK_EN;
-                    end
-                    else begin
-                        ExtBus[num].ADDR        <= Bus.ADDR;
-                        ExtBus[num].DIN         <= Bus.DIN;
-                        ExtBus[num].RFSH_n      <= Bus.RFSH_n;
-                        ExtBus[num].RD_n        <= Bus.RD_n;
-                        ExtBus[num].WR_n        <= Bus.WR_n;
-                        ExtBus[num].MERQ_n      <= Bus.MERQ_n;
-                        ExtBus[num].IORQ_n      <= Bus.IORQ_n;
-                        ExtBus[num].CS1_n       <= Bus.CS1_n;
-                        ExtBus[num].CS2_n       <= Bus.CS2_n;
-                        ExtBus[num].CS12_n      <= Bus.CS12_n;
-                        ExtBus[num].M1_n        <= Bus.M1_n;
-                        ExtBus[num].SLTSL_n     <= Bus.SLTSL_n;
-                        ExtBus[num].RESET_n     <= Bus.RESET_n;
-                        ExtBus[num].CLK         <= Bus.CLK;
-                        ExtBus[num].CLK_EN      <= Bus.CLK_EN;
-                    end
+            always @(posedge CLK or negedge RESET_n) begin
+                if(!RESET_n) begin
+                    ExtBus[num].ADDR        <= 0;
+                    ExtBus[num].DIN         <= 0;
+                    ExtBus[num].RFSH_n      <= 1;
+                    ExtBus[num].RD_n        <= 1;
+                    ExtBus[num].WR_n        <= 1;
+                    ExtBus[num].IORQ_n      <= 1;
+                    ExtBus[num].SLTSL_n     <= 1;
+                    ExtBus[num].RESET_n     <= 0;
+                    ExtBus[num].CLK         <= 0;
+                end
+                else if(!Bus.RESET_n) begin
+                    ExtBus[num].ADDR        <= 0;
+                    ExtBus[num].DIN         <= 0;
+                    ExtBus[num].RFSH_n      <= Bus.RFSH_n;
+                    ExtBus[num].RD_n        <= 1;
+                    ExtBus[num].WR_n        <= 1;
+                    ExtBus[num].IORQ_n      <= 1;
+                    ExtBus[num].SLTSL_n     <= 1;
+                    ExtBus[num].RESET_n     <= 0;
+                    ExtBus[num].CLK         <= Bus.CLK;
+                end
+                else begin
+                    ExtBus[num].ADDR        <= Bus.ADDR;
+                    ExtBus[num].DIN         <= Bus.DIN;
+                    ExtBus[num].RFSH_n      <= Bus.RFSH_n;
+                    ExtBus[num].RD_n        <= Bus.RD_n;
+                    ExtBus[num].WR_n        <= Bus.WR_n;
+                    ExtBus[num].IORQ_n      <= Bus.IORQ_n;
+                    ExtBus[num].SLTSL_n     <= Bus.SLTSL_n;
+                    ExtBus[num].RESET_n     <= Bus.RESET_n;
+                    ExtBus[num].CLK         <= Bus.CLK;
                 end
             end
-            else begin
-                assign ExtBus[num].ADDR        = Bus.ADDR;
-                assign ExtBus[num].DIN         = Bus.DIN;
-                assign ExtBus[num].RFSH_n      = Bus.RFSH_n;
-                assign ExtBus[num].RD_n        = Bus.RD_n;
-                assign ExtBus[num].WR_n        = Bus.WR_n;
-                assign ExtBus[num].MERQ_n      = Bus.MERQ_n;
-                assign ExtBus[num].IORQ_n      = Bus.IORQ_n;
-                assign ExtBus[num].CS1_n       = Bus.CS1_n;
-                assign ExtBus[num].CS2_n       = Bus.CS2_n;
-                assign ExtBus[num].CS12_n      = Bus.CS12_n;
-                assign ExtBus[num].M1_n        = Bus.M1_n;
-                assign ExtBus[num].SLTSL_n     = Bus.SLTSL_n;
-                assign ExtBus[num].RESET_n     = Bus.RESET_n;
-                assign ExtBus[num].CLK         = Bus.CLK;
-                assign ExtBus[num].CLK_EN      = Bus.CLK_EN;
-            end
-
-            assign ExtBus[num].CLK_21M = Bus.CLK_21M;
-            assign ExtBus[num].CLK_EN_21M = Bus.CLK_EN_21M;
-
-            assign tmp_dout    [num] = ExtBus[num].DOUT     | ((num < COUNT-1) ? tmp_dout    [num + 1] : 0);
-            assign tmp_busdir_n[num] = ExtBus[num].BUSDIR_n & ((num < COUNT-1) ? tmp_busdir_n[num + 1] : 1);
-            assign tmp_int_n   [num] = ExtBus[num].INT_n    & ((num < COUNT-1) ? tmp_int_n   [num + 1] : 1);
-            assign tmp_wait_n  [num] = ExtBus[num].WAIT_n   & ((num < COUNT-1) ? tmp_wait_n  [num + 1] : 1);
         end
     endgenerate
 
     /***************************************************************
      * INT / WAIT
      ***************************************************************/
-    wire ram_wait_n;
-    if(CONFIG::CONTROL_BUS_WAIT_RAM) begin
-        assign ram_wait_n = Ram.WAIT_n;
-    end
-    else begin
-        assign ram_wait_n = 1;
-    end
-
-    if(USE_FF) begin
-        always @(posedge CLK or negedge RESET_n) begin
-            if(!RESET_n) begin
-                Bus.INT_n          <= 1;
-                Bus.WAIT_n         <= 1;
-            end
-            else if(!Bus.RESET_n) begin
-                Bus.INT_n          <= 1;
-                Bus.WAIT_n         <= 1;
-            end
-            else begin
-                Bus.INT_n          <= tmp_int_n[0];
-                Bus.WAIT_n         <= tmp_wait_n[0] & ram_wait_n;
-            end
+    wire [COUNT-1:0] w_int_n_n;
+    wire [COUNT-1:0] w_wait_n_n;
+    generate
+        genvar i;
+        for(i = 0; i < COUNT; i = i + 1) begin: lp
+            assign w_int_n_n[i]  = ~ExtBus[i].INT_n;
+            assign w_wait_n_n[i] = ~ExtBus[i].WAIT_n;
         end
-    end
-    else begin
-        assign Bus.INT_n          = tmp_int_n[0];
-        assign Bus.WAIT_n         = tmp_wait_n[0] & ram_wait_n;
-    end
+    endgenerate
+
+    NOR_Nbits #(
+        .COUNT(COUNT)
+    ) u_nor_int (
+        .RESET_n,
+        .CLK(CLK),
+        .ENA(1'b1),
+        .IN(w_int_n_n),
+        .OUT(Bus.INT_n)
+    );
+
+    NOR_Nbits #(
+        .COUNT(COUNT)
+    ) u_nor_wait (
+        .RESET_n,
+        .CLK(CLK),
+        .ENA(1'b1),
+        .IN(w_wait_n_n),
+        .OUT(Bus.WAIT_n)
+    );
 
     /***************************************************************
      * アドレスデコード
@@ -224,28 +175,51 @@ module MEGAROM_CONTROLLER #(
     /***************************************************************
      * memory read / write strobe
      ***************************************************************/
-    wire wr_n = Bus.SLTSL_n || Bus.MERQ_n || Bus.WR_n;
-    wire rd_n = Bus.SLTSL_n || Bus.MERQ_n || Bus.RD_n;
+    wire wr_n = Bus.SLTSL_n || Bus.WR_n;
+    wire rd_n = Bus.SLTSL_n || Bus.RD_n;
     wire wr_mem_n  = cs12_n || wr_n || Megarom.WriteProtect || bank_write_protect;
     wire rd_mem_n  = cs12_n || rd_n;
 
     /***************************************************************
-     * ライト検出
-     ***************************************************************/
-    logic prev_wr_n;
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)          prev_wr_n <= 1;
-        else if(!Bus.RESET_n) prev_wr_n <= 1;
-        else                  prev_wr_n <= wr_n;
-    end
-    wire det_wr = prev_wr_n && !wr_n;
-
-    /***************************************************************
      * bank register
+     * 次の RD/WR サイクルまでに間に合えば良いので処理を分割する
      ***************************************************************/
+    reg [9:0] ff_bank16_offset[0:4-1];
+    reg [10:0] ff_bank8_offset[0:4-1];
+
+    // wr_n 遅延
+    reg ff_wr_n_delay;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)          ff_wr_n_delay <= 1;
+        else if(!Bus.RESET_n) ff_wr_n_delay <= 1;
+        else                  ff_wr_n_delay <= wr_n;
+    end
+
+    // 書き込み先アドレスをマスク
+    reg [7:0] ff_cmp_addr;
+    always_ff @(posedge CLK) ff_cmp_addr <= Bus.ADDR[15:8] & Megarom.BankRegAddrMask[15:8];
+
     generate
         genvar bank_num;
-        for(bank_num = 0; bank_num < Megarom.BANK_COUNT; bank_num = bank_num + 1) begin: bank_reg
+        for(bank_num = 0; bank_num < 4; bank_num = bank_num + 1) begin: bank_reg
+            // アドレス比較
+            reg ff_wr_bank_n;
+            always_ff @(posedge CLK or negedge RESET_n) begin
+                if(!RESET_n)          ff_wr_bank_n <= 1;
+                else if(!Bus.RESET_n) ff_wr_bank_n <= 1;
+                else                  ff_wr_bank_n <= (ff_cmp_addr != Megarom.BankRegAddr[bank_num][15:8]) | ff_wr_n_delay;
+            end
+
+            // エッジ検出
+            reg ff_wr_bank_n_delay;
+            wire w_det_wr = ff_wr_bank_n_delay && ~ff_wr_bank_n;
+            always_ff @(posedge CLK or negedge RESET_n) begin
+                if(!RESET_n)          ff_wr_bank_n_delay <= 1;
+                else if(!Bus.RESET_n) ff_wr_bank_n_delay <= 1;
+                else                  ff_wr_bank_n_delay <= ff_wr_bank_n;
+            end
+
+            // write
             always_ff @(posedge CLK or negedge RESET_n) begin
                 if(!RESET_n) begin
                     Megarom.BankReg[bank_num] <= 0;
@@ -255,9 +229,21 @@ module MEGAROM_CONTROLLER #(
                     Megarom.BankReg[bank_num] <= Megarom.BankRegInit[bank_num];
                     Megarom.BankRegRaw[bank_num] <= Megarom.BankRegInit[bank_num];
                 end
-                else if(det_wr && ((Bus.ADDR & Megarom.BankRegAddrMask) == Megarom.BankRegAddr[bank_num]) && BankEnable[bank_num]) begin
+                else if(w_det_wr && BankEnable[bank_num]) begin
                     Megarom.BankReg[bank_num] <= Bus.DIN & Megarom.BankRegMask;
                     Megarom.BankRegRaw[bank_num] <= Bus.DIN;
+                end
+            end
+
+            // 処理を軽くする為に、バンク切り替え時にアドレスを計算しておく
+            always_ff @(posedge CLK or negedge RESET_n) begin
+                if(!RESET_n) begin
+                    ff_bank16_offset[bank_num] <= Megarom.MemoryTopAddr[23:14];
+                    ff_bank8_offset[bank_num] <= Megarom.MemoryTopAddr[23:13];
+                end
+                else begin
+                    ff_bank16_offset[bank_num] <= Megarom.MemoryTopAddr[23:14] + { 2'h0, Megarom.BankReg[bank_num]};
+                    ff_bank8_offset[bank_num] <= Megarom.MemoryTopAddr[23:13] + { 3'h0, Megarom.BankReg[bank_num]};
                 end
             end
         end
@@ -268,94 +254,87 @@ module MEGAROM_CONTROLLER #(
      ***************************************************************/
     wire [ 7:0] bank_16;
     wire [ 7:0] bank_8;
-    wire [23:0] addr_16 = Megarom.MemoryTopAddr + { 2'h0, bank_16, Bus.ADDR[13:0] };
-    wire [23:0] addr_8  = Megarom.MemoryTopAddr + { 3'h0, bank_8 , Bus.ADDR[12:0] };
+    wire [23:0] addr_16 = { ff_bank16_offset[Bus.ADDR[15]], Bus.ADDR[13:0] };
+    wire [23:0] addr_8  = { ff_bank8_offset[{Bus.ADDR[15],Bus.ADDR[13]}], Bus.ADDR[12:0] };
     wire [23:0] addr = Megarom.is_16k_bank ? addr_16 : addr_8;
-
-    if(Megarom.BANK_COUNT >= 4) begin
-        assign bank_16 = Megarom.BankReg[Bus.ADDR[15]];
-        assign bank_8  = Megarom.BankReg[{Bus.ADDR[15],Bus.ADDR[13]}];
-    end
-    else if(Megarom.BANK_COUNT >= 3) begin
-        assign bank_16 = Megarom.BankReg[Bus.ADDR[15]];
-        assign bank_8  = {Bus.ADDR[15],Bus.ADDR[13]} == 2'b11 ? 8'h00 : Megarom.BankReg[{Bus.ADDR[15],Bus.ADDR[13]}];
-    end
-    else if(Megarom.BANK_COUNT >= 2) begin
-        assign bank_16 = Megarom.BankReg[Bus.ADDR[15]];
-        assign bank_8  = Megarom.BankReg[Bus.ADDR[13]];
-    end
-    else if(Megarom.BANK_COUNT >= 1) begin
-        assign bank_16 = Bus.ADDR[15] ? 8'h00 : Megarom.BankReg[0];
-        assign bank_8  = Bus.ADDR[13] ? 8'h00 : Megarom.BankReg[0];
-    end
-    else begin
-        assign bank_16 = 8'h00;
-        assign bank_8  = 8'h00;
-    end
-
 
     /***************************************************************
      * memory r/w
      ***************************************************************/
-    if(USE_FF) begin
-        always_ff @(posedge CLK or negedge RESET_n) begin
-            if(!RESET_n) begin
-                Ram.ADDR <= 0;
-                Ram.WE_n <= 1;
-                Ram.DIN <= 0;
-                Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
-                Ram.OE_n <= 1;
-                Bus.BUSDIR_n <= 1;
-                Bus.DOUT <= 0;
-                Ram.RFSH_n <= 1;
-            end
-            else if(!Bus.RESET_n) begin
-                Ram.ADDR <= 0;
-                Ram.WE_n <= 1;
-                Ram.DIN <= 0;
-                Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
-                Ram.OE_n <= 1;
-                Bus.BUSDIR_n <= 1;
-                Bus.DOUT <= 0;
-                Ram.RFSH_n <= Bus.RFSH_n;
-            end
-            else begin
-                // address
-                Ram.ADDR <= (rd_mem_n && wr_mem_n) ? 0 : addr[$bits(Ram.ADDR)-1:0];
+    wire [COUNT:0] w_busdir_n_n;
+    assign w_busdir_n_n[COUNT] = ~rd_mem_n;
+    generate
+        genvar busdir_i;
+        for(busdir_i = 0; busdir_i < COUNT; busdir_i = busdir_i + 1) begin: busdir_lp
+            assign w_busdir_n_n[busdir_i] = ~ExtBus[busdir_i].BUSDIR_n;
+        end
+    endgenerate
 
-                // memory write
-                Ram.WE_n <= wr_mem_n;
-                Ram.DIN <= wr_mem_n ? 0 : Bus.DIN;
-                Ram.DIN_SIZE <= RAM::DIN_SIZE_8;
+    NOR_Nbits #(
+        .COMB(1),
+        .COUNT(COUNT+1)
+    ) u_nor_busdir (
+        .RESET_n,
+        .CLK(CLK),
+        .ENA(1'b1),
+        .IN(w_busdir_n_n),
+        .OUT(Bus.BUSDIR_n)
+    );
 
-                // memory read
-                Ram.OE_n <= rd_mem_n;
-                Bus.BUSDIR_n <= rd_mem_n && tmp_busdir_n[0];
-                Bus.DOUT <= tmp_busdir_n[0] ? (rd_mem_n ? 0 : Ram.DOUT[7:0]) : tmp_dout[0];
+    wire [7:0] w_dout[0:COUNT];
+    assign w_dout[COUNT] = Ram.DOUT[7:0];
+    generate
+        genvar dout_i;
+        for(dout_i = 0; dout_i < COUNT; dout_i = dout_i + 1) begin: dout_lp
+            assign w_dout[dout_i] = ExtBus[dout_i].DOUT;
+        end
+    endgenerate
 
-                // memory refresh
-                Ram.RFSH_n <= Bus.RFSH_n;
-            end
+    ARRAY_SELECTOR #(
+        .COMB(1),
+        .WIDTH(8),
+        .COUNT(COUNT+1)
+    ) u_select_dout (
+        .RESET_n(RESET_n & Bus.RESET_n),
+        .CLK(CLK),
+        .ENA(1'b1),
+        .IN(w_dout),
+        .OE(w_busdir_n_n),
+        .OUT(Bus.DOUT)
+    );
+
+    assign Ram.DSIZE = RAM::DSIZE_8;
+
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n) begin
+            Ram.ADDR <= 0;
+            Ram.WE_n <= 1;
+            Ram.DIN <= 0;
+            Ram.OE_n <= 1;
+            Ram.RFSH_n <= 1;
+        end
+        else if(!Bus.RESET_n) begin
+            Ram.ADDR <= 0;
+            Ram.WE_n <= 1;
+            Ram.DIN <= 0;
+            Ram.OE_n <= 1;
+            Ram.RFSH_n <= Bus.RFSH_n;
+        end
+        else begin
+            // address
+            Ram.ADDR <= addr[$bits(Ram.ADDR)-1:0];
+
+            // memory write
+            Ram.WE_n <= wr_mem_n;
+            Ram.DIN <= Bus.DIN;
+
+            // memory read
+            Ram.OE_n <= rd_mem_n;
+
+            // memory refresh
+            Ram.RFSH_n <= Bus.RFSH_n;
         end
     end
-    else begin
-        // address
-        assign Ram.ADDR = (rd_mem_n && wr_mem_n) ? 0 : addr[$bits(Ram.ADDR)-1:0];
-
-        // memory write
-        assign Ram.DIN_SIZE = RAM::DIN_SIZE_8;
-        assign Ram.DIN  = wr_mem_n ? 0 : Bus.DIN;
-        assign Ram.WE_n = wr_mem_n;
-
-        // memory read
-        assign Ram.OE_n = rd_mem_n;
-        assign Bus.BUSDIR_n = rd_mem_n && tmp_busdir_n[0];
-        assign Bus.DOUT = tmp_busdir_n[0] ? (rd_mem_n ? 0 : Ram.DOUT[7:0]) : tmp_dout[0];
-
-        // memory refresh
-        assign Ram.RFSH_n = Bus.RFSH_n;
-    end
-
 endmodule
 
 

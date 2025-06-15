@@ -44,7 +44,6 @@ module CARTRIDGE_V9990 #(
     input   wire            CLK,
     BUS_IF.CARTRIDGE        Bus,
     RAM_IF.HOST             Ram,
-    UMA_IF.CLK              UmaClock,
     VIDEO_IF.OUT            Video
 );
     /***************************************************************
@@ -102,9 +101,7 @@ module CARTRIDGE_V9990 #(
     T9990 u_vdp (
         .RESET_n(RESET_n && Bus.RESET_n),
         .CLK,
-        .CLK_21M_EN(UmaClock.CLK21M_EN),
-        .CLK_14M_EN(UmaClock.CLK14M_EN),
-        .CLK_25M_EN(UmaClock.CLK25M_EN),
+        .CLK_43M_EN(Bus.CLK_43M_EN),
 
         .CSR_n,
         .CSW_n,
@@ -123,7 +120,7 @@ module CARTRIDGE_V9990 #(
         .RAM_RFSH_n(Ram.RFSH_n),
         .RAM_ADDR(addr),
         .RAM_DIN(Ram.DIN),
-        .RAM_DIN_SIZE(Ram.DIN_SIZE),
+        .RAM_DSIZE(Ram.DSIZE),
         .RAM_DOUT(Ram.DOUT),
         .RAM_ACK_n(Ram.ACK_n),
 

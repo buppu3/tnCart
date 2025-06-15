@@ -1,9 +1,9 @@
 //
-// clk_speed.sv
+// signal.sv
 //
 // BSD 3-Clause License
 // 
-// Copyright (c) 2024, Shinobu Hashimoto
+// Copyright (c) 2025, Shinobu Hashimoto
 // 
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -33,47 +33,49 @@
 
 `default_nettype none
 
-module CLK_SPEED #(
-    parameter COUNT_TH = ((108_000 / 3_580) / 2 - 2)
+module NOR_Nbits #(
+    parameter   COMB = 0,           // 組み合わせ回路で構成するか?
+    parameter   ENA_FF_IN = 0,      // 入力を FF で受けるか？
+    parameter   ENA_FF_OUT = 1,     // 出力に FF を入れるか?
+    parameter   COUNT = 8,
+    parameter   DEFAULT_VALUE = 1
 ) (
-    input   wire            RESET_n,
-    input   wire            CLK,
-    input   wire            CLK_3_58M,
-    input   wire            CLK_3_58M_EN,
-    output  wire            FAST
+    input wire RESET_n,
+    input wire CLK,
+    input wire [COUNT-1:0] IN,
+    input wire ENA,
+    output wire OUT
 );
-    assign FAST = flag;
+    localparam _ena_ff_in = ENA_FF_IN & ~COMB;
+    localparam _ena_ff_out = ENA_FF_OUT & ~COMB;
 
-    // CLK の High 期間をチェック
-    localparam  TH = (COUNT_TH - 1);
-    localparam  BIT_WIDTH = $clog2(TH + 1);
+    wire [COUNT-1:0] w_in;
 
-    reg [BIT_WIDTH - 1:0] clk_speed_count;
-    
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n) begin
-            clk_speed_count <= 0;
-        end
-        else if(CLK_3_58M_EN) begin
-            clk_speed_count <= TH;
-        end
-        else if(CLK_3_58M) begin
-            if(clk_speed_count != 0) clk_speed_count <= clk_speed_count - 1'd1;
-        end
+    if(_ena_ff_in) begin
+        reg [COUNT-1:0] ff_in;
+        assign w_in = ff_in;
+        always_ff @(posedge CLK) ff_in <= IN;
+    end
+    else begin
+        assign w_in = IN;
     end
 
-    // High 期間の長さでフラグを更新
-    reg flag;
+    if(_ena_ff_out) begin
+        reg ff_out;
+        assign OUT = ff_out;
 
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n) begin
-            flag <= 0;
-        end
-        else if(!CLK_3_58M) begin
-            flag <= clk_speed_count != 0;
+        always_ff @(posedge CLK or negedge RESET_n) begin
+            if(!RESET_n) begin
+                ff_out <= DEFAULT_VALUE;
+            end
+            else if(ENA) begin
+                ff_out <= w_in == 0;
+            end
         end
     end
-
+    else begin
+        assign OUT = w_in == 0;
+    end
 endmodule
 
 `default_nettype wire

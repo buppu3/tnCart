@@ -41,7 +41,7 @@ module CARTRIDGE_PSG #(
     parameter               MIRROR = 1
 ) (
     input   wire            RESET_n,
-    input   wire            CLK,
+    CLOCK_IF.SRC            Clock,
     BUS_IF.CARTRIDGE        Bus,
     SOUND_IF.OUT            Sound
 );
@@ -72,8 +72,8 @@ module CARTRIDGE_PSG #(
      * ym2149_audio
      ***************************************************************/
     ym2149_audio u_ym2149_audio (
-        .clk_i          (CLK),
-        .en_clk_psg_i   (Bus.CLK_EN),
+        .clk_i          (Clock.PSG_CLK),
+        .en_clk_psg_i   (Clock.PSG_4M_EN),
         .sel_n_i        (1'b0),
         .reset_n_i      (Bus.RESET_n && Bus.RESET_n),
         .bc_i           ((cs_addr || cs_read ) && cs_psg),
@@ -91,7 +91,7 @@ module CARTRIDGE_PSG #(
      * 出力変換
      ***************************************************************/
     logic [13:0] out;
-    always_ff @(posedge CLK or negedge RESET_n) begin
+    always_ff @(posedge Clock.OP_CLK or negedge RESET_n) begin
         if(!RESET_n || !Bus.RESET_n) begin
             Sound.Signal <= 0;
         end

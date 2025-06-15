@@ -203,8 +203,8 @@ module MEGAROM_CONFIGURE #(
     /***************************************************************
      * リード/ライトタイミング
      ***************************************************************/
-    wire rd_n = Bus.SLTSL_n || Bus.MERQ_n || Bus.RD_n;
-    wire wr_n = Bus.SLTSL_n || Bus.MERQ_n || Bus.WR_n;
+    wire rd_n = Bus.SLTSL_n || Bus.RD_n;
+    wire wr_n = Bus.SLTSL_n || Bus.WR_n;
     logic prev_wr_n;
     always_ff @(posedge CLK or negedge RESET_n) begin
         if(!RESET_n)          prev_wr_n <= 1;
@@ -216,16 +216,22 @@ module MEGAROM_CONFIGURE #(
     /***************************************************************
      * レジスタプロテクト
      ***************************************************************/
-    wire reg_protect =  (ctrl_reg[ADDR_KEY_0] != KEY_0) ||
-                        (ctrl_reg[ADDR_KEY_1] != KEY_1) ||
-                        (ctrl_reg[ADDR_KEY_2] != KEY_2) ||
-                        (ctrl_reg[ADDR_KEY_3] != KEY_3);
+    wire w_reg_protect =  (ctrl_reg[ADDR_KEY_0] != KEY_0) ||
+                          (ctrl_reg[ADDR_KEY_1] != KEY_1) ||
+                          (ctrl_reg[ADDR_KEY_2] != KEY_2) ||
+                          (ctrl_reg[ADDR_KEY_3] != KEY_3);
+    reg ff_reg_protect;
+    always_ff @(posedge CLK or negedge RESET_n) begin
+        if(!RESET_n)          ff_reg_protect <= 1;
+        else if(!Bus.RESET_n) ff_reg_protect <= 1;
+        else                  ff_reg_protect <= w_reg_protect;
+    end
 
     /***************************************************************
-     * アドレスデコード
+     * アドレスデコード(ToDo: wire じゃなくて reg で処理できるようにする)
      ***************************************************************/
-    wire cs_reg_rd_n = reg_protect || (Bus.ADDR[15:6] != BASE_ADDR[15:6]);
-    wire cs_reg_wr_n = reg_protect ? (Bus.ADDR[15:2] != BASE_ADDR[15:2]) : (Bus.ADDR[15:6] != BASE_ADDR[15:6]);
+    wire cs_reg_rd_n = ff_reg_protect || (Bus.ADDR[15:6] != BASE_ADDR[15:6]);
+    wire cs_reg_wr_n = ff_reg_protect ? (Bus.ADDR[15:2] != BASE_ADDR[15:2]) : (Bus.ADDR[15:6] != BASE_ADDR[15:6]);
 
     /***************************************************************
      * レジスタリード
@@ -395,24 +401,24 @@ module MEGAROM_CONFIGURE #(
     /***************************************************************
      * 設定を転送
      ***************************************************************/
-    always_comb begin
-        Megarom.BankRegInit[0]  =   ctrl_reg[ADDR_BANK0_INIT_VAL];
-        Megarom.BankRegInit[1]  =   ctrl_reg[ADDR_BANK1_INIT_VAL];
-        Megarom.BankRegInit[2]  =   ctrl_reg[ADDR_BANK2_INIT_VAL];
-        Megarom.BankRegInit[3]  =   ctrl_reg[ADDR_BANK3_INIT_VAL];
-        Megarom.BankRegAddr[0]  = { ctrl_reg[ADDR_BANK0_ADDR_H  ], ctrl_reg[ADDR_BANK0_ADDR_L] };
-        Megarom.BankRegAddr[1]  = { ctrl_reg[ADDR_BANK1_ADDR_H  ], ctrl_reg[ADDR_BANK1_ADDR_L] };
-        Megarom.BankRegAddr[2]  = { ctrl_reg[ADDR_BANK2_ADDR_H  ], ctrl_reg[ADDR_BANK2_ADDR_L] };
-        Megarom.BankRegAddr[3]  = { ctrl_reg[ADDR_BANK3_ADDR_H  ], ctrl_reg[ADDR_BANK3_ADDR_L] };
-        Megarom.BankRegAddrMask = { ctrl_reg[ADDR_MASK_ADDR_H   ], ctrl_reg[ADDR_MASK_ADDR_L] };
-        Megarom.BankRegMask     =   ctrl_reg[ADDR_MASK_VAL      ];
-        Megarom.WriteProtect    =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_WRITE_PROTECT];
-        Megarom.is_16k_bank     =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_BANK_SIZE    ];
-        Megarom.CS1_Mask        =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_CS1_MASK     ] || !ctrl_reg[ADDR_FLAGS][BIT_FLAGS_ENABLE];
-        Megarom.CS2_Mask        =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_CS2_MASK     ] || !ctrl_reg[ADDR_FLAGS][BIT_FLAGS_ENABLE];
-        SCC_ENA                 =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_SCC          ];
-        SCC_I_ENA               =   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_SCC_I        ];
-        Megarom.MemoryTopAddr   = RAM_ADDR[$bits(Megarom.MemoryTopAddr)-1:0];
+    always_ff @(posedge CLK) begin
+        Megarom.BankRegInit[0]  <=   ctrl_reg[ADDR_BANK0_INIT_VAL];
+        Megarom.BankRegInit[1]  <=   ctrl_reg[ADDR_BANK1_INIT_VAL];
+        Megarom.BankRegInit[2]  <=   ctrl_reg[ADDR_BANK2_INIT_VAL];
+        Megarom.BankRegInit[3]  <=   ctrl_reg[ADDR_BANK3_INIT_VAL];
+        Megarom.BankRegAddr[0]  <= { ctrl_reg[ADDR_BANK0_ADDR_H  ], ctrl_reg[ADDR_BANK0_ADDR_L] };
+        Megarom.BankRegAddr[1]  <= { ctrl_reg[ADDR_BANK1_ADDR_H  ], ctrl_reg[ADDR_BANK1_ADDR_L] };
+        Megarom.BankRegAddr[2]  <= { ctrl_reg[ADDR_BANK2_ADDR_H  ], ctrl_reg[ADDR_BANK2_ADDR_L] };
+        Megarom.BankRegAddr[3]  <= { ctrl_reg[ADDR_BANK3_ADDR_H  ], ctrl_reg[ADDR_BANK3_ADDR_L] };
+        Megarom.BankRegAddrMask <= { ctrl_reg[ADDR_MASK_ADDR_H   ], ctrl_reg[ADDR_MASK_ADDR_L] };
+        Megarom.BankRegMask     <=   ctrl_reg[ADDR_MASK_VAL      ];
+        Megarom.WriteProtect    <=   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_WRITE_PROTECT];
+        Megarom.is_16k_bank     <=   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_BANK_SIZE    ];
+        Megarom.CS1_Mask        <=   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_CS1_MASK     ] || !ctrl_reg[ADDR_FLAGS][BIT_FLAGS_ENABLE];
+        Megarom.CS2_Mask        <=   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_CS2_MASK     ] || !ctrl_reg[ADDR_FLAGS][BIT_FLAGS_ENABLE];
+        SCC_ENA                 <=   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_SCC          ];
+        SCC_I_ENA               <=   ctrl_reg[ADDR_FLAGS         ][BIT_FLAGS_SCC_I        ];
+        Megarom.MemoryTopAddr   <= RAM_ADDR[$bits(Megarom.MemoryTopAddr)-1:0];
     end
 
 endmodule

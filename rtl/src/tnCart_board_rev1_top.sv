@@ -40,7 +40,7 @@ module TNCART_BOARD_REV1_TOP (
     input   wire            JUMPER,
 
     // SDRAM
-    output  wire            O_sdram_clk,
+    inout  wire            O_sdram_clk,
     output  wire            O_sdram_cke,
     output  wire            O_sdram_cs_n,
     output  wire            O_sdram_cas_n,
@@ -97,33 +97,15 @@ module TNCART_BOARD_REV1_TOP (
     output  wire            UART_TX
 );
 
-    // UMA を有効
-    localparam          ENABLE_UMA              = 1;//CONFIG::ENABLE_V9990;
-
     /***************************************************************
      * CLOCK
      ***************************************************************/
-    logic CLK_BASE/* synthesis syn_keep=1 */;
-    logic CLK_BASE_READY;
-    logic CLK_MEM;
-    logic CLK_MEM_P;
-    logic CLK_MEM_READY;
-    logic CLK_TMDS_S/* synthesis syn_keep=1 */;
-    logic CLK_TMDS_P/* synthesis syn_keep=1 */;
-    logic CLK_TMDS_READY;
-    logic CLK_21M/* synthesis syn_keep=1 */;
+    CLOCK_IF Clock();
     BOARD_REV1_CLOCK u_clk (
         .RESET_n        (1'b1),
-        .CLK_IN         (CONFIG_BOARD::SYNC_CPU_CLK ? CART_CLOCK : CLK_27M),
-        .CLK_BASE,
-        .CLK_BASE_READY,
-        .CLK_MEM,
-        .CLK_MEM_P,
-        .CLK_MEM_READY,
-        .CLK_TMDS_S,
-        .CLK_TMDS_P,
-        .CLK_TMDS_READY,
-        .CLK_21M
+        .CART_CLOCK,
+        .CLK_27M,
+        .Clock
     );
 
     /***************************************************************
@@ -132,20 +114,20 @@ module TNCART_BOARD_REV1_TOP (
     if(CONFIG_BOARD::ENABLE_UART_MODULE) begin
         UART_RX_IF RXD();
         UART_RX #(
-            .CLKFREQ            (108_000_000)
+            .CLKFREQ            (CONFIG_BOARD::OP_CLK_FREQ)
         ) u_rxd (
             .RESET_n,
-            .CLK,
+            .CLK                (Clock.OP_CLK),
             .RXD                (UART_RX),
             .Uart_rx_interface  (RXD)
         );
 
         UART_TX_IF TXD();
         UART_TX #(
-            .CLKFREQ            (108_000_000)
+            .CLKFREQ            (CONFIG_BOARD::OP_CLK_FREQ)
         ) u_txd (
             .RESET_n,
-            .CLK,
+            .CLK                (Clock.OP_CLK),
             .TXD                (UART_TX),
             .Uart_tx_interface  (TXD)
         );
@@ -163,14 +145,13 @@ module TNCART_BOARD_REV1_TOP (
      * MSX バス
      ***************************************************************/
     wire RESET_n;
-    wire CLK = CLK_BASE;
     BUS_IF Bus();
 
     // リセット信号処理
     reg reset_n = 0;
     assign RESET_n = reset_n;
-    always_ff @(posedge CLK_BASE or negedge CLK_BASE_READY or negedge sdram_ready) begin
-        if(!CLK_BASE_READY) reset_n <= 0;       // PLL 準備中ならリセット
+    always_ff @(posedge Clock.MEM_CLK or negedge Clock.MEM_READY or negedge sdram_ready) begin
+        if(!Clock.MEM_READY) reset_n <= 0;       // PLL 準備中ならリセット
         else if(!sdram_ready) reset_n <= 0;     // SDRAM 準備中ならリセット
         else reset_n <= 1; 
     end
@@ -178,8 +159,7 @@ module TNCART_BOARD_REV1_TOP (
     // バス信号処理
     BOARD_REV1_BUS u_bus (
         .RESET_n,
-        .CLK,
-        .CLK_21M,
+        .CLK(Clock.MEM_CLK),
         .CART_BUSDIR_n,
         .CART_INT_n,
         .CART_WAIT_n,
@@ -197,18 +177,26 @@ module TNCART_BOARD_REV1_TOP (
     /***************************************************************
      * SDRAM
      ***************************************************************/
-    RAM_IF Ram();
+    RAM_IF Ram[0:CONFIG::RAM_COUNT-1]();
     logic sdram_ready;
+    wire [23:0] sdram_address_offset[0:CONFIG::RAM_COUNT-1];
+    assign sdram_address_offset[CONFIG::RAM_MEGAROM   ] = 24'h0;
+    assign sdram_address_offset[CONFIG::RAM_FMPAC     ] = 24'h0;
+    assign sdram_address_offset[CONFIG::RAM_NEXTOR    ] = 24'h0;
+    assign sdram_address_offset[CONFIG::RAM_EXPRAM    ] = 24'h0;
+    assign sdram_address_offset[CONFIG::RAM_BOOTLOADER] = 24'h0;
+    assign sdram_address_offset[CONFIG::RAM_V9990     ] = CONFIG::RAM_ADDR_VRAM;
+
     SDRAM #(
+        .COUNT              (CONFIG::RAM_COUNT),
         .SDRAM_A_WIDTH      (11),
         .SDRAM_BA_WIDTH     (2),
         .SDRAM_COL_WIDTH    (8),
         .SDRAM_ROW_WIDTH    (11),
         .SDRAM_DQ_WIDTH     (32)
     ) u_sdram (
-        .CLK                (CLK_MEM),
-        .CLK_PS             (CLK_MEM_P),
-        .RESET_n            (CLK_MEM_READY),
+        .CLK                (Clock.MEM_CLK),
+        .RESET_n            (Clock.MEM_READY),
 
         .READY              (sdram_ready),
 
@@ -223,67 +211,9 @@ module TNCART_BOARD_REV1_TOP (
         .SDRAM_DQM          (O_sdram_dqm),
         .SDRAM_DQ           (IO_sdram_dq),
 
-        .Ram
+        .OFFSET             (sdram_address_offset),
+        .Ram                (Ram)
     );
-
-    /***************************************************************
-     * RAM wait 制御
-     ***************************************************************/
-    wire uma_wait;
-    if(CONFIG::CONTROL_BUS_WAIT_RAM == 0) begin
-        // WAIT 制御を行わない
-        assign uma_wait = 0;
-    end
-    else if(CONFIG::CONTROL_BUS_WAIT_RAM == 1) begin
-        // クロックが速い時だけ WAIT 制御を行う
-        CLK_SPEED u_clk_speed (
-            .RESET_n,
-            .CLK,
-            .CLK_3_58M(Bus.CLK),
-            .CLK_3_58M_EN(Bus.CLK_EN),
-            .FAST(uma_wait)
-        );
-    end
-    else begin
-        // WAIT 制御を常に行う
-        assign uma_wait = 1;
-    end
-
-    /***************************************************************
-     * UMA
-     ***************************************************************/
-    UMA_IF Uma();
-    assign Uma.ADDR[0] = 0;                         // Uma[0] の SDRAM 先頭アドレス
-    assign Uma.ADDR[1] = CONFIG::RAM_ADDR_VRAM;     // Uma[1] の SDRAM 先頭アドレス
-
-    RAM_IF UmaRam[0:Uma.COUNT-1]();
-
-    if(ENABLE_UMA) begin
-        UMA #(
-            .COUNT      (Uma.COUNT)
-        ) u_uma (
-            .RESET_n,
-            .CLK,
-            .CLK_3_58M  (Bus.CLK),
-            .WAIT_EN    (uma_wait),
-            .Primary    (Ram),
-            .Secondary  (UmaRam),
-            .Uma
-        );
-    end
-    else begin
-        // UMA を使わない時
-        BYPASS_RAM u_bypass_uma (
-            .Primary    (Ram),
-            .Secondary  (UmaRam[0])
-        );
-        assign UmaRam[1].DOUT = 0;
-        assign UmaRam[1].ACK_n = 1;
-        assign UmaRam[1].TIMING = 0;
-        assign Uma.CLK14M_EN = 0;
-        assign Uma.CLK21M_EN = 0;
-        assign Uma.CLK25M_EN = 0;
-    end
 
     /***************************************************************
      * TF
@@ -292,7 +222,7 @@ module TNCART_BOARD_REV1_TOP (
     SPI #(
         .CLK_DIV        (CONFIG_BOARD::TF_CLK_DIV)
     ) u_tf_spi (
-        .CLK,
+        .CLK            (Clock.OP_CLK),
         .RESET_n,
         .SCLK           (TF_SCLK),
         .MOSI           (TF_CMD),
@@ -311,7 +241,7 @@ module TNCART_BOARD_REV1_TOP (
     FLASH_IF Flash();
     FLASH_SPI u_flash (
         .RESET_n,
-        .CLK,
+        .CLK                (Clock.OP_CLK),
         .SPI                (Flash_SPI),
         .Flash              (Flash)
     );
@@ -323,7 +253,7 @@ module TNCART_BOARD_REV1_TOP (
         .CLK_DIV            (CONFIG_BOARD::FLASH_CLK_DIV)
     ) u_flash_spi (
         .RESET_n,
-        .CLK,
+        .CLK                (Clock.OP_CLK),
         .SCLK               (mspi_sclk),
         .MOSI               (mspi_mosi),
         .MISO               (mspi_miso),
@@ -340,10 +270,10 @@ module TNCART_BOARD_REV1_TOP (
     LED_IF LedNextor();
     LED_IF LedBoot();
     LED #(
-        .DELAY          (108_000_000 / 2),
-        .BLINK          (108_000_000 / 20)
+        .DELAY          (CONFIG_BOARD::LED_CLK_FREQ / 2),
+        .BLINK          (CONFIG_BOARD::LED_CLK_FREQ / 20)
     ) u_led (
-        .CLK,
+        .Clock,
         .RESET_n,
         .LedPort        (LED),
         .LedNextor,
@@ -351,26 +281,12 @@ module TNCART_BOARD_REV1_TOP (
     );
 
     /***************************************************************
-     * DAC clock(108MHz/5 = 21.6MHz)
-     ***************************************************************/
-    localparam CLK_DAC_DIV = CONFIG_BOARD::DAC_FREQ_DIV;
-
-    logic [$clog2(CLK_DAC_DIV)-1:0] clk_dac_cnt;
-    wire CLK_DAC_EN = (clk_dac_cnt == 0);
-
-    always_ff @(posedge CLK or negedge RESET_n) begin
-        if(!RESET_n)              clk_dac_cnt <= CLK_DAC_DIV - 1'd1;
-        else if(clk_dac_cnt == 0) clk_dac_cnt <= CLK_DAC_DIV - 1'd1;
-        else                      clk_dac_cnt <= clk_dac_cnt - 1'd1;
-    end
-
-    /***************************************************************
      * cartridge sound out
      ***************************************************************/
     SOUND_IF #(.BIT_WIDTH(CONFIG_BOARD::DAC_BIT_WIDTH)) SoundInternal();
     DAC_1BIT u_dac_int (
-        .CLK,
-        .CLK_EN         (CLK_DAC_EN),
+        .CLK            (Clock.DAC_CLK),
+        .CLK_EN         (Clock.DAC_ENA),
         .RESET_n,
         .IN             (SoundInternal),
         .OUT            (SOUND_INT)
@@ -381,8 +297,8 @@ module TNCART_BOARD_REV1_TOP (
      ***************************************************************/
     SOUND_IF #(.BIT_WIDTH(CONFIG_BOARD::DAC_BIT_WIDTH)) SoundExternal[0:0]();
     DAC_1BIT u_dac_ext (
-        .CLK,
-        .CLK_EN         (CLK_DAC_EN),
+        .CLK            (Clock.DAC_CLK),
+        .CLK_EN         (Clock.DAC_ENA),
         .RESET_n,
         .IN             (SoundExternal[0]),
         .OUT            (SOUND_EXT)
@@ -397,7 +313,7 @@ module TNCART_BOARD_REV1_TOP (
         .ENABLE_SCANLINE(CONFIG::ENABLE_SCANLINE)
     ) u_upscan (
         .RESET_n,
-        .DCLK           (CLK_TMDS_P),
+        .DCLK           (Clock.TMDS_P_CLK),
         .IN             (Video),
         .OUT            (VideoTmds)
     );
@@ -405,9 +321,9 @@ module TNCART_BOARD_REV1_TOP (
     BOARD_REV1_TMDS_OUT u_tmds (
         .RESET_n,
         .IN             (VideoTmds),
-        .TMDS_READY     (CLK_TMDS_READY),
-        .CLK_S          (CLK_TMDS_S),
-        .CLK_P          (CLK_TMDS_P),
+        .TMDS_READY     (Clock.TMDS_READY),
+        .CLK_S          (Clock.TMDS_S_CLK),
+        .CLK_P          (Clock.TMDS_P_CLK),
         .TMDS_CLKP      (tmds_clk_p),
         .TMDS_CLKN      (tmds_clk_n),
         .TMDS_DATAP     (tmds_data_p),
@@ -417,13 +333,19 @@ module TNCART_BOARD_REV1_TOP (
     /***************************************************************
      * MAIN
      ***************************************************************/
-    MAIN u_main (
+    MAIN #(
+        .RAM_COUNT      (CONFIG::RAM_COUNT),
+        .RAM_MEGAROM    (CONFIG::RAM_MEGAROM),
+        .RAM_FMPAC      (CONFIG::RAM_FMPAC),
+        .RAM_NEXTOR     (CONFIG::RAM_NEXTOR),
+        .RAM_EXPRAM     (CONFIG::RAM_EXPRAM),
+        .RAM_BOOTLOADER (CONFIG::RAM_BOOTLOADER),
+        .RAM_V9990      (CONFIG::RAM_V9990)
+    ) u_main (
         .RESET_n,
-        .CLK,
+        .Clock,
         .Bus,
-        .Ram            (UmaRam[0]),
-        .VideoRam       (UmaRam[1]),
-        .UmaClock       (Uma),
+        .Ram,
         .TF,
         .LedNextor,
         .Flash,
